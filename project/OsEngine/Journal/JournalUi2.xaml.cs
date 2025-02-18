@@ -1,13 +1,14 @@
 ﻿/*
  * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
  * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
-*/
+ */
 
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -26,6 +27,7 @@ using MenuItem = System.Windows.Forms.MenuItem;
 using Series = System.Windows.Forms.DataVisualization.Charting.Series;
 using System.Threading;
 using OsEngine.Layout;
+using Excel = Microsoft.Office.Interop.Excel;
 
 namespace OsEngine.Journal
 {
@@ -37,6 +39,17 @@ namespace OsEngine.Journal
         #region Constructor
 
         public bool IsErase;
+
+        private const int StartColumnForDate = 1;
+        private const int StartColumnForLong = 2;
+        private const int StartColumnForShort = 3;
+        private const int StartColumnForTotal = 4;
+        private const int ColumnWidthForDate = 18;
+        private const int StartRow = 3;
+        private const string Long = "Long";
+        private const string Short = "Short";
+        private const string Date = "Date";
+        private const string Total = "Total";
 
         public JournalUi2(List<BotPanelJournal> botsJournals, StartProgram startProgram)
         {
@@ -3985,6 +3998,145 @@ namespace OsEngine.Journal
         public event Action<string, LogMessageType> LogMessageEvent;
 
         #endregion
+
+        private void ButtonSave_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                //Start Excel and get Application object.
+                var excelFile = new Excel.Application
+                {
+                    Visible = true
+                };
+
+                //Get a new workbook.
+                var workbook = (Excel._Workbook)excelFile.Workbooks.Add(Missing.Value);
+
+                var longProfitPortfolioPunkt = _longPositions.Select(x => x.ProfitPortfolioPunkt).ToArray();
+                var shortProfitPortfolioPunkt = _shortPositions.Select(x => x.ProfitPortfolioPunkt).ToArray();
+
+                CreateDiagramSheet(workbook, longProfitPortfolioPunkt, shortProfitPortfolioPunkt);
+
+                CreateProfitDataSheet(workbook, longProfitPortfolioPunkt, shortProfitPortfolioPunkt);
+
+                CreateProfitPortfolioPunktSheet(workbook, longProfitPortfolioPunkt, shortProfitPortfolioPunkt);
+
+                excelFile.Visible = true;
+                excelFile.UserControl = true;
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private  void CreateDiagramSheet(Excel._Workbook workbook, decimal[] longProfitPortfolioPunkt,
+            decimal[] shortProfitPortfolioPunkt)
+        {
+            var sheet = (Excel._Worksheet)workbook.ActiveSheet;
+
+            sheet.Name = "Equity";
+            sheet.Cells[1, 1] = Date;
+            sheet.Cells[1, 2] = Long;
+            sheet.Cells[1, 3] = Short;
+            sheet.Cells[1, 4] = Total;
+            sheet.Cells[2, 2] = 0;
+            sheet.Cells[2, 3] = 0;
+            sheet.Cells[2, 4] = 0;
+
+            var startRow = StartRow;
+
+            decimal currentLong = 0;
+            decimal currentShort = 0;
+            sheet.Columns[1].ColumnWidth = ColumnWidthForDate;
+
+            for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+            {
+                var currentLongProfit = longProfitPortfolioPunkt[index];
+                var sumOfLongs = currentLongProfit + currentLong;
+                sheet.Cells[startRow, StartColumnForDate].Value = _longPositions[index].TimeOpen;
+                sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
+
+                var currentShortProfit = shortProfitPortfolioPunkt[index];
+                var sumOfShorts = currentShortProfit + currentShort;
+                sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
+                sheet.Cells[startRow, StartColumnForTotal].Value = sumOfLongs + sumOfShorts;
+
+                startRow++;
+
+                sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
+                sheet.Cells[startRow, StartColumnForDate].Value = _longPositions[index].TimeClose;
+                sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
+                sheet.Cells[startRow, StartColumnForTotal].Value = sumOfLongs + sumOfShorts;
+
+                startRow++;
+
+                currentLong = sumOfLongs;
+                currentShort = sumOfShorts;
+            }
+        }
+
+        private static void CreateProfitDataSheet(Excel._Workbook workbook, decimal[] longProfitPortfolioPunkt,
+            decimal[] shortProfitPortfolioPunkt)
+        {
+            workbook.Sheets.Add();
+            var sheet = (Excel._Worksheet)workbook.ActiveSheet;
+            sheet.Name = "Profit data";
+
+            sheet.Cells[1, 2] = Long;
+            sheet.Cells[1, 3] = Short;
+            sheet.Cells[1, 4] = Total;
+            sheet.Cells[2, 2] = 0;
+            sheet.Cells[2, 3] = 0;
+            sheet.Cells[2, 4] = 0;
+
+            var startRow = StartRow;
+
+            decimal currentLong = 0;
+            decimal currentShort = 0;
+
+            for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+            {
+                var currentLongProfit = longProfitPortfolioPunkt[index];
+                var sumOfLongs = currentLongProfit + currentLong;
+                sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
+
+                var currentShortProfit = shortProfitPortfolioPunkt[index];
+                var sumOfShorts = currentShortProfit + currentShort;
+                sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
+                sheet.Cells[startRow, StartColumnForTotal].Value = sumOfLongs + sumOfShorts;
+
+                startRow++;
+
+                currentLong = sumOfLongs;
+                currentShort = sumOfShorts;
+            }
+        }
+
+        private static void CreateProfitPortfolioPunktSheet(Excel._Workbook workbook, decimal[] longProfitPortfolioPunkt, decimal[] shortProfitPortfolioPunkt)
+        {
+            workbook.Sheets.Add();
+            var sheet = (Excel._Worksheet)workbook.ActiveSheet;
+            sheet.Name = "Profit Portfolio Punkt";
+
+            sheet.Cells[1, 2] = Long;
+            sheet.Cells[1, 3] = Short;
+            sheet.Cells[2, 2] = 0;
+            sheet.Cells[2, 3] = 0;
+
+            var startRow = StartRow;
+
+            for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+            {
+                var item = longProfitPortfolioPunkt[index];
+                sheet.Cells[startRow, StartColumnForLong].Value = item;
+
+                var item2 = shortProfitPortfolioPunkt[index];
+                sheet.Cells[startRow, StartColumnForShort].Value = item2;
+
+                startRow++;
+            }
+        }
     }
 
     public class BotTabJournal

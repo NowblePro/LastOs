@@ -21,6 +21,7 @@
                         <Label Name="Label3" Content="Short" HorizontalAlignment="Left" Margin="423,0,0,10" VerticalAlignment="Bottom"/>
                         <Label Name="LabelEqutyCharteType" Content="Chart Type" HorizontalAlignment="Left" Margin="588,0,0,10" VerticalAlignment="Bottom"/>
                         <ComboBox Name="ComboBoxChartType" HorizontalAlignment="Left" Margin="670,0,0,10" VerticalAlignment="Bottom" Width="140"/>
+                        <Button x:Name="ButtonSave" Content="Save excel" Margin="0,0,71,12" VerticalAlignment="Bottom" Click="ButtonSave_Click" HorizontalAlignment="Right" Width="132"/>
                     </Grid>
                 </TabItem>
                 <TabItem Name="TabItem2" Header="Statistics" Width="140" Margin="41,0,-140,0">
