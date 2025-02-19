@@ -4015,6 +4015,16 @@ namespace OsEngine.Journal
                 var longProfitPortfolioPunkt = _longPositions.Select(x => x.ProfitPortfolioPunkt).ToArray();
                 var shortProfitPortfolioPunkt = _shortPositions.Select(x => x.ProfitPortfolioPunkt).ToArray();
 
+                if (longProfitPortfolioPunkt.Length == 0)
+                {
+                    longProfitPortfolioPunkt = new decimal[shortProfitPortfolioPunkt.Length];
+                }
+
+                if (shortProfitPortfolioPunkt.Length == 0)
+                {
+                    shortProfitPortfolioPunkt = new decimal[longProfitPortfolioPunkt.Length];
+                }
+
                 CreateDiagramSheet(workbook, longProfitPortfolioPunkt, shortProfitPortfolioPunkt);
 
                 CreateProfitDataSheet(workbook, longProfitPortfolioPunkt, shortProfitPortfolioPunkt);
@@ -4050,30 +4060,98 @@ namespace OsEngine.Journal
             decimal currentShort = 0;
             sheet.Columns[1].ColumnWidth = ColumnWidthForDate;
 
-            for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+            var longs = new List<decimal>();
+            var shorts = new List<decimal>();
+
+            var positions = (_longPositions.Count > _shortPositions.Count ? _longPositions : _shortPositions).ToArray();
+
+            for (var index = 0; index < positions.Length; index++)
             {
-                var currentLongProfit = longProfitPortfolioPunkt[index];
-                var sumOfLongs = currentLongProfit + currentLong;
-                sheet.Cells[startRow, StartColumnForDate].Value = _longPositions[index].TimeOpen;
-                sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
-
-                var currentShortProfit = shortProfitPortfolioPunkt[index];
-                var sumOfShorts = currentShortProfit + currentShort;
-                sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
-                sheet.Cells[startRow, StartColumnForTotal].Value = sumOfLongs + sumOfShorts;
+                sheet.Cells[startRow, StartColumnForDate].Value = positions[index].TimeOpen;
 
                 startRow++;
 
-                sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
-                sheet.Cells[startRow, StartColumnForDate].Value = _longPositions[index].TimeClose;
-                sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
-                sheet.Cells[startRow, StartColumnForTotal].Value = sumOfLongs + sumOfShorts;
+                sheet.Cells[startRow, StartColumnForDate].Value = positions[index].TimeClose;
 
                 startRow++;
-
-                currentLong = sumOfLongs;
-                currentShort = sumOfShorts;
             }
+
+            startRow = StartRow;
+
+            if (longProfitPortfolioPunkt.Length>0)
+            {
+                for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+                {
+                    var currentLongProfit = longProfitPortfolioPunkt[index];
+                    var sumOfLongs = currentLongProfit + currentLong;
+                    sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
+                    longs.Add(sumOfLongs);
+
+                    startRow++;
+
+                    sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
+
+                    startRow++;
+
+                    currentLong = sumOfLongs;
+                }
+            }
+
+            if (shortProfitPortfolioPunkt.Length > 0)
+            {
+                startRow = StartRow;
+
+                for (var index = 0; index < shortProfitPortfolioPunkt.Length; index++)
+                {
+                    var currentShortProfit = shortProfitPortfolioPunkt[index];
+                    var sumOfShorts = currentShortProfit + currentShort;
+                    sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
+                    shorts.Add(sumOfShorts);
+
+                    startRow++;
+
+                    sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
+
+                    startRow++;
+
+                    currentShort = sumOfShorts;
+                }
+            }
+
+            var totals = SumDecimalLists(longs, shorts).ToArray();
+
+            if (totals.Length > 0)
+            {
+                startRow = StartRow;
+
+                for (var index = 0; index < totals.Length; index++)
+                {
+                    sheet.Cells[startRow, StartColumnForTotal].Value = totals[index];
+
+                    startRow++;
+
+                    sheet.Cells[startRow, StartColumnForTotal].Value = totals[index];
+
+                    startRow++;
+                }
+            }
+        }
+
+        private static IEnumerable<decimal> SumDecimalLists(IEnumerable<decimal> longs, IEnumerable<decimal> shorts)
+        {
+            using var enumeratorA = longs.GetEnumerator();
+            using var enumeratorB = shorts.GetEnumerator();
+
+            while (enumeratorA.MoveNext())
+            {
+                if (enumeratorB.MoveNext())
+                    yield return enumeratorA.Current + enumeratorB.Current;
+                else
+                    yield return enumeratorA.Current;
+            }
+
+            while (enumeratorB.MoveNext())
+                yield return enumeratorB.Current;
         }
 
         private static void CreateProfitDataSheet(Excel._Workbook workbook, decimal[] longProfitPortfolioPunkt,
@@ -4095,21 +4173,53 @@ namespace OsEngine.Journal
             decimal currentLong = 0;
             decimal currentShort = 0;
 
-            for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+            var longs = new List<decimal>();
+            var shorts = new List<decimal>();
+
+            if (longProfitPortfolioPunkt.Length > 0)
             {
-                var currentLongProfit = longProfitPortfolioPunkt[index];
-                var sumOfLongs = currentLongProfit + currentLong;
-                sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
+                for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+                {
+                    var currentLongProfit = longProfitPortfolioPunkt[index];
+                    var sumOfLongs = currentLongProfit + currentLong;
+                    sheet.Cells[startRow, StartColumnForLong].Value = sumOfLongs;
+                    longs.Add(sumOfLongs);
 
-                var currentShortProfit = shortProfitPortfolioPunkt[index];
-                var sumOfShorts = currentShortProfit + currentShort;
-                sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
-                sheet.Cells[startRow, StartColumnForTotal].Value = sumOfLongs + sumOfShorts;
+                    startRow++;
 
-                startRow++;
+                    currentLong = sumOfLongs;
+                }
+            }
 
-                currentLong = sumOfLongs;
-                currentShort = sumOfShorts;
+            if (shortProfitPortfolioPunkt.Length > 0)
+            {
+                startRow = StartRow;
+
+                for (var index = 0; index < shortProfitPortfolioPunkt.Length; index++)
+                {
+                    var currentShortProfit = shortProfitPortfolioPunkt[index];
+                    var sumOfShorts = currentShortProfit + currentShort;
+                    sheet.Cells[startRow, StartColumnForShort].Value = sumOfShorts;
+                    shorts.Add(sumOfShorts);
+
+                    startRow++;
+
+                    currentShort = sumOfShorts;
+                }
+            }
+
+            var totals = SumDecimalLists(longs, shorts).ToArray();
+
+            if (totals.Length > 0)
+            {
+                startRow = StartRow;
+
+                for (var index = 0; index < totals.Length; index++)
+                {
+                    sheet.Cells[startRow, StartColumnForTotal].Value = totals[index];
+
+                    startRow++;
+                }
             }
         }
 
@@ -4126,15 +4236,26 @@ namespace OsEngine.Journal
 
             var startRow = StartRow;
 
-            for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+            if (longProfitPortfolioPunkt.Length > 0)
             {
-                var item = longProfitPortfolioPunkt[index];
-                sheet.Cells[startRow, StartColumnForLong].Value = item;
+                for (var index = 0; index < longProfitPortfolioPunkt.Length; index++)
+                {
+                    sheet.Cells[startRow, StartColumnForLong].Value = longProfitPortfolioPunkt[index];
 
-                var item2 = shortProfitPortfolioPunkt[index];
-                sheet.Cells[startRow, StartColumnForShort].Value = item2;
+                    startRow++;
+                }
 
-                startRow++;
+                startRow = StartRow;
+            }
+
+            if (shortProfitPortfolioPunkt.Length > 0)
+            {
+                for (var index = 0; index < shortProfitPortfolioPunkt.Length; index++)
+                {
+                    sheet.Cells[startRow, StartColumnForShort].Value = shortProfitPortfolioPunkt[index];
+
+                    startRow++;
+                }
             }
         }
     }
