@@ -5,11 +5,9 @@ using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
-using OsEngine.Robots.Classes;
 
-
-[Bot("ParabolicSarClassicTrade")]
-public class ParabolicSarClassicTrade : BotPanel
+[Bot("ReverseAdaptivePriceChannelWithAtr")]
+public class ReverseAdaptivePriceChannelWithAtr : BotPanel
 {
     private BotTabSimple _tab;
 
@@ -21,31 +19,30 @@ public class ParabolicSarClassicTrade : BotPanel
     private StrategyParameterTimeOfDay TimeStart;
     private StrategyParameterTimeOfDay TimeEnd;
 
-    public Aindicator _PS;
-    private StrategyParameterDecimal _Step;
-    private StrategyParameterDecimal _MaxStep;
+    public Aindicator _APC;
+    private StrategyParameterInt AdxPeriod;
+    private StrategyParameterInt Ratio;
 
     public Aindicator _smaFilter;
     private StrategyParameterInt SmaLengthFilter;
     public StrategyParameterBool SmaPositionFilterIsOn;
     public StrategyParameterBool SmaSlopeFilterIsOn;
 
-    private decimal _lastPrice;
-    private decimal _lastSar;
+    private StrategyParameterInt LengthAtr;
+    private StrategyParameterDecimal MultiplierAtr;
+    private StrategyParameterBool AtrFilterIsOn;
 
-    // создаем переменные для Трейлинг стопа
-    //---------------------------------
-    private TrailingStop _trailingStop;
-    private StrategyParameterBool TrailingStopIsOn;
-    private StrategyParameterString TrailingStopTypeOrder;
-    private StrategyParameterDecimal ChangeStepStop;
-    private StrategyParameterDecimal MinDist;
-    private StrategyParameterDecimal QuantityStepsPrices;
-    private StrategyParameterString PointOrPercent;
-    
-    //---------------------------------
+    Aindicator _ATR;
 
-    public ParabolicSarClassicTrade(string name, StartProgram startProgram) : base(name, startProgram)
+    private decimal _lastAtr;
+    private decimal _averageAtr;
+    private decimal _lastCandleClose;
+    private bool _needUpdateLastIndex;
+    private bool _needUpdateIterator;
+    private int _iterator = 1;
+
+    public ReverseAdaptivePriceChannelWithAtr(string name, StartProgram startProgram)
+        : base(name, startProgram)
     {
         TabCreate(BotTabType.Simple);
         _tab = TabsSimple[0];
@@ -59,24 +56,22 @@ public class ParabolicSarClassicTrade : BotPanel
         TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
         TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
 
-        _Step = CreateParameter("Step", 0.02m, 0.001m, 3, 0.001m, "Robot parameters");
-        _MaxStep = CreateParameter("MaxStep", 0.2m, 0.01m, 1, 0.01m, "Robot parameters");
+        AdxPeriod = CreateParameter("Ronco Period", 14, 2, 300, 12, "Robot parameters");
+        Ratio = CreateParameter("Ratio", 100, 50, 300, 10, "Robot parameters");
 
         SmaLengthFilter = CreateParameter("Sma Length Filter", 100, 10, 500, 1, "Filters");
 
         SmaPositionFilterIsOn = CreateParameter("Is SMA Filter On", false, "Filters");
         SmaSlopeFilterIsOn = CreateParameter("Is Sma Slope Filter On", false, "Filters");
 
-        // создаем параметры настроек и создаем объект класса TrailingStop
-        //---------------------------------
-        TrailingStopIsOn = CreateParameter("Is Trailing stop On", false, "Trailing Stop");
-        TrailingStopTypeOrder = CreateParameter("Type order", OrderPriceType.Market.ToString(), new[] { OrderPriceType.Market.ToString(), OrderPriceType.Limit.ToString() }, "Trailing Stop");
-        PointOrPercent = CreateParameter("Choise Points or Percent", "Points", new[] { "Points", "Percent" }, "Trailing Stop");
-        ChangeStepStop = CreateParameter("Stop level change step", 1, 1, 10000, 001m, "Trailing Stop");
-        MinDist = CreateParameter("Minimum distance to price", 1, 1, 10000, 0.01m, "Trailing Stop");
-        QuantityStepsPrices = CreateParameter("Quantity steps prices for limit order", 0m, 0, 10000, 1, "Trailing Stop");             
-        _trailingStop = new TrailingStop(_tab, TrailingStopTypeOrder.ValueString, ChangeStepStop.ValueDecimal, MinDist.ValueDecimal, QuantityStepsPrices.ValueDecimal, PointOrPercent.ValueString);
-        //---------------------------------
+        LengthAtr = CreateParameter("Length ATR", 96, 7, 1000, 1, "Indicator");
+        MultiplierAtr = CreateParameter("Multiplier Atr", 1, 1m, 10, 1, "Indicator");
+        AtrFilterIsOn = CreateParameter("Is Atr Filter On", false, "Indicator");
+
+        _ATR = IndicatorsFactory.CreateIndicatorByName("ATR", name + "Atr", false);
+        _ATR = (Aindicator)_tab.CreateCandleIndicator(_ATR, "NewArea");
+        ((IndicatorParameterInt)_ATR.Parameters[0]).ValueInt = LengthAtr.ValueInt;
+        _ATR.Save();
 
         _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Filter", canDelete: false);
         _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
@@ -84,45 +79,36 @@ public class ParabolicSarClassicTrade : BotPanel
         _smaFilter.ParametersDigit[0].Value = SmaLengthFilter.ValueInt;
         _smaFilter.Save();
 
-        _PS = IndicatorsFactory.CreateIndicatorByName(nameClass: "ParabolicSAR", name: name + "Parabolic", canDelete: false);
-        _PS = (Aindicator)_tab.CreateCandleIndicator(_PS, nameArea: "Prime");
-        _PS.ParametersDigit[0].Value = _Step.ValueDecimal;
-        _PS.ParametersDigit[1].Value = _MaxStep.ValueDecimal;
-        _PS.Save();
+        _APC = IndicatorsFactory.CreateIndicatorByName("AdaptivePriceChannel_Indicator", name + "APC", false);
+        _APC = (Aindicator)_tab.CreateCandleIndicator(_APC, "Prime");
+        _APC.ParametersDigit[0].Value = AdxPeriod.ValueInt;
+        _APC.ParametersDigit[1].Value = Ratio.ValueInt;
+        _APC.Save();
 
-        ParametrsChangeByUser += ParabolicSarClassicTrade_ParametrsChangeByUser;
-
+        StopOrActivateIndicators();
+        ParametrsChangeByUser += RoncoParam_ParametrsChangeByUser;
         _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
-
+        RoncoParam_ParametrsChangeByUser();
         _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
-
     }
 
     private void _tab_PositionOpeningSuccesEvent(Position obj)
     {
         _tab.SellAtStopCancel();
         _tab.BuyAtStopCancel();
-
-        // этот код для того, чтобы стоп открывался в тот же момент, когда окрывается ордер
-        // если включен режим трейлинг стопа, то обращаемся к методу SetTrailingStop и передаем в него цену закрытия последней свечи
-        //-----------------------------------------
-        if (TrailingStopIsOn.ValueBool)
-        {
-            _trailingStop.SetTrailingStop(obj.EntryPrice);
-            return;
-        }
-        //--------------------------------------
     }
 
-    private void ParabolicSarClassicTrade_ParametrsChangeByUser()
+    private void RoncoParam_ParametrsChangeByUser()
     {
-        if (_PS.ParametersDigit[0].Value != _Step.ValueDecimal ||
-            _PS.ParametersDigit[1].Value != _MaxStep.ValueDecimal)
+        StopOrActivateIndicators();
+
+        if (_APC.ParametersDigit[0].Value != AdxPeriod.ValueInt ||
+                _APC.ParametersDigit[1].Value != Ratio.ValueInt)
         {
-            _PS.ParametersDigit[0].Value = _Step.ValueDecimal;
-            _PS.ParametersDigit[1].Value = _MaxStep.ValueDecimal;
-            _PS.Save();
-            _PS.Reload();
+            _APC.ParametersDigit[0].Value = AdxPeriod.ValueInt;
+            _APC.ParametersDigit[1].Value = Ratio.ValueInt;
+            _APC.Save();
+            _APC.Reload();
         }
 
         if (_smaFilter.DataSeries.Count == 0)
@@ -147,23 +133,34 @@ public class ParabolicSarClassicTrade : BotPanel
                 _smaFilter.DataSeries[0].IsPaint = true;
             }
         }
-        // если мы меняли параметры настроек, то пересоздаем объект класса TrailingStop
-        //---------------
-        if (TrailingStopIsOn.ValueBool) 
+        ////////////////////////
+        ((IndicatorParameterInt)_ATR.Parameters[0]).ValueInt = LengthAtr.ValueInt;
+        _ATR.Save();
+        _ATR.Reload();
+        ////////////////////////
+    }
+
+    private void StopOrActivateIndicators()
+    {
+        if (SmaPositionFilterIsOn.ValueBool == false
+                  && SmaSlopeFilterIsOn.ValueBool == false
+                  && _smaFilter.IsOn == true)
         {
-            _trailingStop = null;
-            _trailingStop = new TrailingStop(_tab, TrailingStopTypeOrder.ValueString, ChangeStepStop.ValueDecimal, MinDist.ValueDecimal, QuantityStepsPrices.ValueDecimal, PointOrPercent.ValueString);
+            _smaFilter.IsOn = false;
+            _smaFilter.Reload();
         }
-        else
+        else if ((SmaPositionFilterIsOn.ValueBool == true
+            || SmaSlopeFilterIsOn.ValueBool == true)
+            && _smaFilter.IsOn == false)
         {
-            _trailingStop = null;
+            _smaFilter.IsOn = true;
+            _smaFilter.Reload();
         }
-        //-------------------
     }
 
     public override string GetNameStrategyType()
     {
-        return "ParabolicSarClassicTrade";
+        return "ReverseAdaptivePriceChannelWithAtr";
     }
 
     public override void ShowIndividualSettingsDialog()
@@ -171,92 +168,102 @@ public class ParabolicSarClassicTrade : BotPanel
 
     }
 
-    //Logic
+    // Logic
     private void _tab_CandleFinishedEvent(List<Candle> candles)
     {
         if (TimeStart.Value > _tab.TimeServerCurrent ||
-        TimeEnd.Value < _tab.TimeServerCurrent)
+            TimeEnd.Value < _tab.TimeServerCurrent)
         {
             CancelStopsAndProfits();
             return;
         }
 
-        if (SmaLengthFilter.ValueInt +10 >= candles.Count)
+        decimal lastCandle = candles[candles.Count - 1].Close;
+
+        ////////////////////////
+        if (AtrFilterIsOn.ValueBool)
+        {
+            if (AtrLogic(candles, lastCandle)) return;
+        }
+        ////////////////////////
+
+        if (candles.Count < AdxPeriod.ValueInt + 10 ||
+            candles.Count < 50)
         {
             return;
         }
 
-        if (candles.Count < 20)
-        {
-            return;
-        }
+        decimal upChannel = _APC.DataSeries[0].Last;
+        decimal downChannel = _APC.DataSeries[1].Last;
 
-        _lastPrice = candles[candles.Count - 1].Close;
-        _lastSar = _PS.DataSeries[0].Last;
-
-        if (_lastSar == 0)
+        if (upChannel == 0 || downChannel == 0)
         {
             return;
         }
 
         List<Position> positions = _tab.PositionsOpenAll;
 
-        if (positions == null || positions.Count == 0)
+        if (positions.Count == 0)
         {
             if (BuySignalIsFiltered(candles) == false)
             {
-                if (_lastPrice < _lastSar)
-                {
-                    decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
-                    _tab.BuyAtStopCancel();
-                    _tab.BuyAtStop(GetVolume(), _lastSar + _slippage, _lastSar, StopActivateType.HigherOrEqual, 1);
-                }
+                decimal _slippage = Slippage.ValueDecimal * upChannel / 100;
+                _tab.BuyAtStopCancel();
+                _tab.BuyAtStop(GetVolume(), upChannel + _tab.Securiti.PriceStep + _slippage, upChannel + _tab.Securiti.PriceStep,
+                    StopActivateType.HigherOrEqual);
             }
             if (SellSignalIsFiltered(candles) == false)
             {
-                if (_lastPrice > _lastSar)
-                {
-                    decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
-                    _tab.SellAtStopCancel();
-                    _tab.SellAtStop(GetVolume(), _lastSar - _slippage, _lastSar, StopActivateType.LowerOrEqual, 1);
-                }
+                decimal _slippage = Slippage.ValueDecimal * downChannel / 100;
+                _tab.SellAtStopCancel();
+                _tab.SellAtStop(GetVolume(), downChannel - _tab.Securiti.PriceStep - _slippage, downChannel - _tab.Securiti.PriceStep,
+                    StopActivateType.LowerOrEqyal);
             }
         }
         else
-        {   
-            // если включен режим трейлинг стопа, то обращаемся к методу SetTrailingStop и передаем в него цену закрытия последней свечи
-            //-----------------------------------------
-            if (TrailingStopIsOn.ValueBool) 
+        {
+            _tab.SellAtStopCancel();
+            _tab.BuyAtStopCancel();
+            Position pos = positions[0];
+
+            if (positions.Count > 1)
             {
-                _trailingStop.SetTrailingStop(candles[candles.Count - 1].Close);
+
+            }
+
+            if (pos.CloseActiv == true)
+            {
                 return;
             }
-            //--------------------------------------
-            for (int i = 0; i < positions.Count; i++)
+
+            if (pos.Direction == Side.Buy)
             {
-                _tab.SellAtStopCancel();
-                _tab.BuyAtStopCancel();
-                Position pos = positions[i];
-
-                if (pos.CloseActiv == true && pos.CloseOrders != null && pos.CloseOrders.Count > 0)
-                {
-                    return;
-                }
-
-                decimal priceLine = _lastSar;
-                decimal priceOrder = _lastSar;
+                decimal priceLine = downChannel - _tab.Securiti.PriceStep;
+                decimal priceOrder = downChannel - _tab.Securiti.PriceStep;
                 decimal _slippage = Slippage.ValueDecimal * priceOrder / 100;
 
-                if (pos.Direction == Side.Buy)
-                {                        
-                    _tab.CloseAtStop(pos, priceLine, priceOrder - _slippage);                        
-                }
-                else if (pos.Direction == Side.Sell)
+                if (SellSignalIsFiltered(candles) == false)
                 {
-                    _tab.CloseAtStop(pos, priceLine, priceOrder + _slippage);
+                    _tab.SellAtStopCancel();
+                    _tab.SellAtStop(GetVolume(), priceOrder - _slippage, priceLine, StopActivateType.LowerOrEqyal);
                 }
+
+                _tab.CloseAtStop(pos, priceLine, priceOrder - _slippage);
             }
-        }            
+            else if (pos.Direction == Side.Sell)
+            {
+                decimal priceLine = upChannel + _tab.Securiti.PriceStep;
+                decimal priceOrder = upChannel + _tab.Securiti.PriceStep;
+                decimal _slippage = Slippage.ValueDecimal * priceOrder / 100;
+
+                if (BuySignalIsFiltered(candles) == false)
+                {
+                    _tab.BuyAtStopCancel();
+                    _tab.BuyAtStop(GetVolume(), priceOrder + _slippage, priceLine, StopActivateType.HigherOrEqual);
+                }
+                _tab.CloseAtStop(pos, priceLine, priceOrder + _slippage);
+            }
+        }
     }
 
     private bool BuySignalIsFiltered(List<Candle> candles)
@@ -372,6 +379,46 @@ public class ParabolicSarClassicTrade : BotPanel
         {
             volume = Math.Round(volume, _tab.Securiti.DecimalsVolume);
         }
+
         return volume;
+    }
+
+    private bool AtrLogic(List<Candle> candles, decimal lastCandle)
+    {
+        if (_ATR.DataSeries[0].Last == 0 && _needUpdateIterator)
+        {
+            _lastCandleClose = 0;
+            _averageAtr = 0;
+            _iterator = 1;
+            _needUpdateIterator = false;
+        }
+
+        if (candles.Count < LengthAtr.ValueInt)
+        {
+            return true;
+        }
+
+        _lastAtr = _ATR.DataSeries[0].Last;
+
+        if (_ATR.DataSeries[0].Values.Count >= LengthAtr.ValueInt * _iterator)
+        {
+            _lastCandleClose = lastCandle;
+            _averageAtr = _lastAtr;
+            _iterator++;
+            _needUpdateLastIndex = false;
+            _needUpdateIterator = true;
+        }
+
+        if (_needUpdateLastIndex || Math.Abs(lastCandle - _lastCandleClose) > _averageAtr * MultiplierAtr.ValueDecimal)
+        {
+            if (_tab.PositionsOpenAll.Count > 0)
+            {
+                CancelStopsAndProfits();
+            }
+            _needUpdateLastIndex = true;
+            return true;
+        }
+
+        return false;
     }
 }

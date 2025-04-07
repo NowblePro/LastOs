@@ -6,11 +6,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System;
 using OsEngine.OsTrader.Panels.Attributes;
-using OsEngine.Robots.Classes;
 
 
-[Bot("ImpulseHma")]
-public class ImpulseHma : BotPanel
+[Bot("ImpulseHmaWithAtr")]
+public class ImpulseHmaWithAtr : BotPanel
 {
     BotTabSimple _tab;
 
@@ -40,18 +39,20 @@ public class ImpulseHma : BotPanel
     public StrategyParameterBool SmaPositionFilterIsOn;
     public StrategyParameterBool SmaSlopeFilterIsOn;
 
-    // создаем переменные для Трейлинг стопа
-    //---------------------------------
-    private TrailingStop _trailingStop;
-    private StrategyParameterBool TrailingStopIsOn;
-    private StrategyParameterString TrailingStopTypeOrder;
-    private StrategyParameterDecimal ChangeStepStop;
-    private StrategyParameterDecimal MinDist;
-    private StrategyParameterDecimal QuantityStepsPrices;
-    private StrategyParameterString PointOrPercent;
-    //---------------------------------
+    private StrategyParameterInt LengthAtr;
+    private StrategyParameterDecimal MultiplierAtr;
+    private StrategyParameterBool AtrFilterIsOn;
 
-    public ImpulseHma(string name, StartProgram startProgram) : base(name, startProgram)
+    Aindicator _ATR;
+
+    private decimal _lastAtr;
+    private decimal _averageAtr;
+    private decimal _lastCandleClose;
+    private bool _needUpdateLastIndex;
+    private bool _needUpdateIterator;
+    private int _iterator = 1;
+
+    public ImpulseHmaWithAtr(string name, StartProgram startProgram) : base(name, startProgram)
     {
         TabCreate(BotTabType.Simple);
         _tab = TabsSimple[0];
@@ -75,16 +76,14 @@ public class ImpulseHma : BotPanel
         SmaPositionFilterIsOn = CreateParameter("Is SMA Filter On", false, "Filters");
         SmaSlopeFilterIsOn = CreateParameter("Is Sma Slope Filter On", false, "Filters");
 
-        // создаем параметры настроек и создаем объект класса TrailingStop
-        //---------------------------------
-        TrailingStopIsOn = CreateParameter("Is Trailing stop On", false, "Trailing Stop");
-        TrailingStopTypeOrder = CreateParameter("Type order", OrderPriceType.Market.ToString(), new[] { OrderPriceType.Market.ToString(), OrderPriceType.Limit.ToString() }, "Trailing Stop");
-        PointOrPercent = CreateParameter("Choice Points or Percent", "Points", new[] { "Points", "Percent" }, "Trailing Stop");
-        ChangeStepStop = CreateParameter("Stop level change step", 1, 1, 100, 001m, "Trailing Stop");
-        MinDist = CreateParameter("Minimum distance to price", 1, 1, 100, 0.01m, "Trailing Stop");
-        QuantityStepsPrices = CreateParameter("Quantity steps prices for limit order", 0m, 0, 10000, 1, "Trailing Stop");
-        _trailingStop = new TrailingStop(_tab, TrailingStopTypeOrder.ValueString, ChangeStepStop.ValueDecimal, MinDist.ValueDecimal, QuantityStepsPrices.ValueDecimal, PointOrPercent.ValueString);
-        //---------------------------------
+        LengthAtr = CreateParameter("Length ATR", 96, 7, 1000, 1, "Indicator");
+        MultiplierAtr = CreateParameter("Multiplier Atr", 1, 1m, 10, 1, "Indicator");
+        AtrFilterIsOn = CreateParameter("Is Atr Filter On", false, "Indicator");
+
+        _ATR = IndicatorsFactory.CreateIndicatorByName("ATR", name + "Atr", false);
+        _ATR = (Aindicator)_tab.CreateCandleIndicator(_ATR, "NewArea");
+        ((IndicatorParameterInt)_ATR.Parameters[0]).ValueInt = LengthAtr.ValueInt;
+        _ATR.Save();
 
         _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Filter", canDelete: false);
         _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
@@ -119,8 +118,6 @@ public class ImpulseHma : BotPanel
         _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
         ParametrsChangeByUser += LRegBot_ParametrsChangeByUser;
         LRegBot_ParametrsChangeByUser();
-
-        _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
     }
 
     private void LRegBot_ParametrsChangeByUser()
@@ -177,19 +174,11 @@ public class ImpulseHma : BotPanel
                 _smaFilter.DataSeries[0].IsPaint = true;
             }
         }
-
-        // если мы меняли параметры настроек, то пересоздаем объект класса TrailingStop
-        //---------------
-        if (TrailingStopIsOn.ValueBool)
-        {
-            _trailingStop = null;
-            _trailingStop = new TrailingStop(_tab, TrailingStopTypeOrder.ValueString, ChangeStepStop.ValueDecimal, MinDist.ValueDecimal, QuantityStepsPrices.ValueDecimal, PointOrPercent.ValueString);
-        }
-        else
-        {
-            _trailingStop = null;
-        }
-        //-------------------
+        ////////////////////////
+        ((IndicatorParameterInt)_ATR.Parameters[0]).ValueInt = LengthAtr.ValueInt;
+        _ATR.Save();
+        _ATR.Reload();
+        ////////////////////////
     }
 
     private void StopOrActivateIndicators()
@@ -210,22 +199,9 @@ public class ImpulseHma : BotPanel
         }
     }
 
-    private void _tab_PositionOpeningSuccesEvent(Position obj)
-    {
-        // этот код для того, чтобы стоп открывался в тот же момент, когда окрывается ордер
-        // если включен режим трейлинг стопа, то обращаемся к методу SetTrailingStop и передаем в него цену закрытия последней свечи
-        //-----------------------------------------
-        if (TrailingStopIsOn.ValueBool)
-        {
-            _trailingStop.SetTrailingStop(obj.EntryPrice);
-            return;
-        }
-        //--------------------------------------
-    }
-
     public override string GetNameStrategyType()
     {
-        return "ImpulseHma";
+        return "ImpulseHmaWithAtr";
     }
 
     public override void ShowIndividualSettingsDialog()
@@ -244,6 +220,15 @@ public class ImpulseHma : BotPanel
             CancelStopsAndProfits();
             return;
         }
+
+        decimal lastCandle = candles[candles.Count - 1].Close;
+
+        ////////////////////////
+        if (AtrFilterIsOn.ValueBool)
+        {
+            if (AtrLogic(candles, lastCandle)) return;
+        }
+        ////////////////////////
 
         if (_tab.CandlesAll == null) { return; }
         if (_periodSma.ValueInt +10 > candles.Count || _periodAtr.ValueInt > candles.Count) { return; }
@@ -431,16 +416,6 @@ public class ImpulseHma : BotPanel
         }
         else
         {//exit logic
-
-            // если включен режим трейлинг стопа, то обращаемся к методу SetTrailingStop и передаем в него цену закрытия последней свечи
-            //-----------------------------------------
-            if (TrailingStopIsOn.ValueBool)
-            {
-                _trailingStop.SetTrailingStop(candles[candles.Count - 1].Close);
-                return;
-            }
-            //--------------------------------------
-
             for (int i = 0; i < positions.Count; i++)
             {
                 if (positions[i].State == PositionStateType.ClosingFail)
@@ -454,7 +429,7 @@ public class ImpulseHma : BotPanel
                 }
 
                 decimal stop_level = 0;
-                               
+
                 if (positions[i].Direction == Side.Buy)
                 {// logic to close long position
 
@@ -468,8 +443,7 @@ public class ImpulseHma : BotPanel
                     stop_level = lastHma > lastHma2 ? lastHma + lastAtr * _multiplerAtr.ValueDecimal : lastHma2 < lastSma ? lastHma2 + lastAtr * _multiplerAtr.ValueDecimal : lastSma;
                     _slippage = Slippage.ValueDecimal * stop_level / 100;
                     _tab.CloseAtTrailingStop(positions[i], stop_level, stop_level + _slippage);
-                    }
-                                
+                }
             }
         }
     }
@@ -590,6 +564,45 @@ public class ImpulseHma : BotPanel
         }
 
         return volume;
+    }
+
+    private bool AtrLogic(List<Candle> candles, decimal lastCandle)
+    {
+        if (_ATR.DataSeries[0].Last == 0 && _needUpdateIterator)
+        {
+            _lastCandleClose = 0;
+            _averageAtr = 0;
+            _iterator = 1;
+            _needUpdateIterator = false;
+        }
+
+        if (candles.Count < LengthAtr.ValueInt)
+        {
+            return true;
+        }
+
+        _lastAtr = _ATR.DataSeries[0].Last;
+
+        if (_ATR.DataSeries[0].Values.Count >= LengthAtr.ValueInt * _iterator)
+        {
+            _lastCandleClose = lastCandle;
+            _averageAtr = _lastAtr;
+            _iterator++;
+            _needUpdateLastIndex = false;
+            _needUpdateIterator = true;
+        }
+
+        if (_needUpdateLastIndex || Math.Abs(lastCandle - _lastCandleClose) > _averageAtr * MultiplierAtr.ValueDecimal)
+        {
+            if (_tab.PositionsOpenAll.Count > 0)
+            {
+                CancelStopsAndProfits();
+            }
+            _needUpdateLastIndex = true;
+            return true;
+        }
+
+        return false;
     }
 }
 
