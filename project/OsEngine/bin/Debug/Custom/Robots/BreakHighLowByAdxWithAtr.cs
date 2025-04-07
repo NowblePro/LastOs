@@ -7,9 +7,10 @@ using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
+using OsEngine.Market.Servers.Bitfinex.BitfitnexEntity;
 
-[Bot("BreakHighLowByAdx")]
-public class BreakHighLowByAdx : BotPanel
+[Bot("BreakHighLowByAdxWithAtr")]
+public class BreakHighLowByAdxWithAtr : BotPanel
 {
     private BotTabSimple _tab;
 
@@ -33,7 +34,20 @@ public class BreakHighLowByAdx : BotPanel
     public StrategyParameterBool SmaPositionFilterIsOn;
     public StrategyParameterBool SmaSlopeFilterIsOn;
 
-    public BreakHighLowByAdx(string name, StartProgram startProgram)
+    private StrategyParameterInt LengthAtr;
+    private StrategyParameterDecimal MultiplierAtr;
+    private StrategyParameterBool AtrFilterIsOn;
+
+    Aindicator _ATR;
+
+    private decimal _lastAtr;
+    private decimal _averageAtr;
+    private decimal _lastCandleClose;
+    private bool _needUpdateLastIndex;
+    private bool _needUpdateIterator;
+    private int _iterator = 1;
+
+    public BreakHighLowByAdxWithAtr(string name, StartProgram startProgram)
         : base(name, startProgram)
     {
         TabCreate(BotTabType.Simple);
@@ -56,6 +70,15 @@ public class BreakHighLowByAdx : BotPanel
 
         SmaPositionFilterIsOn = CreateParameter("Is SMA Filter On", false, "Filters");
         SmaSlopeFilterIsOn = CreateParameter("Is Sma Slope Filter On", false, "Filters");
+
+        LengthAtr = CreateParameter("Length ATR", 96, 7, 1000, 1, "Indicator");
+        MultiplierAtr = CreateParameter("Multiplier Atr", 1, 1m, 10, 1, "Indicator");
+        AtrFilterIsOn = CreateParameter("Is Atr Filter On", false, "Indicator");
+
+        _ATR = IndicatorsFactory.CreateIndicatorByName("ATR", name + "Atr", false);
+        _ATR = (Aindicator)_tab.CreateCandleIndicator(_ATR, "NewArea");
+        ((IndicatorParameterInt)_ATR.Parameters[0]).ValueInt = LengthAtr.ValueInt;
+        _ATR.Save();
 
         _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Filter", canDelete: false);
         _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
@@ -103,6 +126,11 @@ public class BreakHighLowByAdx : BotPanel
                 _smaFilter.DataSeries[0].IsPaint = true;
             }
         }
+        ////////////////////////
+        ((IndicatorParameterInt)_ATR.Parameters[0]).ValueInt = LengthAtr.ValueInt;
+        _ATR.Save();
+        _ATR.Reload();
+        ////////////////////////
     }
 
     private void StopOrActivateIndicators()
@@ -125,7 +153,7 @@ public class BreakHighLowByAdx : BotPanel
 
     public override string GetNameStrategyType()
     {
-        return "BreakHighLowByAdx";
+        return "BreakHighLowByAdxWithAtr";
     }
 
     public override void ShowIndividualSettingsDialog()
@@ -147,6 +175,15 @@ public class BreakHighLowByAdx : BotPanel
             CancelStopsAndProfits();
             return;
         }
+
+        decimal lastCandle = candles[candles.Count - 1].Close;
+
+        ////////////////////////
+        if (AtrFilterIsOn.ValueBool)
+        {
+            if (AtrLogic(candles, lastCandle)) return;
+        }
+        ////////////////////////
 
         if (candles.Count < 20)
         {
@@ -491,5 +528,44 @@ public class BreakHighLowByAdx : BotPanel
         }
 
         return volume;
+    }
+
+    private bool AtrLogic(List<Candle> candles, decimal lastCandle)
+    {
+        if (_ATR.DataSeries[0].Last == 0 && _needUpdateIterator)
+        {
+            _lastCandleClose = 0;
+            _averageAtr = 0;
+            _iterator = 1;
+            _needUpdateIterator = false;
+        }
+
+        if (candles.Count < LengthAtr.ValueInt)
+        {
+            return true;
+        }
+
+        _lastAtr = _ATR.DataSeries[0].Last;
+
+        if (_ATR.DataSeries[0].Values.Count >= LengthAtr.ValueInt * _iterator)
+        {
+            _lastCandleClose = lastCandle;
+            _averageAtr = _lastAtr;
+            _iterator++;
+            _needUpdateLastIndex = false;
+            _needUpdateIterator = true;
+        }
+
+        if (_needUpdateLastIndex || Math.Abs(lastCandle - _lastCandleClose) > _averageAtr * MultiplierAtr.ValueDecimal)
+        {
+            if (_tab.PositionsOpenAll.Count > 0)
+            {
+                CancelStopsAndProfits();
+            }
+            _needUpdateLastIndex = true;
+            return true;
+        }
+
+        return false;
     }
 }

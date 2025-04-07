@@ -38,7 +38,7 @@ public class BreakLinearRegressionChannelReverse : BotPanel
        
         Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" }, "Base");
         ReverseLogic = CreateParameter("Reverse logic", false, "Base");
-        VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency"}, "Base");
+        VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
         VolumeDecimals = CreateParameter("Number of Digits after the decimal point in the volume", 2, 1, 50, 4, "Base");
         VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
 
@@ -233,12 +233,12 @@ public class BreakLinearRegressionChannelReverse : BotPanel
             if (ReverseLogic.ValueBool)
             {
                 if (!BuySignalIsFiltered(candles))//если метод возвращает false можно входить в сделку
-                    _tab.BuyAtLimit(GetVolume(), upChannel + GetSlippage(upChannel));
+                    _tab.BuyAtLimit(GetVolume(), downChannel + GetSlippage(upChannel));
             }
             else
             {
                 if (!SellSignalIsFiltered(candles))//если метод возвращает false можно входить в сделку
-                    _tab.SellAtLimit(GetVolume(), upChannel - GetSlippage(upChannel));
+                    _tab.SellAtLimit(GetVolume(), downChannel - GetSlippage(upChannel));
             }            
         }
     }
@@ -304,10 +304,16 @@ public class BreakLinearRegressionChannelReverse : BotPanel
             volume = Math.Round(VolumeOnPosition.ValueDecimal / contractPrice, VolumeDecimals.ValueInt);
             return volume;
         }
+        else if(VolumeRegime.ValueString == "% of the total portfolio")
+        {
+            volume = Math.Round(_tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot, VolumeDecimals.ValueInt);
+
+        }
         else //if (VolumeRegime.ValueString == "Number of contracts")
         {
             return volume;
-        }        
+        }
+        return volume;
     }
 
     private decimal GetSlippage(decimal price)
