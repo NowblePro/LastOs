@@ -1199,11 +1199,9 @@
     <Compile Include="Robots\BotsFromStartLessons\Lesson9Bot3.cs" />
     <Compile Include="Robots\BotsFromStartLessons\Lesson9Bot4.cs" />
     <Compile Include="Robots\BotsFromStartLessons\Lesson9Bot5.cs" />
-    <Compile Include="Robots\BreakZZChannelRsi.cs" />
     <Compile Include="Robots\Classes\TrailingStop.cs" />
     <Compile Include="Robots\CounterTrend\ClusterCountertrend.cs" />
     <Compile Include="Robots\Engines\NewsEngine.cs" />
-    <Compile Include="Robots\MyNewBot.cs" />
     <Compile Include="Robots\PositionsMicromanagement\AlligatorTrendAverage.cs" />
     <Compile Include="Robots\PositionsMicromanagement\CandlesTurnaroundPattern.cs" />
     <Compile Include="Robots\PositionsMicromanagement\CustomIcebergSample.cs" />
