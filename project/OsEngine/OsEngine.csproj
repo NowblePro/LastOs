@@ -1273,6 +1273,9 @@
     <Compile Include="Robots\CounterTrend\RsiContrtrend.cs" />
     <Compile Include="Robots\Trend\SmaStochastic.cs" />
     <Compile Include="Robots\Trend\StrategyBillWilliams.cs" />
+	  
+	<Compile Include="Robots\TrigonumCustom\Base\BreakBBRsi.cs" />
+	  
     <Compile Include="Robots\CounterTrend\StrategyBollingerUi.xaml.cs">
       <DependentUpon>StrategyBollingerUi.xaml</DependentUpon>
     </Compile>
