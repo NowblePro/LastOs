@@ -10,7 +10,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 {
 
     [Bot("BreakBBRsi")]
-    public class BreakBB : BotPanel
+    public class BreakBBRsi : BotPanel
     {
         BotTabSimple _tab;
 
@@ -44,11 +44,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         Aindicator _rsi;
         public StrategyParameterInt _lengthRsi;
-        public StrategyParameterInt _oversoldRsi;
-        public StrategyParameterInt _overboughtRsi;
+        public StrategyParameterDecimal _oversoldRsi;
+        public StrategyParameterDecimal _overboughtRsi;
+        public StrategyParameterBool _drawRsiChannel;
         public StrategyParameterBool _rsiFilterIsOn;
 
-        public BreakBB(string name, StartProgram startProgram) : base(name, startProgram)
+        public BreakBBRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
             _tab = TabsSimple[0];
@@ -75,20 +76,26 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             SmaPositionFilterIsOn = CreateParameter("Is SMA Filter On", false, "Filters");
             SmaSlopeFilterIsOn = CreateParameter("Is Sma Slope Filter On", false, "Filters");
 
+            _rsiFilterIsOn = CreateParameter("Is RSI Filter On", true, "Filters");
+            _lengthRsi = CreateParameter("Rsi Length", 14, 10, 33, 1, "Filters");
+            _oversoldRsi = CreateParameter("Rsi Oversold", 30m, 0, 0, 0, "Filters");
+            _overboughtRsi = CreateParameter("Rsi Overbought", 70m, 0, 0, 0, "Filters");
+            _drawRsiChannel = CreateParameter("Draw Ovb/Ovs Channel", false, "Filters");
+
             _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Filter", canDelete: false);
             _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
             _smaFilter.DataSeries[0].Color = System.Drawing.Color.Azure;
             _smaFilter.ParametersDigit[0].Value = SmaLengthFilter.ValueInt;
             _smaFilter.Save();
 
-            _rsiFilterIsOn = CreateParameter("Is RSI Filter On", true, "Filters");
-            _lengthRsi = CreateParameter("Rsi Length", 14, 10, 33, 1, "Filters");
-            _oversoldRsi = CreateParameter("Rsi Oversold", 30, 0, 0, 0, "Filters");
-            _overboughtRsi = CreateParameter("Rsi Overbought", 70, 0, 0, 0, "Filters");
-            _rsi = IndicatorsFactory.CreateIndicatorByName("RSI", name + "RSI", false);
-            _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, "Prime");
+            _rsi = IndicatorsFactory.CreateIndicatorByName(nameClass: "RSI", name: name + "RSI", canDelete: false);
+            _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, nameArea: "Prime");
             _rsi.DataSeries[0].Color = System.Drawing.Color.Coral;
             _rsi.ParametersDigit[0].Value = _lengthRsi.ValueInt;
+            _rsi.ParametersDigit[1].Value = _oversoldRsi.ValueDecimal;
+            _rsi.ParametersDigit[2].Value = _overboughtRsi.ValueDecimal;
+            _rsi.DataSeries[1].IsPaint = _drawRsiChannel.ValueBool;
+            _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.Save();
 
             _bbc_long = IndicatorsFactory.CreateIndicatorByName(nameClass: "BBchannel_indicator", name: name + "BBchannelLine_long", canDelete: false);
@@ -171,18 +178,22 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _smaFilter.DataSeries[0].IsPaint = true;
                 }
             }
+ 
+            _rsi.ParametersDigit[0].Value = _lengthRsi.ValueInt;
+            _rsi.ParametersDigit[1].Value = _oversoldRsi.ValueDecimal;
+            _rsi.ParametersDigit[2].Value = _overboughtRsi.ValueDecimal;
 
-            if (_rsi.DataSeries != null && _rsi.DataSeries.Count > 0)
-            {
-                _rsi.ParametersDigit[0].Value = _lengthRsi.ValueInt;
-                _rsi.Reload();
-                _rsi.Save();
-            }
+            // TODO do not build if drawing or filter is turn off
+            _rsi.DataSeries[1].IsPaint = _drawRsiChannel.ValueBool;
+            _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
+
+            _rsi.Reload();
+            _rsi.Save();
         }
 
         public override string GetNameStrategyType()
         {
-            return "BreakBB";
+            return "BreakBBRsi";
         }
 
         public override void ShowIndividualSettingsDialog()
@@ -371,7 +382,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_rsiFilterIsOn.ValueBool)
             {
-                if (lastRsi >= _oversoldRsi.ValueInt)
+                if (lastRsi >= _oversoldRsi.ValueDecimal)
                 {
                     return true;
                 }
@@ -415,7 +426,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_rsiFilterIsOn.ValueBool)
             {
-                if (lastRsi <= _overboughtRsi.ValueInt)
+                if (lastRsi <= _overboughtRsi.ValueDecimal)
                 {
                     return true;
                 }
