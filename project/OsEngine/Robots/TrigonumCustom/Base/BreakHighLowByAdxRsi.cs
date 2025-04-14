@@ -80,7 +80,7 @@ public class BreakHighLowByAdxRsi : BotPanel
         _drawRsiChannel = CreateParameter("Draw Ovb/Ovs Channel", false, "Filters");
 
         _rsi = IndicatorsFactory.CreateIndicatorByName(nameClass: "RSI", name: name + "RSI", canDelete: false);
-        _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, nameArea: "Prime");
+        _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, nameArea: "RsiArea");
         _rsi.DataSeries[0].Color = System.Drawing.Color.Coral;
         _rsi.ParametersDigit[0].Value = _lengthRsi.ValueInt;
         _rsi.ParametersDigit[1].Value = _oversoldRsi.ValueDecimal;
