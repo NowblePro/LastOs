@@ -426,7 +426,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             decimal lastPrice = candles[candles.Count - 1].Close;
             decimal lastSma = _smaFilter.DataSeries[0].Last;
-            decimal lastRsi = _rsi.DataSeries[0].Last;
             // фильтр для покупок
             if (Regime.ValueString == "Off" ||
                 Regime.ValueString == "OnlyShort" ||
@@ -438,6 +437,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_rsiFilterIsOn.ValueBool)
             {
+                decimal lastRsi = _rsi.DataSeries[0].Last;
                 if (lastRsi >= _oversoldRsi.ValueDecimal)
                 {
                     return true;
@@ -470,7 +470,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             decimal lastPrice = candles[candles.Count - 1].Close;
             decimal lastSma = _smaFilter.DataSeries[0].Last;
-            decimal lastRsi = _rsi.DataSeries[0].Last;
             // фильтр для продаж
             if (Regime.ValueString == "Off" ||
                 Regime.ValueString == "OnlyLong" ||
@@ -482,6 +481,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_rsiFilterIsOn.ValueBool)
             {
+                decimal lastRsi = _rsi.DataSeries[0].Last;
                 if (lastRsi <= _overboughtRsi.ValueDecimal)
                 {
                     return true;

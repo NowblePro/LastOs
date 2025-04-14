@@ -1345,6 +1345,7 @@
     <Compile Include="Robots\Trend\TwoTimeFramesBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAdxTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAdxRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\BollingerTrendVolatilityStagesFilter.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelScreenerOnIndexVolatility.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelTrendAtrFilter.cs" />

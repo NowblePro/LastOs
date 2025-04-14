@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
-using OsEngine.Charts.CandleChart.Indicators;
 using OsEngine.Entity;
 using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 
-[Bot("BreakHighLowByAdxRsi")]
-public class BreakHighLowByAdxRsi : BotPanel
+
+[Bot("BreakHighLowByAtrExtTimeRsi")]
+public class BreakHighLowByAtrExtTimeRsi : BotPanel
 {
     private BotTabSimple _tab;
 
@@ -21,12 +20,16 @@ public class BreakHighLowByAdxRsi : BotPanel
     private StrategyParameterTimeOfDay TimeStart;
     private StrategyParameterTimeOfDay TimeEnd;
 
-    public StrategyParameterInt AdxHigh;
-    public StrategyParameterInt Lookback;
-    public StrategyParameterInt TrailBars;
+    public Aindicator _damping;
+    public Aindicator avgHigh2;
+    public Aindicator avgLow3;
+    public Aindicator avgLow2;
+    public Aindicator avgHigh3;
+    public Aindicator avgHighShifted;
+    public Aindicator avgLowShifted;
 
-    private Adx _adx;
-    public StrategyParameterInt AdxPeriod;
+    private StrategyParameterInt DampingPeriod;
+    public StrategyParameterInt ExitCandleCount;
 
     public Aindicator _smaFilter;
     private StrategyParameterInt SmaLengthFilter;
@@ -42,27 +45,25 @@ public class BreakHighLowByAdxRsi : BotPanel
     public StrategyParameterBool _rsiFilterIsOn;
     // RSI
 
-    public BreakHighLowByAdxRsi(string name, StartProgram startProgram)
+    public BreakHighLowByAtrExtTimeRsi(string name, StartProgram startProgram)
         : base(name, startProgram)
     {
         TabCreate(BotTabType.Simple);
         _tab = TabsSimple[0];
+        _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
 
         Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" }, "Base");
         VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
         VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
-        Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+        Slippage = CreateParameter("Slippage %", 0m, 0m, 20, 1, "Base");
 
         TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
         TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
 
-        AdxPeriod = CreateParameter("Adx period", 20, 10, 100, 10, "Robot parameters");
-        AdxHigh = CreateParameter("AdxHigh", 20, 10, 100, 10, "Robot parameters");
-        Lookback = CreateParameter("Lookback", 20, 10, 100, 10, "Robot parameters");
-        TrailBars = CreateParameter("TrailBars", 5, 5, 20, 1, "Robot parameters");
+        DampingPeriod = CreateParameter("Param Period", 14, 2, 300, 12, "Robot parameters");
+        ExitCandleCount = CreateParameter("Exit Candle Count", 4, 2, 100, 2, "Robot parameters");
 
-        SmaLengthFilter = CreateParameter("Sma Length", 100, 10, 500, 1, "Filters");
-
+        SmaLengthFilter = CreateParameter("Sma Length Filter", 100, 10, 500, 1, "Filters");
         SmaPositionFilterIsOn = CreateParameter("Is SMA Filter On", false, "Filters");
         SmaSlopeFilterIsOn = CreateParameter("Is Sma Slope Filter On", false, "Filters");
 
@@ -90,26 +91,66 @@ public class BreakHighLowByAdxRsi : BotPanel
         _rsi.Save();
         // RSI
 
-        _adx = new Adx(name + "ADX", false) { ColorBase = Color.DodgerBlue, PaintOn = true };
-        _adx = (Adx)_tab.CreateCandleIndicator(_adx, "AdxArea");
-        _adx.Length = AdxPeriod.ValueInt;
-        _adx.Save();
+        _damping = IndicatorsFactory.CreateIndicatorByName("Damping_Indicator", name + "Damping", false);
+        _damping = (Aindicator)_tab.CreateCandleIndicator(_damping, "dampingArea");
+        _damping.ParametersDigit[0].Value = DampingPeriod.ValueInt;
+        _damping.Save();
+
+        avgHigh2 = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma1", false);
+        avgHigh2 = (Aindicator)_tab.CreateCandleIndicator(avgHigh2, "Prime");
+        ((IndicatorParameterString)avgHigh2.Parameters[1]).ValueString = "High";
+        avgHigh2.ParametersDigit[0].Value = 2;
+        avgHigh2.DataSeries[0].IsPaint = false;
+
+        avgLow3 = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma2", false);
+        avgLow3 = (Aindicator)_tab.CreateCandleIndicator(avgLow3, "Prime");
+        ((IndicatorParameterString)avgLow3.Parameters[1]).ValueString = "Low";
+        avgLow3.ParametersDigit[0].Value = 3;
+        avgLow3.DataSeries[0].IsPaint = false;
+
+        avgLow2 = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma3", false);
+        avgLow2 = (Aindicator)_tab.CreateCandleIndicator(avgLow2, "Prime");
+        ((IndicatorParameterString)avgLow2.Parameters[1]).ValueString = "Low";
+        avgLow2.ParametersDigit[0].Value = 2;
+        avgLow2.DataSeries[0].IsPaint = false;
+
+        avgHigh3 = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma4", false);
+        avgHigh3 = (Aindicator)_tab.CreateCandleIndicator(avgHigh3, "Prime");
+        ((IndicatorParameterString)avgHigh3.Parameters[1]).ValueString = "High";
+        avgHigh3.ParametersDigit[0].Value = 3;
+        avgHigh3.DataSeries[0].IsPaint = false;
+
+        avgHighShifted = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma5", false);
+        avgHighShifted = (Aindicator)_tab.CreateCandleIndicator(avgHighShifted, "Prime");
+        ((IndicatorParameterString)avgHighShifted.Parameters[1]).ValueString = "High";
+        avgHighShifted.ParametersDigit[0].Value = 4;
+        avgHighShifted.DataSeries[0].IsPaint = false;
+
+        avgLowShifted = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma6", false);
+        avgLowShifted = (Aindicator)_tab.CreateCandleIndicator(avgLowShifted, "Prime");
+        ((IndicatorParameterString)avgLowShifted.Parameters[1]).ValueString = "Low";
+        avgLowShifted.ParametersDigit[0].Value = 4;
+        avgLowShifted.DataSeries[0].IsPaint = false;
 
         StopOrActivateIndicators();
-        _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
-        ParametrsChangeByUser += Breakout_Param_ParametrsChangeByUser;
-        Breakout_Param_ParametrsChangeByUser();
+        ParametrsChangeByUser += DampIndex_Param_ParametrsChangeByUser;
+        DampIndex_Param_ParametrsChangeByUser();
     }
 
-    private void Breakout_Param_ParametrsChangeByUser()
+    private void DampIndex_Param_ParametrsChangeByUser()
     {
         StopOrActivateIndicators();
 
-        if (_adx.Length != AdxPeriod.ValueInt)
+        if (_damping.ParametersDigit[0].Value != DampingPeriod.ValueInt)
         {
-            _adx.Length = AdxPeriod.ValueInt;
-            _adx.Save();
-            _adx.Reload();
+            _damping.ParametersDigit[0].Value = DampingPeriod.ValueInt;
+            _damping.Save();
+            _damping.Reload();
+        }
+
+        if (_smaFilter.DataSeries.Count == 0)
+        {
+            return;
         }
 
         if (_smaFilter.ParametersDigit[0].Value != SmaLengthFilter.ValueInt)
@@ -178,8 +219,8 @@ public class BreakHighLowByAdxRsi : BotPanel
         // RSI
 
         if (SmaPositionFilterIsOn.ValueBool == false
-                  && SmaSlopeFilterIsOn.ValueBool == false
-                  && _smaFilter.IsOn == true)
+          && SmaSlopeFilterIsOn.ValueBool == false
+          && _smaFilter.IsOn == true)
         {
             _smaFilter.IsOn = false;
             _smaFilter.Reload();
@@ -195,7 +236,7 @@ public class BreakHighLowByAdxRsi : BotPanel
 
     public override string GetNameStrategyType()
     {
-        return "BreakHighLowByAdxRsi";
+        return "BreakHighLowByAtrExtTimeRsi";
     }
 
     public override void ShowIndividualSettingsDialog()
@@ -206,11 +247,6 @@ public class BreakHighLowByAdxRsi : BotPanel
     // Logic
     private void _tab_CandleFinishedEvent(List<Candle> candles)
     {
-        if (SmaLengthFilter.ValueInt >= candles.Count)
-        {
-            return;
-        }
-
         if (TimeStart.Value > _tab.TimeServerCurrent ||
             TimeEnd.Value < _tab.TimeServerCurrent)
         {
@@ -218,20 +254,67 @@ public class BreakHighLowByAdxRsi : BotPanel
             return;
         }
 
-        if (candles.Count < 20)
+        if (candles.Count < ExitCandleCount.ValueInt + 1)
         {
             return;
         }
 
+        if (SmaLengthFilter.ValueInt >= candles.Count)
+        {
+            return;
+        }
+
+        decimal damping = _damping.DataSeries[0].Last;
+
+        decimal avgHigh2 = this.avgHigh2.DataSeries[0].Last;
+        decimal avgLow3 = this.avgLow3.DataSeries[0].Last;
+        decimal avgLow2 = this.avgLow2.DataSeries[0].Last;
+        decimal avgHigh3 = this.avgHigh3.DataSeries[0].Last;
+        decimal avgHighShifted = this.avgHighShifted.DataSeries[0].Values[this.avgHighShifted.DataSeries[0].Values.Count - 1 - 10];
+        decimal avgLowShifted = this.avgLowShifted.DataSeries[0].Values[this.avgLowShifted.DataSeries[0].Values.Count - 1 - 10];
+        decimal _lastPrice = candles[candles.Count - 1].Close;
+
         List<Position> positions = _tab.PositionsOpenAll;
 
-        if (positions == null || positions.Count == 0)
+        decimal _slippage = Slippage.ValueDecimal * _lastPrice / 100;
+
+        if (positions.Count == 0)
         {
-            TryOpenPosition(candles);
+            if (damping < 1 && (_lastPrice > avgHigh2) && avgLow3 > avgHighShifted)
+            {
+                if (BuySignalIsFiltered(candles) == true)
+                {
+                    return;
+                }
+
+                _tab.BuyAtLimit(GetVolume(), _lastPrice + _slippage);
+            }
+            else if (damping < 1 && (_lastPrice < avgLow2) && avgHigh3 < avgLowShifted)
+            {
+                if (SellSignalIsFiltered(candles) == true)
+                {
+                    return;
+                }
+
+                _tab.SellAtLimit(GetVolume(), _lastPrice - _slippage);
+            }
         }
         else
         {
-            TryClosePosition(positions[0], candles);
+            Position pos = positions[0];
+
+            if (pos.Direction == Side.Buy)
+            {
+                decimal low = Lowest(candles, ExitCandleCount.ValueInt);
+                _slippage = Slippage.ValueDecimal * low / 100;
+                _tab.CloseAtStop(pos, low, low - _slippage);
+            }
+            else if (pos.Direction == Side.Sell)
+            {
+                decimal high = Highest(candles, ExitCandleCount.ValueInt);
+                _slippage = Slippage.ValueDecimal * high / 100;
+                _tab.CloseAtStop(pos, high, high + _slippage);
+            }
         }
     }
 
@@ -267,8 +350,8 @@ public class BreakHighLowByAdxRsi : BotPanel
             {
                 return true;
             }
-        }
 
+        }
         if (SmaSlopeFilterIsOn.ValueBool)
         {
             // if the last Sma is lower than the previous Sma - return true to the top           
@@ -279,7 +362,6 @@ public class BreakHighLowByAdxRsi : BotPanel
                 return true;
             }
         }
-
         return false;
     }
 
@@ -319,7 +401,7 @@ public class BreakHighLowByAdxRsi : BotPanel
 
         if (SmaSlopeFilterIsOn.ValueBool)
         {
-            // if the last Sma is higher than the previous Sma - return true to the top
+            // f the last Sma is higher than the previous Sma - return true to the top
             decimal previousSma = _smaFilter.DataSeries[0].Values[_smaFilter.DataSeries[0].Values.Count - 2];
 
             if (lastSma > previousSma)
@@ -327,214 +409,7 @@ public class BreakHighLowByAdxRsi : BotPanel
                 return true;
             }
         }
-
         return false;
-    }
-
-    private void TryOpenPosition(List<Candle> candles)
-    {
-        decimal lastAdx = ((Adx)_adx).Values[candles.Count - 1];
-
-        if (lastAdx == 0 || ((Adx)_adx).Values.Count + 1 < Lookback.ValueInt)
-        {
-            return;
-        }
-
-        decimal adxMax = 0;
-
-        for (int i = ((Adx)_adx).Values.Count - 1; i > ((Adx)_adx).Values.Count - 1 - Lookback.ValueInt && i > 0; i--)
-        {
-            decimal value = ((Adx)_adx).Values[i];
-
-            if (value > adxMax)
-            {
-                adxMax = value;
-            }
-        }
-
-        if (adxMax > AdxHigh.ValueInt)
-        {
-            return;
-        }
-
-        // buy
-        decimal lineBuy = GetPriceToOpenPos(Side.Buy, candles, candles.Count - 1);
-        decimal _lastPrice = candles[candles.Count - 1].Close;
-        decimal _slippage = Slippage.ValueDecimal * _lastPrice / 100;
-        if (lineBuy + _tab.Security.PriceStep * 5 < candles[candles.Count - 1].Close)
-        {
-            if (!BuySignalIsFiltered(candles))
-                _tab.BuyAtLimit(GetVolume(), _lastPrice + _slippage);
-            return;
-        }
-
-        decimal priceOrder = lineBuy;
-        decimal priceRedLine = lineBuy;
-        _slippage = Slippage.ValueDecimal * priceOrder / 100;
-        if (!BuySignalIsFiltered(candles))
-            _tab.BuyAtStop(GetVolume(), priceOrder + _slippage, priceRedLine, StopActivateType.HigherOrEqual);
-
-        // sell
-        decimal lineSell = GetPriceToOpenPos(Side.Sell, candles, candles.Count - 1);
-
-        if (lineSell - _tab.Security.PriceStep * 5 > candles[candles.Count - 1].Close)
-        {
-            _slippage = Slippage.ValueDecimal * _lastPrice / 100;
-            if (!SellSignalIsFiltered(candles))
-                _tab.SellAtLimit(GetVolume(), _lastPrice - _slippage);
-            return;
-        }
-
-        priceOrder = lineSell;
-        priceRedLine = lineSell;
-        _slippage = Slippage.ValueDecimal * priceOrder / 100;
-        if (!SellSignalIsFiltered(candles))
-            _tab.SellAtStop(GetVolume(), priceOrder - _slippage, priceRedLine, StopActivateType.LowerOrEqual);
-    }
-
-    private void TryClosePosition(Position position, List<Candle> candles)
-    {
-        decimal _slippage = 0;
-        // exit in the stop
-        if (position.Direction == Side.Buy)
-        {
-            decimal price = GetPriceStop(Side.Buy, candles, candles.Count - 1);
-            if (price == 0)
-            {
-                return;
-            }
-
-            decimal priceOrder = price;
-            decimal priceRedLine = price;
-
-            if (priceRedLine - _tab.Security.PriceStep * 10 > _tab.PriceBestAsk)
-            {
-                _slippage = Slippage.ValueDecimal * _tab.PriceBestAsk / 100;
-                _tab.CloseAtLimit(position, _tab.PriceBestAsk - _slippage, position.OpenVolume);
-                return;
-            }
-
-            if (position.StopOrderRedLine == 0 || position.StopOrderRedLine < priceRedLine)
-            {
-                _slippage = Slippage.ValueDecimal * priceOrder / 100;
-                _tab.CloseAtStop(position, priceRedLine, priceOrder - _slippage);
-            }
-            else if (position.StopOrderIsActiv == false)
-            {
-                if (position.StopOrderRedLine - _tab.Security.PriceStep * 10 > _tab.PriceBestAsk)
-                {
-                    _slippage = Slippage.ValueDecimal * _tab.PriceBestAsk / 100;
-                    _tab.CloseAtLimit(position, _tab.PriceBestAsk - _slippage, position.OpenVolume);
-                    return;
-                }
-                position.StopOrderIsActiv = true;
-            }
-        }
-
-        if (position.Direction == Side.Sell)
-        {
-            decimal price = GetPriceStop(Side.Sell, candles, candles.Count - 1);
-            if (price == 0)
-            {
-                return;
-            }
-
-            decimal priceOrder = price;
-            decimal priceRedLine = price;
-
-            if (priceRedLine + _tab.Security.PriceStep * 10 < _tab.PriceBestAsk)
-            {
-                _slippage = Slippage.ValueDecimal * _tab.PriceBestBid / 100;
-                _tab.CloseAtLimit(position, _tab.PriceBestBid + _slippage, position.OpenVolume);
-                return;
-            }
-
-            if (position.StopOrderRedLine == 0 || position.StopOrderRedLine > priceRedLine)
-            {
-                _slippage = Slippage.ValueDecimal * priceOrder / 100;
-                _tab.CloseAtStop(position, priceRedLine, priceOrder + _slippage);
-            }
-            else if (position.StopOrderIsActiv == false)
-            {
-                if (position.StopOrderRedLine + _tab.Security.PriceStep * 10 < _tab.PriceBestAsk)
-                {
-                    _slippage = Slippage.ValueDecimal * _tab.PriceBestBid / 100;
-                    _tab.CloseAtLimit(position, _tab.PriceBestBid + _slippage, position.OpenVolume);
-                    return;
-                }
-                position.StopOrderIsActiv = true;
-            }
-        }
-    }
-
-    private decimal GetPriceToOpenPos(Side side, List<Candle> candles, int index)
-    {
-        if (side == Side.Buy)
-        {
-            decimal price = 0;
-
-            for (int i = index; i > 0 && i > index - Lookback.ValueInt; i--)
-            {
-                if (candles[i].High > price)
-                {
-                    price = candles[i].High;
-                }
-            }
-            return price;
-        }
-        if (side == Side.Sell)
-        {
-            decimal price = decimal.MaxValue;
-            for (int i = index; i > 0 && i > index - Lookback.ValueInt; i--)
-            {
-                if (candles[i].Low < price)
-                {
-                    price = candles[i].Low;
-                }
-            }
-            return price;
-        }
-
-        return 0;
-    }
-
-    private decimal GetPriceStop(Side side, List<Candle> candles, int index)
-    {
-        if (candles == null || index < TrailBars.ValueInt)
-        {
-            return 0;
-        }
-
-        if (side == Side.Buy)
-        {
-            decimal price = decimal.MaxValue;
-
-            for (int i = index; i > index - TrailBars.ValueInt; i--)
-            {
-                if (candles[i].Low < price)
-                {
-                    price = candles[i].Low;
-                }
-            }
-
-            return price;
-        }
-
-        if (side == Side.Sell)
-        {
-            decimal price = 0;
-
-            for (int i = index; i > index - TrailBars.ValueInt; i--)
-            {
-                if (candles[i].High > price)
-                {
-                    price = candles[i].High;
-                }
-            }
-
-            return price;
-        }
-        return 0;
     }
 
     private void CancelStopsAndProfits()
@@ -553,6 +428,36 @@ public class BreakHighLowByAdxRsi : BotPanel
         _tab.SellAtStopCancel();
     }
 
+    private decimal Highest(List<Candle> candles, int ExitCandleCount)
+    {
+        decimal high = 0;
+
+        for (int i = candles.Count - 1; i > candles.Count - 1 - ExitCandleCount; i--)
+        {
+            if (candles[i].High > high)
+            {
+                high = candles[i].High;
+            }
+        }
+
+        return high;
+    }
+
+    private decimal Lowest(List<Candle> candles, int ExitCandleCount)
+    {
+        decimal low = decimal.MaxValue;
+
+        for (int i = candles.Count - 1; i > candles.Count - 1 - ExitCandleCount; i--)
+        {
+            if (candles[i].Low < low)
+            {
+                low = candles[i].Low;
+            }
+        }
+
+        return low;
+    }
+
     private decimal GetVolume()
     {
         decimal volume = 0;
@@ -561,7 +466,6 @@ public class BreakHighLowByAdxRsi : BotPanel
         {
             decimal contractPrice = TabsSimple[0].PriceBestAsk;
             volume = VolumeOnPosition.ValueDecimal / contractPrice;
-
         }
         else if (VolumeRegime.ValueString == "Number of contracts")
         {
