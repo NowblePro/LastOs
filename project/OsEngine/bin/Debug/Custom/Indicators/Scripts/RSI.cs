@@ -83,7 +83,6 @@ namespace OsEngine.Indicators
 
             _series.Values[index] = Math.Round(rsi, 2);
 
-            // TODO do not build if drawing is turn off
             _seriesOversold.Values[index] = _oversold.ValueDecimal;
             _seriesOverbought.Values[index] = _overbought.ValueDecimal;
         }

@@ -1,4 +1,5 @@
-﻿using OsEngine.Entity;
+﻿using Microsoft.Office.Interop.Excel;
+using OsEngine.Entity;
 using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
@@ -49,8 +50,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         public StrategyParameterBool _drawRsiChannel;
         public StrategyParameterBool _rsiFilterIsOn;
 
+        private String _name;
+
         public BreakBBRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
+            _name = name;
+
             TabCreate(BotTabType.Simple);
             _tab = TabsSimple[0];
 
@@ -82,41 +87,42 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _overboughtRsi = CreateParameter("Rsi Overbought", 70m, 0, 0, 0, "Filters");
             _drawRsiChannel = CreateParameter("Draw Ovb/Ovs Channel", false, "Filters");
 
-            _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Filter", canDelete: false);
+            _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: _name + "Sma_Filter", canDelete: false);
             _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
             _smaFilter.DataSeries[0].Color = System.Drawing.Color.Azure;
             _smaFilter.ParametersDigit[0].Value = SmaLengthFilter.ValueInt;
             _smaFilter.Save();
 
-            _rsi = IndicatorsFactory.CreateIndicatorByName(nameClass: "RSI", name: name + "RSI", canDelete: false);
+            _rsi = IndicatorsFactory.CreateIndicatorByName(nameClass: "RSI", name: _name + "RSI", canDelete: false);
             _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, nameArea: "Prime");
             _rsi.DataSeries[0].Color = System.Drawing.Color.Coral;
             _rsi.ParametersDigit[0].Value = _lengthRsi.ValueInt;
             _rsi.ParametersDigit[1].Value = _oversoldRsi.ValueDecimal;
             _rsi.ParametersDigit[2].Value = _overboughtRsi.ValueDecimal;
+            // TODO
             _rsi.DataSeries[1].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.Save();
 
-            _bbc_long = IndicatorsFactory.CreateIndicatorByName(nameClass: "BBchannel_indicator", name: name + "BBchannelLine_long", canDelete: false);
+            _bbc_long = IndicatorsFactory.CreateIndicatorByName(nameClass: "BBchannel_indicator", name: _name + "BBchannelLine_long", canDelete: false);
             _bbc_long = (Aindicator)_tab.CreateCandleIndicator(_bbc_long, nameArea: "Prime");
             _bbc_long.ParametersDigit[0].Value = _length_long.ValueInt;
             ((IndicatorParameterString)_bbc_long.Parameters[0]).ValueString = _TwoPoint_long.ValueString;
             _bbc_long.Save();
 
-            _bbc_short = IndicatorsFactory.CreateIndicatorByName(nameClass: "BBchannel_indicator", name: name + "BBchannelLine_short", canDelete: false);
+            _bbc_short = IndicatorsFactory.CreateIndicatorByName(nameClass: "BBchannel_indicator", name: _name + "BBchannelLine_short", canDelete: false);
             _bbc_short = (Aindicator)_tab.CreateCandleIndicator(_bbc_short, nameArea: "Prime");
             _bbc_short.ParametersDigit[0].Value = _length_long.ValueInt;
             ((IndicatorParameterString)_bbc_short.Parameters[0]).ValueString = _TwoPoint_short.ValueString;
             _bbc_short.Save();
 
 
-            _sma_long = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Long", canDelete: false);
+            _sma_long = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: _name + "Sma_Long", canDelete: false);
             _sma_long = (Aindicator)_tab.CreateCandleIndicator(_sma_long, nameArea: "Prime");
             _sma_long.ParametersDigit[0].Value = _periodSma_long.ValueInt;
             _sma_long.Save();
 
-            _sma_short = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Short", canDelete: false);
+            _sma_short = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: _name + "Sma_Short", canDelete: false);
             _sma_short = (Aindicator)_tab.CreateCandleIndicator(_sma_short, nameArea: "Prime");
             _sma_short.ParametersDigit[0].Value = _periodSma_short.ValueInt;
             _sma_short.Save();
@@ -178,17 +184,34 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _smaFilter.DataSeries[0].IsPaint = true;
                 }
             }
- 
-            _rsi.ParametersDigit[0].Value = _lengthRsi.ValueInt;
-            _rsi.ParametersDigit[1].Value = _oversoldRsi.ValueDecimal;
-            _rsi.ParametersDigit[2].Value = _overboughtRsi.ValueDecimal;
 
-            // TODO do not build if drawing or filter is turn off
-            _rsi.DataSeries[1].IsPaint = _drawRsiChannel.ValueBool;
-            _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
+            if (_rsi.ParametersDigit[0].Value != _lengthRsi.ValueInt
+                || _rsi.ParametersDigit[1].Value != _oversoldRsi.ValueDecimal
+                || _rsi.ParametersDigit[2].Value != _overboughtRsi.ValueDecimal)
+            {
+                _rsi.ParametersDigit[0].Value = _lengthRsi.ValueInt;
+                _rsi.ParametersDigit[1].Value = _oversoldRsi.ValueDecimal;
+                _rsi.ParametersDigit[2].Value = _overboughtRsi.ValueDecimal;
 
-            _rsi.Reload();
-            _rsi.Save();
+                _rsi.Reload();
+                _rsi.Save();
+            }
+
+            if (_rsi.DataSeries != null && _rsi.DataSeries.Count > 0)
+            {
+                if (!_rsiFilterIsOn.ValueBool)
+                {
+                    _rsi.DataSeries[0].IsPaint = false;
+                    _rsi.DataSeries[1].IsPaint = false;
+                    _rsi.DataSeries[2].IsPaint = false;
+                }
+                else
+                {
+                    _rsi.DataSeries[0].IsPaint = true;
+                    _rsi.DataSeries[1].IsPaint = _drawRsiChannel.ValueBool;
+                    _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
+                }
+            }
         }
 
         public override string GetNameStrategyType()
