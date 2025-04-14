@@ -126,6 +126,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _sma_short.ParametersDigit[0].Value = _periodSma_short.ValueInt;
             _sma_short.Save();
 
+            StopOrActivateIndicators();
             ParametrsChangeByUser += LRegBot_ParametrsChangeByUser;
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
             LRegBot_ParametrsChangeByUser();
@@ -134,6 +135,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void LRegBot_ParametrsChangeByUser()
         {
+            StopOrActivateIndicators();
+
             if (_bbc_long.ParametersDigit[0].Value != _length_long.ValueInt
                 || ((IndicatorParameterString)_bbc_long.Parameters[0]).ValueString != _TwoPoint_long.ValueString)
             {
@@ -210,6 +213,37 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _rsi.DataSeries[1].IsPaint = _drawRsiChannel.ValueBool;
                     _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
                 }
+            }
+        }
+
+        private void StopOrActivateIndicators()
+        {
+            // RSI
+            if (_rsiFilterIsOn.ValueBool == false)
+            {
+                _rsi.IsOn = false;
+                _rsi.Reload();
+            }
+            else
+            {
+                _rsi.IsOn = true;
+                _rsi.Reload();
+            }
+            // RSI
+
+            if (SmaPositionFilterIsOn.ValueBool == false
+                      && SmaSlopeFilterIsOn.ValueBool == false
+                      && _smaFilter.IsOn == true)
+            {
+                _smaFilter.IsOn = false;
+                _smaFilter.Reload();
+            }
+            else if ((SmaPositionFilterIsOn.ValueBool == true
+                || SmaSlopeFilterIsOn.ValueBool == true)
+                && _smaFilter.IsOn == false)
+            {
+                _smaFilter.IsOn = true;
+                _smaFilter.Reload();
             }
         }
 
