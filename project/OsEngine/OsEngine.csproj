@@ -1273,9 +1273,7 @@
     <Compile Include="Robots\CounterTrend\RsiContrtrend.cs" />
     <Compile Include="Robots\Trend\SmaStochastic.cs" />
     <Compile Include="Robots\Trend\StrategyBillWilliams.cs" />
-	  
-	<Compile Include="Robots\TrigonumCustom\Base\BreakBBRsi.cs" />
-	  
+    <Compile Include="Robots\TrigonumCustom\Base\BreakBBRsi.cs" />
     <Compile Include="Robots\CounterTrend\StrategyBollingerUi.xaml.cs">
       <DependentUpon>StrategyBollingerUi.xaml</DependentUpon>
     </Compile>
@@ -1345,6 +1343,8 @@
     <Compile Include="Robots\CounterTrend\WilliamsRangeTrade.cs" />
     <Compile Include="Robots\PositionsMicromanagement\TwoEntrySample.cs" />
     <Compile Include="Robots\Trend\TwoTimeFramesBot.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAdxTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAdxRsi.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\BollingerTrendVolatilityStagesFilter.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelScreenerOnIndexVolatility.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelTrendAtrFilter.cs" />

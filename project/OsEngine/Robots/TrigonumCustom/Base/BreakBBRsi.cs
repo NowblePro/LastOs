@@ -99,7 +99,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _rsi.ParametersDigit[0].Value = _lengthRsi.ValueInt;
             _rsi.ParametersDigit[1].Value = _oversoldRsi.ValueDecimal;
             _rsi.ParametersDigit[2].Value = _overboughtRsi.ValueDecimal;
-            // TODO
             _rsi.DataSeries[1].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.Save();
