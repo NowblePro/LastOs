@@ -1349,6 +1349,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseHmaRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ImpulseMoveLongBotExtTimeRsi.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\BollingerTrendVolatilityStagesFilter.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelScreenerOnIndexVolatility.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelTrendAtrFilter.cs" />
