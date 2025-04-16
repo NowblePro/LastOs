@@ -33,6 +33,8 @@ namespace OsEngine.Market.Servers.Optimizer
        /// <param name="portfolioStratValue">start value for portfolio/начальное значение для порфеля</param>
         public OptimizerServer(OptimizerDataStorage dataStorage, int num, decimal portfolioStratValue)
         {
+            //_cts = new CancellationTokenSource();
+
             _storagePrime = dataStorage;
             _logMaster = new Log("OptimizerServer",StartProgram.IsOsOptimizer);
             _logMaster.Listen(this);
@@ -262,110 +264,135 @@ namespace OsEngine.Market.Servers.Optimizer
 
         public AutoResetEvent _manualReset = new AutoResetEvent(true);
 
+        private CancellationTokenSource _cts;
+
+        //public void StopWorkThread()
+        //{
+        //    _cts?.Cancel();
+        //    _manualReset?.Set();
+        //}
+
+        //public void Dispose()
+        //{
+        //    _cts?.Cancel();
+        //    _cts?.Dispose();
+        //    _manualReset?.Dispose();
+        //}
+
+        private readonly object _syncLock = new object();
+
         /// <summary>
         /// work place of main thread
         /// место работы основного потока
         /// </summary>
         private void WorkThreadArea()
         {
-            while (true)
+            while (true) //while (!_cts.Token.IsCancellationRequested)
             {
                 try
                 {
-                    if (_cleared)
-                    {
-                        if (_allTrades != null)
+                    //lock (_syncLock)
+                    //{
+                        if (_cleared)
                         {
-                            for (int i = 0; i < _allTrades.Length; i++)
+                            if (_allTrades != null)
                             {
-                                _allTrades[i].Clear();
+                                for (int i = 0; i < _allTrades.Length; i++)
+                                {
+                                    _allTrades[i].Clear();
+                                }
+                                _allTrades = null;
                             }
-                            _allTrades = null;
-                        }
 
-                        if (_candleManager != null)
-                        {
-                            _candleManager.Clear();
-                            _candleManager.Dispose();
-                            _candleManager.CandleUpdateEvent -= _candleManager_CandleUpdateEvent;
-                            _candleManager.LogMessageEvent -= SendLogMessage;
-                            _candleManager = null;
-                        }
-
-                        if (_logMaster != null)
-                        {
-                            _logMaster.Delete();
-                            _logMaster = null;
-                        }
-
-                        if (_securities != null)
-                        {
-                            _securities.Clear();
-                            _securities = null;
-                        }
-
-                        if (_candleSeriesTesterActivate != null)
-                        {
-                            for (int i = 0; i < _candleSeriesTesterActivate.Count; i++)
+                            if (_candleManager != null)
                             {
-                                _candleSeriesTesterActivate[i].Clear();
-                                _candleSeriesTesterActivate[i].NewCandleEvent -= TesterServer_NewCandleEvent;
-                                _candleSeriesTesterActivate[i].NewTradesEvent -= TesterServer_NewTradesEvent;
-                                _candleSeriesTesterActivate[i].NeedToCheckOrders -= TesterServer_NeedToCheckOrders;
-                                _candleSeriesTesterActivate[i].NewMarketDepthEvent -= TesterServer_NewMarketDepthEvent;
-                                _candleSeriesTesterActivate[i].LogMessageEvent -= SendLogMessage;
+                                _candleManager.Clear();
+                                _candleManager.Dispose();
+                                _candleManager.CandleUpdateEvent -= _candleManager_CandleUpdateEvent;
+                                _candleManager.LogMessageEvent -= SendLogMessage;
+                                _candleManager = null;
                             }
-                            _candleSeriesTesterActivate = null;
+
+                            if (_logMaster != null)
+                            {
+                                _logMaster.Delete();
+                                _logMaster = null;
+                            }
+
+                            if (_securities != null)
+                            {
+                                _securities.Clear();
+                                _securities = null;
+                            }
+
+                            if (_candleSeriesTesterActivate != null)
+                            {
+                                for (int i = 0; i < _candleSeriesTesterActivate.Count; i++)
+                                {
+                                    _candleSeriesTesterActivate[i].Clear();
+                                    _candleSeriesTesterActivate[i].NewCandleEvent -= TesterServer_NewCandleEvent;
+                                    _candleSeriesTesterActivate[i].NewTradesEvent -= TesterServer_NewTradesEvent;
+                                    _candleSeriesTesterActivate[i].NeedToCheckOrders -= TesterServer_NeedToCheckOrders;
+                                    _candleSeriesTesterActivate[i].NewMarketDepthEvent -= TesterServer_NewMarketDepthEvent;
+                                    _candleSeriesTesterActivate[i].LogMessageEvent -= SendLogMessage;
+                                }
+                                _candleSeriesTesterActivate = null;
+                            }
+
+                            if (_myTrades != null)
+                            {
+                                _myTrades.Clear();
+                                _myTrades = null;
+                            }
+
+                            _storagePrime = null;
+
+                            if (_storages != null)
+                            {
+                                _storages.Clear();
+                                _storages = null;
+                            }
+
+                            if (ProfitArray != null)
+                            {
+                                ProfitArray.Clear();
+                                ProfitArray = null;
+                            }
+
+                            return;
                         }
 
-                        if (_myTrades != null)
+                        if (_serverConnectStatus != ServerConnectStatus.Connect)
                         {
-                            _myTrades.Clear();
-                            _myTrades = null;
+                            if (Securities != null && Securities.Count != 0)
+                            {
+                                ServerStatus = ServerConnectStatus.Connect;
+                            }
                         }
 
-                        _storagePrime = null;
-
-                        if (_storages != null)
+                        if (_testerRegime == TesterRegime.Pause)
                         {
-                            _storages.Clear();
-                            _storages = null;
+                            _manualReset.WaitOne();
+                            continue;
                         }
 
-                        if (ProfitArray != null)
+
+                        if (_testerRegime == TesterRegime.Play)
                         {
-                            ProfitArray.Clear();
-                            ProfitArray = null;
+                            // race condition here
+                            LoadNextData();
+                            CheckOrders();
                         }
 
-                        return;
-                    }
-
-                    if (_serverConnectStatus != ServerConnectStatus.Connect)
-                    {
-                        if (Securities != null && Securities.Count != 0)
-                        {
-                            ServerStatus = ServerConnectStatus.Connect;
-                        }
-                    }
-
-                    if (_testerRegime == TesterRegime.Pause)
-                    {
-                        _manualReset.WaitOne();
-                        continue;
-                    }
-
-
-                    if (_testerRegime == TesterRegime.Play)
-                    {
-                        LoadNextData();
-                        CheckOrders();
-                    }
-
-                    
+                    //}
                 }
+
                 catch (Exception error)
                 {
+                    //SendLogMessage(error.ToString(), LogMessageType.Error);
+
+                    //_cts?.Token.WaitHandle.WaitOne(1000);
+
                     SendLogMessage(error.ToString(), LogMessageType.Error);
                     Thread.Sleep(1000);
                 }

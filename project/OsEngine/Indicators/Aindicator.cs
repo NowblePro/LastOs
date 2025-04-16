@@ -157,6 +157,8 @@ namespace OsEngine.Indicators
             }
         }
 
+        //private readonly object _indicatorUpdateLocker = new object();
+
         public StartProgram StartProgram;
 
         public IndicatorChartPaintType TypeIndicator { get; set; }
@@ -513,46 +515,47 @@ namespace OsEngine.Indicators
 
         private Candle _lastFirstCandle = null;
 
+        // WTF?
         public void Process(List<Candle> candles)
         {
-            //lock(_indicatorUpdateLocker)
+            //lock (_indicatorUpdateLocker)
             //{
-            if (candles.Count == 0)
-            {
-                return;
-            }
-
-            if (DataSeries == null || DataSeries.Count == 0)
-            {
-                return;
-            }
-
-            if (_myCandles == null ||
-            candles.Count < _myCandles.Count ||
-            candles.Count > _myCandles.Count + 1 ||
-            (_lastFirstCandle != null && _lastFirstCandle.TimeStart != candles[0].TimeStart))
-            {
-                ProcessAll(candles);
-            }
-            else if (candles.Count < DataSeries[0].Values.Count)
-            {
-                foreach (var ds in DataSeries)
+                if (candles.Count == 0)
                 {
-                    ds.Values.Clear();
+                    return;
                 }
-                ProcessAll(candles);
-            }
-            else if (_myCandles.Count == candles.Count)
-            {
-                ProcessLast(candles);
-            }
-            else if (_myCandles.Count + 1 == candles.Count)
-            {
-                ProcessNew(candles, candles.Count - 1);
-            }
 
-            _myCandles = candles;
-            _lastFirstCandle = candles[0];
+                if (DataSeries == null || DataSeries.Count == 0)
+                {
+                    return;
+                }
+
+                if (_myCandles == null ||
+                candles.Count < _myCandles.Count ||
+                candles.Count > _myCandles.Count + 1 ||
+                (_lastFirstCandle != null && _lastFirstCandle.TimeStart != candles[0].TimeStart))
+                {
+                    ProcessAll(candles);
+                }
+                else if (candles.Count < DataSeries[0].Values.Count)
+                {
+                    foreach (var ds in DataSeries)
+                    {
+                        ds.Values.Clear();
+                    }
+                    ProcessAll(candles);
+                }
+                else if (_myCandles.Count == candles.Count)
+                {
+                    ProcessLast(candles);
+                }
+                else if (_myCandles.Count + 1 == candles.Count)
+                {
+                    ProcessNew(candles, candles.Count - 1);
+                }
+
+                _myCandles = candles;
+                _lastFirstCandle = candles[0];
             //}
         }
 
@@ -579,6 +582,7 @@ namespace OsEngine.Indicators
         {
             for (int i = 0; i < DataSeries.Count; i++)
             {
+                // Null reference exception
                 while (DataSeries[i].Values.Count < candles.Count)
                 {
                     if (DataSeries[i].Values.Count == 0)
@@ -671,25 +675,26 @@ namespace OsEngine.Indicators
                 return;
             }
 
+            // null here
             OnProcess(candles, index);
         }
 
         public void Reload()
         {
-            if (_myCandles == null)
-            {
-                return;
-            }
-
-            //lock(_indicatorUpdateLocker)
+            //lock (_indicatorUpdateLocker)
             //{
-            ProcessAll(_myCandles);
-            //}
+                if (_myCandles == null)
+                {
+                    return;
+                }
 
-            if (NeedToReloadEvent != null)
-            {
-                NeedToReloadEvent(this);
-            }
+                ProcessAll(_myCandles);
+
+                if (NeedToReloadEvent != null)
+                {
+                    NeedToReloadEvent(this);
+                }
+            //}
         }
 
         public event Action<IIndicator> NeedToReloadEvent;
@@ -700,7 +705,8 @@ namespace OsEngine.Indicators
 
         public void Process(List<decimal> values)
         {
-            //lock(_indicatorUpdateLocker)
+            // Lock for optimization
+            //lock (_indicatorUpdateLocker)
             //{
                 if (values.Count == 0)
                 {
@@ -720,7 +726,7 @@ namespace OsEngine.Indicators
                 {
                     ProcessNew(values, values.Count);
                 }
-           // }
+            //}
         }
 
         private void ProcessAll(List<decimal> values)

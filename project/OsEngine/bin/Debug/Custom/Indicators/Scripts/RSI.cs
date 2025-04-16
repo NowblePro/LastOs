@@ -81,7 +81,9 @@ namespace OsEngine.Indicators
                 rsi = 100;
             }
 
+            // TODO exception out of range here
             _series.Values[index] = Math.Round(rsi, 2);
+            //_series.Values.Add( Math.Round(rsi, 2) );
 
             _seriesOversold.Values[index] = _oversold.ValueDecimal;
             _seriesOverbought.Values[index] = _overbought.ValueDecimal;
