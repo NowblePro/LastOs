@@ -1358,6 +1358,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakZZChannelReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Rsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Tm.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\BollingerTrendVolatilityStagesFilter.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelScreenerOnIndexVolatility.cs" />
