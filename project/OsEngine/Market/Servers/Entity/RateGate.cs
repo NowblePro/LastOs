@@ -134,6 +134,7 @@ namespace OsEngine.Market.Servers.Entity
             // and add it to the queue.
             if (entered)
             {
+                // Environment.TickCount can be overflow
                 var timeToExit = unchecked(Environment.TickCount + TimeUnitMilliseconds);
                 _exitTimes.Enqueue(timeToExit);
             }

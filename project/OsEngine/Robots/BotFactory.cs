@@ -17,6 +17,9 @@ using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.Robots.Engines;
 using System.Windows;
+using OsEngine.Market.Servers.Alor.Json;
+using System.Diagnostics;
+using Tinkoff.InvestApi.V1;
 
 namespace OsEngine.Robots
 {
