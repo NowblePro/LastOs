@@ -12,7 +12,7 @@ using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.OsTrader.Panels.Tab;
 
-namespace OsEngine.Robots.MyBots
+namespace OsEngine.Robots.TrigonumCustom.Channel
 {
     [Bot("ReverseAdaptivePriceChannelPlus_2Tm")]
     public class ReverseAdaptivePriceChannelPlus_2Tm : BotPanel

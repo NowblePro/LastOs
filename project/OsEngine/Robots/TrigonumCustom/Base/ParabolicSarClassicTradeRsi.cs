@@ -6,8 +6,9 @@ using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 
-namespace OsEngine.Robots.Error
+namespace OsEngine.Robots.TrigonumCustom.Base
 {
+
     [Bot("ParabolicSarClassicTradeRsi")]
     public class ParabolicSarClassicTradeRsi : BotPanel
     {
@@ -451,4 +452,5 @@ namespace OsEngine.Robots.Error
             return volume;
         }
     }
+
 }
