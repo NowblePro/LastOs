@@ -528,7 +528,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             }
             else //if (VolumeRegime.ValueString == "% of the total portfolio")
             {
-                volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Securiti.Lot;
+                volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
             // If the robot is running in the tester
@@ -538,7 +538,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             }
             else
             {
-                volume = Math.Round(volume, _tab.Securiti.DecimalsVolume);
+                volume = Math.Round(volume, _tab.Security.DecimalsVolume);
             }
 
             return volume;

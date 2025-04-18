@@ -353,7 +353,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
                 if (!SellSignalIsFiltered(candles))
                 {
                     _slippage = Slippage.ValueDecimal * (lastHma - lastAtr * _multiplerAtr.ValueDecimal) / 100;
-                    _tab.SellAtStop(GetVolume(), (lastHma - lastAtr * _multiplerAtr.ValueDecimal) - _slippage, lastHma - lastAtr * _multiplerAtr.ValueDecimal, StopActivateType.LowerOrEqyal, 1);
+                    _tab.SellAtStop(GetVolume(), (lastHma - lastAtr * _multiplerAtr.ValueDecimal) - _slippage, lastHma - lastAtr * _multiplerAtr.ValueDecimal, StopActivateType.LowerOrEqual, 1);
                 }
 
                 if (BuySignalIsFiltered(candles))
@@ -669,7 +669,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             }
             else //if (VolumeRegime.ValueString == "% of the total portfolio")
             {
-                volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Securiti.Lot;
+                volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
             // If the robot is running in the tester
@@ -679,7 +679,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             }
             else
             {
-                volume = Math.Round(volume, _tab.Securiti.DecimalsVolume);
+                volume = Math.Round(volume, _tab.Security.DecimalsVolume);
             }
 
             return volume;

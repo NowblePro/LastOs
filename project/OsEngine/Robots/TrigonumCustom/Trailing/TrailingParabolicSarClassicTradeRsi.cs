@@ -317,7 +317,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
 
                     decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
                     _tab.SellAtStopCancel();
-                    _tab.SellAtStop(GetVolume(), _lastSar - _slippage, _lastSar, StopActivateType.LowerOrEqyal, 1);
+                    _tab.SellAtStop(GetVolume(), _lastSar - _slippage, _lastSar, StopActivateType.LowerOrEqual, 1);
                 }
             }
             else
@@ -481,7 +481,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             }
             else //if (VolumeRegime.ValueString == "% of the total portfolio")
             {
-                volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Securiti.Lot;
+                volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
             // If the robot is running in the tester
@@ -491,7 +491,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             }
             else
             {
-                volume = Math.Round(volume, _tab.Securiti.DecimalsVolume);
+                volume = Math.Round(volume, _tab.Security.DecimalsVolume);
             }
             return volume;
         }
