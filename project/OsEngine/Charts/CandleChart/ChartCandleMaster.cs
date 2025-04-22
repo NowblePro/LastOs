@@ -1430,6 +1430,8 @@ namespace OsEngine.Charts.CandleChart
         /// </summary>
         private DateTime _lastCandleIncome = DateTime.MinValue;
 
+        //private readonly object _updateLocker = new object();
+
         /// <summary>
         /// upgrade candles
         /// обновить свечи
@@ -1440,96 +1442,100 @@ namespace OsEngine.Charts.CandleChart
         {
             try
             {
-                if (candles == null
-                    || candles.Count == 0)
-                {
-                    return;
-                }
-
-                if (_myCandles != null && _lastCount == candles.Count
-                    && _startProgram != StartProgram.IsTester &&
-                    _startProgram != StartProgram.IsOsData &&
-                    _lastPrice == candles[candles.Count - 1].Close)
-                {
-                    // only update candles when they've really been updated.
-                    // обновляем свечи только когда они действительно обновились
-                    return;
-                }
-
-                bool canReload = _startProgram != StartProgram.IsOsOptimizer;
-
-                _lastCount = candles.Count;
-                _lastPrice = candles[candles.Count - 1].Close;
-
-                bool isFirstTime = false;
-
-                if (_myCandles == null
-                    || _myCandles.Count - candles.Count < -5
-                    || _myCandles.Count - candles.Count > 5)
-                {
-                    isFirstTime = true;
-                }
-
-                _myCandles = candles;
-
-                if (ChartCandle != null)
-                {
-                    if (canReload)
+                //lock (_updateLocker)
+                //{
+                    if (candles == null
+                        || candles.Count == 0)
                     {
-                        if (_startProgram == StartProgram.IsOsTrader)
-                        {
-                            ChartCandle?.ProcessCandles(candles);
+                        return;
+                    }
 
-                            if (_lastCandleIncome.AddSeconds(1) < DateTime.Now)
+                    if (_myCandles != null && _lastCount == candles.Count
+                        && _startProgram != StartProgram.IsTester &&
+                        _startProgram != StartProgram.IsOsData &&
+                        _lastPrice == candles[candles.Count - 1].Close)
+                    {
+                        // only update candles when they've really been updated.
+                        // обновляем свечи только когда они действительно обновились
+                        return;
+                    }
+
+                    bool canReload = _startProgram != StartProgram.IsOsOptimizer;
+
+                    _lastCount = candles.Count;
+                    _lastPrice = candles[candles.Count - 1].Close;
+
+                    bool isFirstTime = false;
+
+                    if (_myCandles == null
+                        || _myCandles.Count - candles.Count < -5
+                        || _myCandles.Count - candles.Count > 5)
+                    {
+                        isFirstTime = true;
+                    }
+
+                    _myCandles = candles;
+
+                    if (ChartCandle != null)
+                    {
+                        if (canReload)
+                        {
+                            if (_startProgram == StartProgram.IsOsTrader)
+                            {
+                                ChartCandle?.ProcessCandles(candles);
+
+                                if (_lastCandleIncome.AddSeconds(1) < DateTime.Now)
+                                {
+                                    _lastCandleIncome = DateTime.Now;
+                                    ChartCandle?.ProcessPositions(_myPosition);
+                                    ChartCandle?.ProcessStopLimits(_myStopLimit);
+                                }
+                            }
+                            else
                             {
                                 _lastCandleIncome = DateTime.Now;
+                                ChartCandle?.ProcessCandles(candles);
                                 ChartCandle?.ProcessPositions(_myPosition);
                                 ChartCandle?.ProcessStopLimits(_myStopLimit);
                             }
                         }
-                        else
-                        {
-                            _lastCandleIncome = DateTime.Now;
-                            ChartCandle?.ProcessCandles(candles);
-                            ChartCandle?.ProcessPositions(_myPosition);
-                            ChartCandle?.ProcessStopLimits(_myStopLimit);
-                        }
-                    }
 
-                    if (_indicators != null)
-                    {
-                        for (int i = 0; i < _indicators.Count; i++)
+                        if (_indicators != null)
                         {
-                            _indicators[i].Process(candles);
-
-                            if (canReload)
+                            for (int i = 0; i < _indicators.Count; i++)
                             {
-                                ChartCandle?.ProcessIndicator(_indicators[i]);
+                                _indicators[i].Process(candles);
+
+                                if (canReload)
+                                {
+                                    ChartCandle?.ProcessIndicator(_indicators[i]);
+                                }
+                            }
+                        }
+                        if (canReload && _alertArray != null && _alertArray.Count != 0)
+                        {
+                            if (isFirstTime)
+                            {
+                                PaintAlerts(_alertArray, true);
+                            }
+                            else
+                            {
+                                PaintAlerts(_alertArray, false);
                             }
                         }
                     }
-                    if (canReload && _alertArray != null && _alertArray.Count != 0)
+                    else
                     {
-                        if (isFirstTime)
+                        if (_indicators != null)
                         {
-                            PaintAlerts(_alertArray, true);
-                        }
-                        else
-                        {
-                            PaintAlerts(_alertArray, false);
+                            for (int i = 0; i < _indicators.Count; i++)
+                            {
+                                // TODO null reference + out of range exceptions here
+                                _indicators[i].Process(candles);
+                            }
                         }
                     }
-                }
-                else
-                {
-                    if (_indicators != null)
-                    {
-                        for (int i = 0; i < _indicators.Count; i++)
-                        {
-                            _indicators[i].Process(candles);
-                        }
-                    }
-                }
+                //}
             }
             catch (Exception error)
             {

@@ -464,6 +464,8 @@
     <Compile Include="Market\Connectors\ConnectorNewsUi.xaml.cs">
       <DependentUpon>ConnectorNewsUi.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Market\CustomConnectors\Coinglass\CoinglassConnector.cs" />
+    <Compile Include="Market\CustomConnectors\Coinglass\Entity\Entity.cs" />
     <Compile Include="Market\Servers\Atp\AtpServer.cs" />
     <Compile Include="Market\Servers\Atp\AtpServerPermission.cs" />
     <Compile Include="Market\Servers\Atp\SecuritiesAtpUi.xaml.cs">
@@ -1273,6 +1275,7 @@
     <Compile Include="Robots\CounterTrend\RsiContrtrend.cs" />
     <Compile Include="Robots\Trend\SmaStochastic.cs" />
     <Compile Include="Robots\Trend\StrategyBillWilliams.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakBBRsi.cs" />
     <Compile Include="Robots\CounterTrend\StrategyBollingerUi.xaml.cs">
       <DependentUpon>StrategyBollingerUi.xaml</DependentUpon>
     </Compile>
@@ -1342,6 +1345,25 @@
     <Compile Include="Robots\CounterTrend\WilliamsRangeTrade.cs" />
     <Compile Include="Robots\PositionsMicromanagement\TwoEntrySample.cs" />
     <Compile Include="Robots\Trend\TwoTimeFramesBot.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAdxTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAdxRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ImpulseHmaRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ImpulseMoveLongBotExtTimeRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ImpulseSmaLRTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ImpulseTwoSmaRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ParabolicSarClassicTradeRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\BreakZZChannelReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakZZChannelReverseCG.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Rsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Tm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseHmaRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseTwoSmaRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Trailing\TrailingParabolicSarClassicTradeRsi.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\BollingerTrendVolatilityStagesFilter.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelScreenerOnIndexVolatility.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelTrendAtrFilter.cs" />
@@ -2091,6 +2113,7 @@
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Grpc.Core.2.46.6\build\net45\Grpc.Core.targets" Condition="Exists('..\packages\Grpc.Core.2.46.6\build\net45\Grpc.Core.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

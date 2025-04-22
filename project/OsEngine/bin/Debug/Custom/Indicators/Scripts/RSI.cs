@@ -9,14 +9,24 @@ namespace OsEngine.Indicators
     public class RSI : Aindicator
     {
         private IndicatorParameterInt _length;
+        private IndicatorParameterDecimal _oversold;
+        private IndicatorParameterDecimal _overbought;
 
         private IndicatorDataSeries _series;
+
+        private IndicatorDataSeries _seriesOversold;
+        private IndicatorDataSeries _seriesOverbought;
 
         public override void OnStateChange(IndicatorState state)
         {
             _length = CreateParameterInt("Length", 14);
+            _oversold = CreateParameterDecimal("Oversold", 30m);
+            _overbought = CreateParameterDecimal("Overbought", 70m);
 
             _series = CreateSeries("Ma", Color.DodgerBlue, IndicatorChartPaintType.Line, true);
+
+            _seriesOversold = CreateSeries("Oversold", Color.White, IndicatorChartPaintType.Line, true);
+            _seriesOverbought = CreateSeries("Overbought", Color.White, IndicatorChartPaintType.Line, true);
         }
 
         public override void OnProcess(List<Candle> candles, int index)
@@ -71,7 +81,12 @@ namespace OsEngine.Indicators
                 rsi = 100;
             }
 
+            // TODO exception out of range here
             _series.Values[index] = Math.Round(rsi, 2);
+            //_series.Values.Add( Math.Round(rsi, 2) );
+
+            _seriesOversold.Values[index] = _oversold.ValueDecimal;
+            _seriesOverbought.Values[index] = _overbought.ValueDecimal;
         }
 
         private void MovingAverageHard(List<decimal> valuesSeries, List<decimal> moving, int length, int index)

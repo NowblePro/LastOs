@@ -35,23 +35,23 @@ namespace OsEngine.OsOptimizer.OptimizerEntity
 
             while (true)
             {
-                for (int i = 0; i < _bots.Count; i++)
+                lock (_botLocker)
                 {
-                    if (_bots[i] == null)
+                    // TODO try to change _bots structure for better search
+                    for (int i = 0; i < _bots.Count; i++)
                     {
-                        continue;
-                    }
+                        if (_bots[i] == null)
+                        {
+                            continue;
+                        }
 
-                    if (_bots[i].NameStrategyUniq == botName &&
-                        _bots[i].GetNameStrategyType() == botType)
-                    {
-                        lock (_botLocker)
+                        if (_bots[i].NameStrategyUniq == botName &&
+                            _bots[i].GetNameStrategyType() == botType)
                         {
                             bot = _bots[i];
                             _bots.RemoveAt(i);
+                            return bot;
                         }
-
-                        return bot;
                     }
                 }
                 Thread.Sleep(1);
