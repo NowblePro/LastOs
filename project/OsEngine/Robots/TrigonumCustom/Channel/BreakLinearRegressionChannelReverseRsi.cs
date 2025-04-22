@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.NetworkInformation;
-using System.Windows.Media.Effects;
 using OsEngine.Entity;
 using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels;
@@ -49,7 +47,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" }, "Base");
             ReverseLogic = CreateParameter("Reverse logic", false, "Base");
-            VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency" }, "Base");
+            VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeDecimals = CreateParameter("Number of Digits after the decimal point in the volume", 2, 1, 50, 4, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
 
@@ -396,18 +394,35 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         private decimal GetVolume()
         {
-            decimal volume = VolumeOnPosition.ValueDecimal;
+            decimal volume = 0;
 
-            if (VolumeRegime.ValueString == "Contract currency") // "Валюта контракта"
+            if (VolumeRegime.ValueString == "Contract currency")
             {
                 decimal contractPrice = TabsSimple[0].PriceBestAsk;
-                volume = Math.Round(VolumeOnPosition.ValueDecimal / contractPrice, VolumeDecimals.ValueInt);
-                return volume;
+                volume = VolumeOnPosition.ValueDecimal / contractPrice;
+
             }
-            else //if (VolumeRegime.ValueString == "Number of contracts")
+            else if (VolumeRegime.ValueString == "Number of contracts")
             {
-                return volume;
+                volume = VolumeOnPosition.ValueDecimal;
             }
+            else //if (VolumeRegime.ValueString == "% of the total portfolio")
+            {
+                volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
+            }
+
+            // If the robot is running in the tester
+            if (StartProgram == StartProgram.IsTester)
+            {
+                volume = Math.Round(volume, 6);
+            }
+            else
+            {
+                volume = Math.Round(volume, _tab.Security.DecimalsVolume);
+            }
+
+            return volume;
+
         }
 
         private decimal GetSlippage(decimal price)
