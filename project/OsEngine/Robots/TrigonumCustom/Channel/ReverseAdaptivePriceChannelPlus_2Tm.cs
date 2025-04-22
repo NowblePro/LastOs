@@ -216,7 +216,15 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 _requestContent.Interval = MinIntervalTimeFrame.ValueString; //мин. доступный интервал для ключа API
                 _requestContent.BotName = _tab.TabName; //имя вкладки бота
                 _requestContent.ResponseType = ResponseType.LongShortRatio; //запрашиваемый показатель
-                _requestContent.Symbol = _tab.Security.Name; //название инструмента
+
+                String symbol = _tab.Security.Name;
+
+                if (symbol.EndsWith(".txt"))
+                {
+                    symbol = symbol.Substring(0, symbol.Length - 4);
+                }
+
+                _requestContent.Symbol = symbol; //название инструмента
 
                 if (_requestContent.StartProgram != StartProgram.IsOsTrader) //вызывающая программа не OsTrader
                 {
