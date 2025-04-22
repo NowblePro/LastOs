@@ -1358,6 +1358,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakZZChannelReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakZZChannelReverseCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Rsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Tm.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseHmaRsi.cs" />
@@ -2112,6 +2113,7 @@
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Grpc.Core.2.46.6\build\net45\Grpc.Core.targets" Condition="Exists('..\packages\Grpc.Core.2.46.6\build\net45\Grpc.Core.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
