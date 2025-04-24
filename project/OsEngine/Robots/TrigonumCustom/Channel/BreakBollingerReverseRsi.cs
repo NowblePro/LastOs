@@ -55,6 +55,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             // Basic setting
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" }, "Base");
+            ReverseLogic = CreateParameter("Reverse logic", true, "Base");
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 1, 1.0m, 50, 4, "Base");
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
@@ -231,20 +232,42 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 // Long
                 if (Regime.ValueString != "OnlyShort") // If the mode is not only short, then we enter long
                 {
-                    if (lastPrice > _lastUpLine)
+                    if (ReverseLogic.ValueBool)
                     {
-                        if (!BuySignalIsFiltered(candles))
-                            _tab.BuyAtLimit(GetVolume(), _tab.PriceBestAsk + _slippage);
+                        if (lastPrice < _lastDownLine)
+                        {
+                            if (!BuySignalIsFiltered(candles))
+                                _tab.BuyAtLimit(GetVolume(), _tab.PriceBestAsk + _slippage);
+                        }
+                    }
+                    else
+                    {
+                        if (lastPrice > _lastUpLine)
+                        {
+                            if (!BuySignalIsFiltered(candles))
+                                _tab.BuyAtLimit(GetVolume(), _tab.PriceBestAsk + _slippage);
+                        }
                     }
                 }
 
                 // Short
                 if (Regime.ValueString != "OnlyLong") // If the mode is not only long, then we enter short
                 {
-                    if (lastPrice < _lastDownLine)
+                    if (ReverseLogic.ValueBool)
                     {
-                        if (!SellSignalIsFiltered(candles))
-                            _tab.SellAtLimit(GetVolume(), _tab.PriceBestBid - _slippage);
+                        if (lastPrice > _lastUpLine)
+                        {
+                            if (!SellSignalIsFiltered(candles))
+                                _tab.SellAtLimit(GetVolume(), _tab.PriceBestBid - _slippage);
+                        }
+                    }
+                    else
+                    {
+                        if (lastPrice < _lastDownLine)
+                        {
+                            if (!SellSignalIsFiltered(candles))
+                                _tab.SellAtLimit(GetVolume(), _tab.PriceBestBid - _slippage);
+                        }
                     }
                 }
             }
@@ -258,6 +281,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             // The last value of the indicator
             _lastUpLine = _Bollinger.DataSeries[0].Last;
             _lastDownLine = _Bollinger.DataSeries[1].Last;
+            decimal lastCenterLine = _Bollinger.DataSeries[2].Last;
 
             decimal _slippage = Slippage.ValueDecimal * _tab.Security.PriceStep;
 
@@ -274,16 +298,36 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
                 if (pos.Direction == Side.Buy) // If the direction of the position is purchase
                 {
-                    if (lastPrice < _lastDownLine)
+                    if (ReverseLogic.ValueBool)
                     {
-                        _tab.CloseAtLimit(pos, lastPrice - _slippage, pos.OpenVolume);
+                        if (lastPrice > lastCenterLine)
+                        {
+                            _tab.CloseAtLimit(pos, lastPrice + _slippage, pos.OpenVolume);
+                        }
+                    }
+                    else
+                    {
+                        if (lastPrice < _lastDownLine)
+                        {
+                            _tab.CloseAtLimit(pos, lastPrice - _slippage, pos.OpenVolume);
+                        }
                     }
                 }
                 else // If the direction of the position is sale
                 {
-                    if (lastPrice > _lastUpLine)
+                    if (ReverseLogic.ValueBool)
                     {
-                        _tab.CloseAtLimit(pos, lastPrice + _slippage, pos.OpenVolume);
+                        if (lastPrice < lastCenterLine)
+                        {
+                            _tab.CloseAtLimit(pos, lastPrice - _slippage, pos.OpenVolume);
+                        }
+                    }
+                    else
+                    {
+                        if (lastPrice > _lastUpLine)
+                        {
+                            _tab.CloseAtLimit(pos, lastPrice + _slippage, pos.OpenVolume);
+                        }
                     }
                 }
             }
