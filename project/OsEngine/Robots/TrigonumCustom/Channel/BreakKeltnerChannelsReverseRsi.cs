@@ -1,54 +1,58 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using OsEngine.Entity;
-using OsEngine.OsTrader.Panels;
-using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels.Attributes;
+using OsEngine.OsTrader.Panels.Tab;
+using OsEngine.OsTrader.Panels;
 
-namespace OsEngine.Robots.TrigonumCustom.Base
+namespace OsEngine.Robots.TrigonumCustom.Channel
 {
-
-    [Bot("BreakKeltnerChannelsRsi")]
-    public class BreakKeltnerChannelsRsi : BotPanel
+    [Bot("BreakKeltnerChannelsReverseRsi")]
+    public class BreakKeltnerChannelsReverseRsi : BotPanel
     {
-        public BotTabSimple _tab;
+        private BotTabSimple _tab;
 
-        public StrategyParameterString Regime;
-        public StrategyParameterDecimal VolumeOnPosition;
-        public StrategyParameterString VolumeRegime;
-        public StrategyParameterDecimal Slippage;
+        private StrategyParameterString Regime;
+        private StrategyParameterBool ReverseLogic;
+        private StrategyParameterDecimal VolumeOnPosition;
+        private StrategyParameterString VolumeRegime;
+        private StrategyParameterDecimal Slippage;
 
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
-        public Aindicator _keltnerChannels;
-        public StrategyParameterInt KeltnerPeriod;
-        public StrategyParameterDecimal AtrMultiplier;
+        private Aindicator _keltnerChannels;
+        private StrategyParameterInt KeltnerPeriod;
+        private StrategyParameterDecimal AtrMultiplier;
 
-        public Aindicator _sma;
-        public StrategyParameterInt SmaPeriod;
+        private Aindicator _sma;
+        private StrategyParameterInt SmaPeriod;
 
-        public Aindicator _smaFilter;
+        private Aindicator _smaFilter;
         private StrategyParameterInt SmaLengthFilter;
-        public StrategyParameterBool SmaPositionFilterIsOn;
-        public StrategyParameterBool SmaSlopeFilterIsOn;
+        private StrategyParameterBool SmaPositionFilterIsOn;
+        private StrategyParameterBool SmaSlopeFilterIsOn;
 
         // RSI
-        Aindicator _rsi;
-        public StrategyParameterInt _lengthRsi;
-        public StrategyParameterDecimal _oversoldRsi;
-        public StrategyParameterDecimal _overboughtRsi;
-        public StrategyParameterBool _drawRsiChannel;
-        public StrategyParameterBool _rsiFilterIsOn;
+        private Aindicator _rsi;
+        private StrategyParameterInt _lengthRsi;
+        private StrategyParameterDecimal _oversoldRsi;
+        private StrategyParameterDecimal _overboughtRsi;
+        private StrategyParameterBool _drawRsiChannel;
+        private StrategyParameterBool _rsiFilterIsOn;
         // RSI
 
-        public BreakKeltnerChannelsRsi(string name, StartProgram startProgram) : base(name, startProgram)
+        public BreakKeltnerChannelsReverseRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
             _tab = TabsSimple[0];
 
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" }, "Base");
+            ReverseLogic = CreateParameter("Reverse logic", true, "Base");
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
@@ -208,7 +212,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         public override string GetNameStrategyType()
         {
-            return "BreakKeltnerChannelsRsi";
+            return "BreakKeltnerChannelsReverseRsi";
         }
 
         public override void ShowIndividualSettingsDialog()
@@ -282,16 +286,39 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal _smaLast = _sma.DataSeries[0].Last;
 
             decimal _slippage = Slippage.ValueDecimal * _lastPrice / 100;
-            if (_lastPrice > _keltnerUpLast && _keltnerUpLast > _smaLast)
+
+            if (ReverseLogic.ValueBool)
             {
-                if (!BuySignalIsFiltered(candles))
-                    _tab.BuyAtLimit(GetVolume(), _lastPrice + _slippage);
+                if (_lastPrice < _keltnerDownLast && _keltnerDownLast < _smaLast)
+                {
+                    if (!BuySignalIsFiltered(candles))
+                        _tab.BuyAtLimit(GetVolume(), _lastPrice + _slippage);
+                }
+            }
+            else
+            {
+                if (_lastPrice > _keltnerUpLast && _keltnerUpLast > _smaLast)
+                {
+                    if (!BuySignalIsFiltered(candles))
+                        _tab.BuyAtLimit(GetVolume(), _lastPrice + _slippage);
+                }
             }
 
-            if (_lastPrice < _keltnerDownLast && _keltnerDownLast < _smaLast)
+            if (ReverseLogic.ValueBool)
             {
-                if (!SellSignalIsFiltered(candles))
-                    _tab.SellAtLimit(GetVolume(), _lastPrice - _slippage);
+                if (_lastPrice > _keltnerUpLast && _keltnerUpLast > _smaLast)
+                {
+                    if (!SellSignalIsFiltered(candles))
+                        _tab.SellAtLimit(GetVolume(), _lastPrice - _slippage);
+                }
+            }
+            else
+            {
+                if (_lastPrice < _keltnerDownLast && _keltnerDownLast < _smaLast)
+                {
+                    if (!SellSignalIsFiltered(candles))
+                        _tab.SellAtLimit(GetVolume(), _lastPrice - _slippage);
+                }
             }
         }
 
@@ -309,18 +336,32 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (position.Direction == Side.Buy)
             {
-                decimal activationPrice = _keltnerMiddleLine > _smaLast ? _keltnerMiddleLine : _smaLast;
-
+                decimal activationPrice = _keltnerMiddleLine > _smaLast ? _keltnerMiddleLine : _smaLast; // when logic is reversed it can be dangerous
                 decimal _slippage = Slippage.ValueDecimal * activationPrice / 100;
-                _tab.CloseAtStop(position, activationPrice, activationPrice - _slippage);
+
+                if (ReverseLogic.ValueBool)
+                {
+                    _tab.CloseAtProfit(position, activationPrice, activationPrice + _slippage);
+                }
+                else
+                {
+                    _tab.CloseAtStop(position, activationPrice, activationPrice - _slippage);
+                }
             }
 
             if (position.Direction == Side.Sell)
             {
-                decimal activationPrice = _keltnerMiddleLine < _smaLast ? _keltnerMiddleLine : _smaLast;
-
+                decimal activationPrice = _keltnerMiddleLine < _smaLast ? _keltnerMiddleLine : _smaLast; // same as when Side.Buy
                 decimal _slippage = Slippage.ValueDecimal * activationPrice / 100;
-                _tab.CloseAtStop(position, activationPrice, activationPrice + _slippage);
+
+                if (ReverseLogic.ValueBool)
+                {
+                    _tab.CloseAtProfit(position, activationPrice, activationPrice - _slippage);
+                }
+                else
+                {
+                    _tab.CloseAtStop(position, activationPrice, activationPrice + _slippage);
+                }
             }
         }
 
