@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using static Tinkoff.InvestApi.V1.GetTechAnalysisRequest.Types;
 
 namespace OsEngine.Indicators.TrigonumCustom
 {
@@ -15,10 +16,13 @@ namespace OsEngine.Indicators.TrigonumCustom
     public class NadarayaWatson : Aindicator
     {
         public IndicatorParameterInt nw_length;
+        public IndicatorParameterDecimal nw_multiplier;
         public IndicatorParameterString nw_kernel;
         public IndicatorParameterDecimal kernel_bandwidth;
 
-        public IndicatorDataSeries nw_central_line;
+        public IndicatorDataSeries nw_estimate;
+        public IndicatorDataSeries nw_up;
+        public IndicatorDataSeries nw_down;
 
         private delegate decimal KernelFunc(decimal normalized_distance);
         private KernelFunc Kernel = null;
@@ -27,7 +31,8 @@ namespace OsEngine.Indicators.TrigonumCustom
         {
             if (state == IndicatorState.Configure)
             {
-                nw_length = CreateParameterInt("Length", 15);
+                nw_length = CreateParameterInt("Length", 20);
+                nw_multiplier = CreateParameterDecimal("Multiplier", 2.0m);
                 nw_kernel = CreateParameterStringCollection("Nadaraya-Watson Kernel", "Gaussian", new List<string>() { "Gaussian",
                                                                                                                        "Epanechnikov",
                                                                                                                        "Uniform",
@@ -35,7 +40,9 @@ namespace OsEngine.Indicators.TrigonumCustom
                 
                 kernel_bandwidth = CreateParameterDecimal("Kernel Bandwidth", 0.5m);
 
-                nw_central_line = CreateSeries("NWE Line", Color.DarkSalmon, IndicatorChartPaintType.Line, true);
+                nw_estimate = CreateSeries("NWE Line", Color.DarkSalmon, IndicatorChartPaintType.Line, true);
+                nw_up = CreateSeries("NW Up Line", Color.LightSalmon, IndicatorChartPaintType.Line, true);
+                nw_down = CreateSeries("NW Down Line", Color.LightSalmon, IndicatorChartPaintType.Line, true);
 
                 switch (nw_kernel.ValueString)
                 {
@@ -69,18 +76,33 @@ namespace OsEngine.Indicators.TrigonumCustom
                 return;
             }
 
-            nw_central_line.Values[index] = NadarayaWatsonSmooth(source, index);
+            decimal nwe = NadarayaWatsonEstimate(source, index);
+            nw_estimate.Values[index] = nwe;
+
+            nw_up.Values[index] = nwe + StdDev(source, nw_estimate.Values, index) * nw_multiplier.ValueDecimal;
+            nw_down.Values[index] = nwe - StdDev(source, nw_estimate.Values, index) * nw_multiplier.ValueDecimal;
 
             return;
         }
 
-        private decimal NadarayaWatsonSmooth(List<Candle> source, int index)
+        private decimal NadarayaWatsonEstimate(List<Candle> source, int index)
         {
             if (nw_length.ValueInt < 1)
             {
                 return 0.0m;
             }
 
+            return Dispersion(source, index);
+        }
+
+        private decimal StdDev(List<Candle> source, List<decimal> nwe_src, int index)
+        {
+            return NthRoot(Dispersion(source, nwe_src, index), 2);
+        }
+
+        // TODO code dublicate
+        private decimal Dispersion(List<Candle> source, int index)
+        {
             decimal weighted_values_sum = 0.0m;
             decimal weights_sum = 0.0m;
             for (int i = 0; i < nw_length.ValueInt; ++i)
@@ -90,6 +112,23 @@ namespace OsEngine.Indicators.TrigonumCustom
 
                 weights_sum += weight;
                 weighted_values_sum += source[index - i].Close * weight;
+            }
+
+            return weighted_values_sum / weights_sum;
+        }
+
+        // TODO code dublicate
+        private decimal Dispersion(List<Candle> source, List<decimal> nwe_src, int index)
+        {
+            decimal weighted_values_sum = 0.0m;
+            decimal weights_sum = 0.0m;
+            for (int i = 0; i < nw_length.ValueInt; ++i)
+            {
+                decimal normalized_distance = NormalizedDistance(i, kernel_bandwidth.ValueDecimal);
+                decimal weight = Kernel(normalized_distance);
+
+                weights_sum += weight;
+                weighted_values_sum += DecimalPow(source[index - i].Close - nwe_src[index], 2) * weight;
             }
 
             return weighted_values_sum / weights_sum;
