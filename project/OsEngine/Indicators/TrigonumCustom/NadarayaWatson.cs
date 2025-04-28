@@ -114,6 +114,11 @@ namespace OsEngine.Indicators.TrigonumCustom
                 weighted_values_sum += source[index - i].Close * weight;
             }
 
+            if (weights_sum == 0)
+            {
+                return 1.0m;
+            }
+
             return weighted_values_sum / weights_sum;
         }
 
@@ -131,6 +136,11 @@ namespace OsEngine.Indicators.TrigonumCustom
                 weighted_values_sum += DecimalPow(source[index - i].Close - nwe_src[index], 2) * weight;
             }
 
+            if (weights_sum == 0)
+            {
+                return 1.0m;
+            }
+
             return weighted_values_sum / weights_sum;
         }
 
@@ -146,18 +156,30 @@ namespace OsEngine.Indicators.TrigonumCustom
         private decimal EpanechnikovKernel(decimal normalized_distance)
         {
             decimal result = 0.0m;
+            if (Math.Abs(normalized_distance) <= 1.0m)
+            {
+                result = (3 / 4) * (1 - DecimalPow(normalized_distance, 2.0m));
+            }
             return result;
         }
 
         private decimal UniformKernel(decimal normalized_distance)
         {
             decimal result = 0.0m;
+            if (Math.Abs(normalized_distance) <= 1.0m)
+            {
+                result = 1 / 2;
+            }
             return result;
         }
 
         private decimal TriangularKernel(decimal normalized_distance)
         {
             decimal result = 0.0m;
+            if (Math.Abs(normalized_distance) <= 1.0m)
+            {
+                result = 1 - Math.Abs(normalized_distance);
+            }
             return result;
         }
 
