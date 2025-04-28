@@ -456,6 +456,7 @@
     <Compile Include="Indicators\Samples\Sample1Blank.cs" />
     <Compile Include="Indicators\Samples\Sample2IndicatorParameters.cs" />
     <Compile Include="Indicators\Samples\Sample3IndicatorDataSeries.cs" />
+    <Compile Include="Indicators\TrigonumCustom\NadarayaWatson.cs" />
     <Compile Include="Logging\ServerTelegram.cs" />
     <Compile Include="Logging\ServerTelegramUi.xaml.cs">
       <DependentUpon>ServerTelegramUi.xaml</DependentUpon>
@@ -1356,14 +1357,19 @@
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseTwoSmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ParabolicSarClassicTradeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\BreakBollingerReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\BreakKeltnerChannelsReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\BreakNadarayaWatsonReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakZZChannelReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakLinearRegressionChannelReverseCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakZZChannelReverseCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Rsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Tm.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseHmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseTwoSmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingParabolicSarClassicTradeRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\BreakBBReverse.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\BollingerTrendVolatilityStagesFilter.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelScreenerOnIndexVolatility.cs" />
     <Compile Include="Robots\VolatilityStageRotationSamples\PriceChannelTrendAtrFilter.cs" />
