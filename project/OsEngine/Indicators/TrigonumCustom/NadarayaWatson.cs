@@ -6,15 +6,16 @@ using static Tinkoff.InvestApi.V1.GetTechAnalysisRequest.Types;
 
 namespace OsEngine.Indicators.TrigonumCustom
 {
-    public static class DecimalConsts
-    {
-        public const decimal Pi = 3.1415926535897932384626433833m;
-        public const decimal E = 2.7182818284590452353602874714m;
-    }
 
     [Indicator("NadarayaWatson")]
     public class NadarayaWatson : Aindicator
     {
+        public static class DecimalConsts
+        {
+            public const decimal Pi = 3.1415926535897932384626433833m;
+            public const decimal E = 2.7182818284590452353602874714m;
+        }
+
         public IndicatorParameterInt nw_length;
         public IndicatorParameterDecimal nw_multiplier;
         public IndicatorParameterString nw_kernel;
