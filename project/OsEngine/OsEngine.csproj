@@ -1276,7 +1276,6 @@
     <Compile Include="Robots\CounterTrend\RsiContrtrend.cs" />
     <Compile Include="Robots\Trend\SmaStochastic.cs" />
     <Compile Include="Robots\Trend\StrategyBillWilliams.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\BreakBBRsi.cs" />
     <Compile Include="Robots\CounterTrend\StrategyBollingerUi.xaml.cs">
       <DependentUpon>StrategyBollingerUi.xaml</DependentUpon>
     </Compile>
@@ -1351,6 +1350,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\CoinGlass\BreakHighLowByAdxRsiCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseHmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseMoveLongBotExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseSmaLRTm.cs" />
