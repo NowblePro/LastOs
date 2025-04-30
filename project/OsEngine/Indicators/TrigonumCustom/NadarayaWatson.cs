@@ -72,7 +72,7 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public override void OnProcess(List<Candle> source, int index)
         {
-            if (index <= nw_length.ValueInt)
+            if (index <= nw_length.ValueInt || nw_length.ValueInt < 1)
             {
                 return;
             }
