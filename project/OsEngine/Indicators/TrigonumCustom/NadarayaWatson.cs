@@ -98,7 +98,7 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         private decimal StdDev(List<Candle> source, List<decimal> nwe_src, int index)
         {
-            return NthRoot(Dispersion(source, nwe_src, index), 2);
+            return DecimalSqrt(Dispersion(source, nwe_src, index));
         }
 
         // TODO code dublicate
@@ -137,7 +137,7 @@ namespace OsEngine.Indicators.TrigonumCustom
                 weighted_values_sum += DecimalPow(source[index - i].Close - nwe_src[index], 2) * weight;
             }
 
-            if (weights_sum == 0)
+            if (weights_sum < 1e-20m)
             {
                 return 1.0m;
             }
@@ -148,7 +148,7 @@ namespace OsEngine.Indicators.TrigonumCustom
         private decimal GaussianKernel(decimal normalized_distance)
         {
             decimal power = 0 - ( DecimalPow(normalized_distance, 2) / 2 );
-            decimal denominator = NthRoot(2 * DecimalConsts.Pi, 2);
+            decimal denominator = DecimalSqrt(2 * DecimalConsts.Pi);
             decimal result = (1 / denominator) * DecimalPow(DecimalConsts.E, power);
 
             return result;
@@ -189,22 +189,17 @@ namespace OsEngine.Indicators.TrigonumCustom
             return distance / bandwidth;
         }
 
-        private static decimal NthRoot(decimal x, int n, decimal epsilon = 0.0000001M)
+        private static decimal DecimalSqrt(decimal x)
         {
-            if (n == 0)
-                throw new ArgumentException("Power can not be zero");
+            if (x < 0)
+                throw new ArgumentException("Квадратный корень из отрицательного числа не определён", nameof(x));
 
-            decimal current = (decimal)Math.Pow((double)x, 1.0 / n);
-            decimal previous;
+            double sqrt = Math.Sqrt((double)x);
 
-            do
-            {
-                previous = current;
-                current = ((n - 1) * previous + x / DecimalPow(previous, n - 1)) / n;
-            }
-            while (Math.Abs(previous - current) > epsilon);
+            if (double.IsNaN(sqrt))
+                throw new ArithmeticException("Результат вычисления — NaN (не число)");
 
-            return current;
+            return (decimal)sqrt;
         }
 
         private static decimal DecimalPow(decimal x, decimal power)
