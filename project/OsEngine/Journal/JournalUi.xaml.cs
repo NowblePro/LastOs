@@ -923,6 +923,13 @@ namespace OsEngine.Journal
                 nullLine.ChartArea = "ChartAreaProfit";
                 nullLine.ShadowOffset = 0;
 
+                Series smaLine = new Series("SeriesSmaLine");
+                smaLine.ChartType = SeriesChartType.Line;
+                smaLine.YAxisType = AxisType.Secondary;
+                smaLine.LabelForeColor = Color.HotPink;
+                smaLine.ChartArea = "ChartAreaProfit";
+                smaLine.BorderWidth = 4;
+                smaLine.ShadowOffset = 2;
 
                 decimal profitSum = 0;
                 decimal profitSumLong = 0;
@@ -956,6 +963,14 @@ namespace OsEngine.Journal
                         positionsAll[i].TimeCreate.ToString(_currentCulture);
 
                     profitBar.Points.AddXY(i, curProfit);
+
+                    // sma
+
+                    smaLine.Points.AddXY(i, profitSum / (i + 1));
+                    smaLine.Points[smaLine.Points.Count - 1].AxisLabel =
+                        positionsAll[i].TimeCreate.ToString(_currentCulture);
+
+                    // sma
 
                     if (curProfit > maxYValBars)
                     {
@@ -1022,6 +1037,10 @@ namespace OsEngine.Journal
                 _chartEquity.Series.Add(profitLong);
                 _chartEquity.Series.Add(profitShort);
                 _chartEquity.Series.Add(profitBar);
+
+                // sma
+                _chartEquity.Series.Add(smaLine);
+                // sma
 
                 nullLine.Points.AddXY(0, 0);
                 nullLine.Points.AddXY(positionsAll.Count, 0);

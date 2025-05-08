@@ -922,6 +922,13 @@ namespace OsEngine.Journal
                 nullLine.ChartArea = "ChartAreaProfit";
                 nullLine.ShadowOffset = 0;
 
+                Series smaLine = new Series("SeriesSmaLine");
+                smaLine.ChartType = SeriesChartType.Line;
+                smaLine.YAxisType = AxisType.Secondary;
+                smaLine.LabelForeColor = Color.HotPink;
+                smaLine.ChartArea = "ChartAreaProfit";
+                smaLine.BorderWidth = 4;
+                smaLine.ShadowOffset = 2;
 
                 decimal profitSum = 0;
                 decimal profitSumLong = 0;
@@ -934,6 +941,9 @@ namespace OsEngine.Journal
 
                 decimal curProfit = 0;
                 string chartType = ComboBoxChartType.SelectedItem.ToString();
+
+                decimal profitSumSma = 0;
+                Queue<decimal> profitSmaValues = new Queue<decimal>();
 
                 for (int i = 0; i < positionsAll.Count; i++)
                 {
@@ -976,6 +986,23 @@ namespace OsEngine.Journal
                         = positionsAll[i].SecurityName + "\n" +
                           curProfit.ToString() + "\n" +
                           positionsAll[i].NameBot;
+
+                    // sma
+                    if (profitSmaValues.Count < 19)
+                    {
+                        profitSmaValues.Enqueue(profitSum);
+                    }
+                    else
+                    {
+                        profitSmaValues.Enqueue(profitSum);
+
+                        decimal sum = profitSmaValues.Sum();
+
+                        smaLine.Points.AddXY(i, sum / 20);
+
+                        profitSmaValues.Dequeue();
+                    }
+                    // sma
 
                     if (positionsAll[i].Direction == Side.Buy)
                     {
@@ -1039,6 +1066,10 @@ namespace OsEngine.Journal
                 _chartEquity.Series.Add(profitShort);
                 _chartEquity.Series.Add(profitBar);
                 _chartEquity.Series.Add(nullLine);
+
+                // sma
+                _chartEquity.Series.Add(smaLine);
+                // sma
 
                 if (minYval != decimal.MaxValue &&
                     maxYVal != decimal.MinValue &&
