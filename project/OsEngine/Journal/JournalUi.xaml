@@ -20,10 +20,14 @@
                         <WindowsFormsHost x:Name="HostEquity" Foreground="Black" Margin="10,5,5,47" />
                         <Rectangle Fill="White"  HorizontalAlignment="Left" Height="25" Margin="70,0,0,10" Stroke="Black" VerticalAlignment="Bottom" Width="38"/>
                         <Label Name="Label1" Content="Total profit" HorizontalAlignment="Left" Margin="123,0,0,10" VerticalAlignment="Bottom"/>
-                        <Rectangle Fill="DeepSkyBlue"  HorizontalAlignment="Left" Height="25" Margin="336,0,0,10" Stroke="Black" VerticalAlignment="Bottom" Width="38"/>
-                        <Label Name="Label2" Content="Long" HorizontalAlignment="Left" Margin="389,0,0,10" VerticalAlignment="Bottom"/>
-                        <Rectangle Fill="DarkOrange"  HorizontalAlignment="Left" Height="25" Margin="604,0,0,10" Stroke="Black" VerticalAlignment="Bottom" Width="38"/>
-                        <Label Name="Label3" Content="Short" HorizontalAlignment="Left" Margin="657,0,0,10" VerticalAlignment="Bottom"/>
+                        <Rectangle Fill="DeepSkyBlue"  HorizontalAlignment="Left" Height="25" Margin="244,0,0,9" Stroke="Black" VerticalAlignment="Bottom" Width="38"/>
+                        <Label Name="Label2" Content="Long" HorizontalAlignment="Left" Margin="295,0,0,9" VerticalAlignment="Bottom"/>
+                        <Rectangle Fill="DarkOrange"  HorizontalAlignment="Left" Height="25" Margin="385,0,0,10" Stroke="Black" VerticalAlignment="Bottom" Width="38"/>
+                        <Label Name="Label3" Content="Short" HorizontalAlignment="Left" Margin="435,0,0,9" VerticalAlignment="Bottom"/>
+
+                        <Rectangle Fill="HotPink"  HorizontalAlignment="Left" Height="25" Margin="527,0,0,9" Stroke="Black" VerticalAlignment="Bottom" Width="38"/>
+                        <Label Name="Label4" Content="Sma" HorizontalAlignment="Left" Margin="575,0,0,9" VerticalAlignment="Bottom"/>
+
                         <ComboBox Name="ComboBoxChartType" HorizontalAlignment="Left" Margin="920,0,0,10" VerticalAlignment="Bottom" Width="140"/>
                         <Label Name="LabelEqutyCharteType" Content="Chart Type" HorizontalAlignment="Left" Margin="817,0,0,10" VerticalAlignment="Bottom"/>
                     </Grid>

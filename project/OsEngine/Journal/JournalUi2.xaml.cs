@@ -942,8 +942,9 @@ namespace OsEngine.Journal
                 decimal curProfit = 0;
                 string chartType = ComboBoxChartType.SelectedItem.ToString();
 
-                decimal profitSumSma = 0;
+                // sma
                 Queue<decimal> profitSmaValues = new Queue<decimal>();
+                // sma
 
                 for (int i = 0; i < positionsAll.Count; i++)
                 {

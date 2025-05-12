@@ -942,6 +942,10 @@ namespace OsEngine.Journal
 
                 string chartType = ComboBoxChartType.SelectedItem.ToString();
 
+                // sma
+                Queue<decimal> profitSmaValues = new Queue<decimal>();
+                // sma
+
                 for (int i = 0; i < positionsAll.Count; i++)
                 {
 
@@ -965,11 +969,20 @@ namespace OsEngine.Journal
                     profitBar.Points.AddXY(i, curProfit);
 
                     // sma
+                    if (profitSmaValues.Count < 19)
+                    {
+                        profitSmaValues.Enqueue(profitSum);
+                    }
+                    else
+                    {
+                        profitSmaValues.Enqueue(profitSum);
 
-                    smaLine.Points.AddXY(i, profitSum / (i + 1));
-                    smaLine.Points[smaLine.Points.Count - 1].AxisLabel =
-                        positionsAll[i].TimeCreate.ToString(_currentCulture);
+                        decimal sum = profitSmaValues.Sum();
 
+                        smaLine.Points.AddXY(i, sum / 20);
+
+                        profitSmaValues.Dequeue();
+                    }
                     // sma
 
                     if (curProfit > maxYValBars)
