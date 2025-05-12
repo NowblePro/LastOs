@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using OsEngine.Entity;
 
 namespace OsEngine.Journal.Internal
@@ -77,7 +78,8 @@ namespace OsEngine.Journal.Internal
             report.Add(deals.Length.ToString(new CultureInfo("ru-RU")));// Number of transactions
             report.Add(GetAverageTimeOnPoses(deals));
             report.Add(GetSharpRatio(deals,7).ToString());
-            
+            report.Add(GetSmaDeviation(deals).ToString());
+
             report.Add(Math.Round(GetProfitFactor(deals), 6).ToString(new CultureInfo("ru-RU")));   //Profit Factor
             report.Add(Math.Round(GetRecovery(deals), 6).ToString(new CultureInfo("ru-RU")));   // Recovery
             report.Add("");
@@ -417,6 +419,48 @@ namespace OsEngine.Journal.Internal
             decimal sharp = (ahpr - (1 + rfr)) / sd;
 
             return Math.Round(sharp,4);
+        }
+
+        public static decimal GetSmaDeviation(Position[] deals)
+        {
+            if (deals == null ||
+                deals.Length < 20)
+            {
+                return 0;
+            }
+
+            decimal sma_max_dev = 0;
+
+            decimal profitSum = 0;
+            Queue<decimal> profitSmaValues = new Queue<decimal>();
+
+            for (int i = 0; i < deals.Length; i++)
+            {
+                profitSum += deals[i].ProfitPortfolioPunkt;
+
+                if (profitSmaValues.Count < 19)
+                {
+                    profitSmaValues.Enqueue(profitSum);
+                }
+                else
+                {
+                    profitSmaValues.Enqueue(profitSum);
+
+                    decimal sum = profitSmaValues.Sum();
+                    decimal sma = sum / 20;
+
+                    decimal dev = profitSum - sma;
+
+                    if (sma_max_dev > dev)
+                    {
+                        sma_max_dev = dev;
+                    }
+
+                    profitSmaValues.Dequeue();
+                }
+            }
+
+            return Math.Round(sma_max_dev, 4);
         }
 
         private static decimal GetValueStandardDeviation(List<decimal> candles)

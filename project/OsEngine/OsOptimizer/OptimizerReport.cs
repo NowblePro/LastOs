@@ -128,6 +128,13 @@ namespace OsEngine.OsOptimizer
                     return rep2.SharpRatio.CompareTo(rep1.SharpRatio);
                 });
             }
+            else if (sortType == SortBotsType.SmaDeviation)
+            {
+                reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
+                {
+                    return rep2.SmaDeviation.CompareTo(rep1.SmaDeviation);
+                });
+            }
         }
 
     }
@@ -314,6 +321,7 @@ namespace OsEngine.OsOptimizer
                 tab.Recovery = PositionStatisticGenerator.GetRecovery(posesArray);
                 tab.PayOffRatio = PositionStatisticGenerator.GetPayOffRatio(posesArray);
                 tab.SharpRatio = PositionStatisticGenerator.GetSharpRatio(posesArray,7);
+                tab.SmaDeviation = PositionStatisticGenerator.GetSmaDeviation(posesArray);
                 tab.TabType = bot.TabsSimple[i].GetType().Name;
             }
 
@@ -337,6 +345,7 @@ namespace OsEngine.OsOptimizer
                 Recovery = TabsReports[0].Recovery;
                 PayOffRatio = TabsReports[0].PayOffRatio;
                 SharpRatio = TabsReports[0].SharpRatio;
+                SmaDeviation = TabsReports[0].SmaDeviation;
             }
             else
             {
@@ -354,6 +363,7 @@ namespace OsEngine.OsOptimizer
                 Recovery = PositionStatisticGenerator.GetRecovery(posesArray);
                 PayOffRatio = PositionStatisticGenerator.GetPayOffRatio(posesArray);
                 SharpRatio = PositionStatisticGenerator.GetSharpRatio(posesArray, 7);
+                SmaDeviation = PositionStatisticGenerator.GetSmaDeviation(posesArray);
             }
         }
 
@@ -377,6 +387,8 @@ namespace OsEngine.OsOptimizer
 
         public decimal SharpRatio;
 
+        public decimal SmaDeviation;
+
         public string GetSaveString()
         {
             string result = "";
@@ -393,6 +405,7 @@ namespace OsEngine.OsOptimizer
             result += Recovery + "@";
             result += TotalProfitPersent + "@";
             result += SharpRatio + "@";
+            result += SmaDeviation + "@";
 
             // сохраняем параметры в строковом представлении
             string param = "";
@@ -432,15 +445,16 @@ namespace OsEngine.OsOptimizer
             Recovery = Convert.ToDecimal(str[8]);
             TotalProfitPersent = Convert.ToDecimal(str[9]);
             SharpRatio = Convert.ToDecimal(str[10]);
+            SmaDeviation = Convert.ToDecimal(str[11]);
 
-            string [] param = str[11].Split('&');
+            string [] param = str[12].Split('&');
 
             for(int i = 0;i < param.Length-1;i++)
             {
                 StrategyParameters.Add(param[i]);
             }
 
-            string [] reportTabs = str[12].Split('&');
+            string [] reportTabs = str[13].Split('&');
 
             for(int i = 0;i < reportTabs.Length-1;i++)
             {
@@ -477,6 +491,8 @@ namespace OsEngine.OsOptimizer
 
         public decimal SharpRatio;
 
+        public decimal SmaDeviation;
+
         public string GetSaveString()
         {
             string result = "";
@@ -493,6 +509,7 @@ namespace OsEngine.OsOptimizer
             result += Recovery + "*";
             result += TotalProfitPersent + "*";
             result += SharpRatio + "*";
+            result += SmaDeviation + "*";
 
             return result;
         }
@@ -519,6 +536,7 @@ namespace OsEngine.OsOptimizer
             }
 
             SharpRatio = save[11].ToDecimal();
+            SmaDeviation = save[12].ToDecimal();
         }
     }
 }

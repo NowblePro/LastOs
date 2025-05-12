@@ -923,6 +923,13 @@ namespace OsEngine.Journal
                 nullLine.ChartArea = "ChartAreaProfit";
                 nullLine.ShadowOffset = 0;
 
+                Series smaLine = new Series("SeriesSmaLine");
+                smaLine.ChartType = SeriesChartType.Line;
+                smaLine.YAxisType = AxisType.Secondary;
+                smaLine.LabelForeColor = Color.HotPink;
+                smaLine.ChartArea = "ChartAreaProfit";
+                smaLine.BorderWidth = 4;
+                smaLine.ShadowOffset = 2;
 
                 decimal profitSum = 0;
                 decimal profitSumLong = 0;
@@ -934,6 +941,10 @@ namespace OsEngine.Journal
                 decimal minYValBars = decimal.MaxValue;
 
                 string chartType = ComboBoxChartType.SelectedItem.ToString();
+
+                // sma
+                Queue<decimal> profitSmaValues = new Queue<decimal>();
+                // sma
 
                 for (int i = 0; i < positionsAll.Count; i++)
                 {
@@ -956,6 +967,23 @@ namespace OsEngine.Journal
                         positionsAll[i].TimeCreate.ToString(_currentCulture);
 
                     profitBar.Points.AddXY(i, curProfit);
+
+                    // sma
+                    if (profitSmaValues.Count < 19)
+                    {
+                        profitSmaValues.Enqueue(profitSum);
+                    }
+                    else
+                    {
+                        profitSmaValues.Enqueue(profitSum);
+
+                        decimal sum = profitSmaValues.Sum();
+
+                        smaLine.Points.AddXY(i, sum / 20);
+
+                        profitSmaValues.Dequeue();
+                    }
+                    // sma
 
                     if (curProfit > maxYValBars)
                     {
@@ -1022,6 +1050,10 @@ namespace OsEngine.Journal
                 _chartEquity.Series.Add(profitLong);
                 _chartEquity.Series.Add(profitShort);
                 _chartEquity.Series.Add(profitBar);
+
+                // sma
+                _chartEquity.Series.Add(smaLine);
+                // sma
 
                 nullLine.Points.AddXY(0, 0);
                 nullLine.Points.AddXY(positionsAll.Count, 0);

@@ -19,8 +19,12 @@
                         <Label Name="Label2" Content="Long" HorizontalAlignment="Left" Margin="268,0,0,10" VerticalAlignment="Bottom"/>
                         <Rectangle Fill="DarkOrange"  HorizontalAlignment="Left" Height="25" Margin="476,0,0,10" Stroke="Black" VerticalAlignment="Bottom" Width="38"/>
                         <Label Name="Label3" Content="Short" HorizontalAlignment="Left" Margin="423,0,0,10" VerticalAlignment="Bottom"/>
-                        <Label Name="LabelEqutyCharteType" Content="Chart Type" HorizontalAlignment="Left" Margin="588,0,0,10" VerticalAlignment="Bottom"/>
-                        <ComboBox Name="ComboBoxChartType" HorizontalAlignment="Left" Margin="670,0,0,10" VerticalAlignment="Bottom" Width="140"/>
+                      
+                        <Rectangle Fill="HotPink"  HorizontalAlignment="Left" Height="25" Margin="620,0,0,10" Stroke="Black" VerticalAlignment="Bottom" Width="38"/>
+                        <Label Name="Label4" Content="Sma" HorizontalAlignment="Left" Margin="570,0,0,10" VerticalAlignment="Bottom"/>
+                      
+                        <Label Name="LabelEqutyCharteType" Content="Chart Type" HorizontalAlignment="Left" Margin="788,0,0,10" VerticalAlignment="Bottom"/>
+                        <ComboBox Name="ComboBoxChartType" HorizontalAlignment="Left" Margin="860,0,0,10" VerticalAlignment="Bottom" Width="140"/>
                         <Button x:Name="ButtonSave" Content="Save excel" Margin="0,0,71,12" VerticalAlignment="Bottom" Click="ButtonSave_Click" HorizontalAlignment="Right" Width="132"/>
                     </Grid>
                 </TabItem>

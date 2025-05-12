@@ -39,6 +39,7 @@ namespace OsEngine.OsOptimizer
             boxTypeSort.Items.Add(SortBotsType.PayOffRatio.ToString());
             boxTypeSort.Items.Add(SortBotsType.Recovery.ToString());
             boxTypeSort.Items.Add(SortBotsType.SharpRatio.ToString());
+            boxTypeSort.Items.Add(SortBotsType.SmaDeviation.ToString());
 
             boxTypeSort.SelectedItem = SortBotsType.TotalProfit.ToString();
             boxTypeSort.SelectionChanged += _gridResults_SelectionChanged;
@@ -129,6 +130,10 @@ namespace OsEngine.OsOptimizer
             else if (columnSelect == 8)
             {
                 _sortBotsType = SortBotsType.SharpRatio;
+            }
+            else if (columnSelect == 9)
+            {
+                _sortBotsType = SortBotsType.SmaDeviation;
             }
             else
             {
@@ -286,6 +291,13 @@ namespace OsEngine.OsOptimizer
             column8.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column8);
 
+            DataGridViewColumn column9 = new DataGridViewColumn();
+            column9.CellTemplate = cell0;
+            column9.HeaderText = "SMA(20) Deviation";
+            column9.ReadOnly = false;
+            column9.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            _gridStepsOfOptimization.Columns.Add(column9);
+
             _gridStepsOfOptimization.Rows.Add(null, null);
 
             _hostStepsOfOptimization.Child = _gridStepsOfOptimization;
@@ -417,6 +429,10 @@ namespace OsEngine.OsOptimizer
                     DataGridViewTextBoxCell cell10 = new DataGridViewTextBoxCell();
                     cell10.Value = reportToPaint.SharpRatio.ToString();
                     row.Cells.Add(cell10);
+
+                    DataGridViewTextBoxCell cell11 = new DataGridViewTextBoxCell();
+                    cell11.Value = reportToPaint.SmaDeviation.ToString();
+                    row.Cells.Add(cell11);
 
                     _gridStepsOfOptimization.Rows.Add(row);
                 }

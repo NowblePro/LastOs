@@ -2780,6 +2780,13 @@ namespace OsEngine.OsOptimizer
             column9.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridResults.Columns.Add(column9);
 
+            DataGridViewColumn column10 = new DataGridViewColumn();
+            column10.CellTemplate = cell0;
+            column10.HeaderText = "SMA(20) Deviation";
+            column10.ReadOnly = false;
+            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            _gridResults.Columns.Add(column10);
+
             DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
             column11.CellTemplate = new DataGridViewButtonCell();
             //column11.HeaderText = OsLocalization.Optimizer.Message40;
@@ -2863,6 +2870,12 @@ namespace OsEngine.OsOptimizer
             if (_sortBotsType == SortBotsType.SharpRatio)
             {
                 _gridResults.Columns[10].HeaderText += " vvv";
+            }
+
+            _gridResults.Columns[11].HeaderText = "SMA(20) Deviation";
+            if (_sortBotsType == SortBotsType.SmaDeviation)
+            {
+                _gridResults.Columns[11].HeaderText += " vvv";
             }
 
         }
@@ -2980,13 +2993,17 @@ namespace OsEngine.OsOptimizer
                 cell11.Value = report.SharpRatio;
                 row.Cells.Add(cell11);
 
-                DataGridViewButtonCell cell12 = new DataGridViewButtonCell();
-                cell12.Value = OsLocalization.Optimizer.Message40;
+                DataGridViewTextBoxCell cell12 = new DataGridViewTextBoxCell();
+                cell12.Value = report.SmaDeviation;
                 row.Cells.Add(cell12);
 
                 DataGridViewButtonCell cell13 = new DataGridViewButtonCell();
-                cell13.Value = OsLocalization.Optimizer.Message42;
+                cell13.Value = OsLocalization.Optimizer.Message40;
                 row.Cells.Add(cell13);
+
+                DataGridViewButtonCell cell14 = new DataGridViewButtonCell();
+                cell14.Value = OsLocalization.Optimizer.Message42;
+                row.Cells.Add(cell14);
 
                 rows.Add(row);
             }
@@ -3051,6 +3068,10 @@ namespace OsEngine.OsOptimizer
             cell11.Value = report.SharpRatio;
             row.Cells.Add(cell11);
 
+            DataGridViewTextBoxCell cell12 = new DataGridViewTextBoxCell();
+            cell12.Value = report.SmaDeviation;
+            row.Cells.Add(cell12);
+
             try
             {
                 row.Cells.Add(null);
@@ -3076,12 +3097,12 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            if (e.ColumnIndex == 11)
+            if (e.ColumnIndex == 12)
             {
                 ShowBotChartDialog(e);
             }
 
-            if (e.ColumnIndex == 12)
+            if (e.ColumnIndex == 13)
             {
                 ShowParamsDialog(e);
             }
@@ -3197,6 +3218,10 @@ namespace OsEngine.OsOptimizer
             {
                 _sortBotsType = SortBotsType.SharpRatio;
             }
+            else if (columnSelect == 11)
+            {
+                _sortBotsType = SortBotsType.SmaDeviation;
+            }
             else
             {
                 return;
@@ -3280,6 +3305,8 @@ namespace OsEngine.OsOptimizer
 
         Recovery,
 
-        SharpRatio
+        SharpRatio,
+
+        SmaDeviation
     }
 }
