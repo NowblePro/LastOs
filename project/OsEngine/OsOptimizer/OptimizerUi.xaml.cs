@@ -2801,6 +2801,13 @@ namespace OsEngine.OsOptimizer
             column12.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
             _gridResults.Columns.Add(column12);
 
+            DataGridViewButtonColumn column13 = new DataGridViewButtonColumn();
+            column13.CellTemplate = new DataGridViewButtonCell();
+            //column11.HeaderText = OsLocalization.Optimizer.Message44;
+            column13.ReadOnly = true;
+            column13.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            _gridResults.Columns.Add(column13);
+
             _gridResults.Rows.Add(null, null);
 
             WindowsFormsHostResults.Child = _gridResults;
@@ -3004,6 +3011,10 @@ namespace OsEngine.OsOptimizer
                 DataGridViewButtonCell cell14 = new DataGridViewButtonCell();
                 cell14.Value = OsLocalization.Optimizer.Message42;
                 row.Cells.Add(cell14);
+
+                DataGridViewButtonCell cell15 = new DataGridViewButtonCell();
+                cell15.Value = OsLocalization.Optimizer.Message44;
+                row.Cells.Add(cell15);
 
                 rows.Add(row);
             }
