@@ -769,10 +769,6 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            //fazeReport.Faze.TypeFaze = OptimizerFazeType.InSample;
-            //fazeReport.Faze.TimeStart = _master.TimeStart;
-            //fazeReport.Faze.TimeEnd = _master.TimeEnd;
-
             BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], true);
 
             if (bot == null)
