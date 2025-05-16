@@ -46,7 +46,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" }, "Base");
             ReverseLogic = CreateParameter("Reverse logic", true, "Base");
-            VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency" }, "Base");
+            VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
 
@@ -461,6 +461,10 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             else if (VolumeRegime.ValueString == "Number of contracts")
             {
                 volume = VolumeOnPosition.ValueDecimal;
+            }
+            else // if (VolumeRegime.ValueString == "% of the total portfolio")
+            {
+                volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
             // If the robot is running in the tester
