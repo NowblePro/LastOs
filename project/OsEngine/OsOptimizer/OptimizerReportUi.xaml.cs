@@ -752,7 +752,7 @@ namespace OsEngine.OsOptimizer
             if (_gridFazesEnd.CurrentCell == null ||
               _gridFazesEnd.CurrentCell.RowIndex == 0)
             {
-                fazeReport = _reports[0];
+                fazeReport = new OptimazerFazeReport(_reports[0]);
             }
             else
             {
@@ -761,7 +761,7 @@ namespace OsEngine.OsOptimizer
                     return;
                 }
 
-                fazeReport = _reports[_gridFazesEnd.CurrentCell.RowIndex];
+                fazeReport = new OptimazerFazeReport(_reports[_gridFazesEnd.CurrentCell.RowIndex]);
             }
 
             if (e.RowIndex >= fazeReport.Reports.Count)

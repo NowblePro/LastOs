@@ -12,6 +12,14 @@ namespace OsEngine.OsOptimizer
 
         public List<OptimizerReport> Reports = new List<OptimizerReport>();
 
+        public OptimazerFazeReport() {}
+
+        public OptimazerFazeReport(OptimazerFazeReport other)
+        {
+            Faze = new OptimizerFaze(other.Faze);
+            Reports = new List<OptimizerReport>(other.Reports);
+        }
+
         public void Load(BotPanel bot)
         {
             OptimizerReport report = new OptimizerReport(bot.Parameters);

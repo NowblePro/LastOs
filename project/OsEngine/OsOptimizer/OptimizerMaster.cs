@@ -17,6 +17,7 @@ using OsEngine.OsTrader.Panels.Tab.Internal;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Globalization;
+using System.Windows.Media;
 
 namespace OsEngine.OsOptimizer
 {
@@ -1527,6 +1528,16 @@ namespace OsEngine.OsOptimizer
     /// </summary>
     public class OptimizerFaze
     {
+        public OptimizerFaze() {}
+
+        public OptimizerFaze(OptimizerFaze other)
+        {
+            TypeFaze = other.TypeFaze;
+            _timeStart = other.TimeStart;
+            _timeEnd = other.TimeEnd;
+            Days = other.Days;
+        }
+
         /// <summary>
         /// type of phase. What we do
         /// тип фазы. Что делаем

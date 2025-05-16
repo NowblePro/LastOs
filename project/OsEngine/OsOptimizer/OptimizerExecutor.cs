@@ -30,6 +30,7 @@ namespace OsEngine.OsOptimizer
             _master = master;
 
             _asyncBotFactory = new AsyncBotFactory();
+            _botFactory = new BotFactory();
             _asyncBotFactory.LogMessageEvent += SendLogMessage;
         }
 
@@ -40,6 +41,7 @@ namespace OsEngine.OsOptimizer
         private OptimizerMaster _master;
 
         private AsyncBotFactory _asyncBotFactory;
+        private BotFactory _botFactory;
 
         /// <summary>
         /// start the optimization process
