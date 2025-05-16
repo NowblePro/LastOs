@@ -368,6 +368,13 @@ namespace OsEngine.OsOptimizer
             column12.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
             _gridResults.Columns.Add(column12);
 
+            DataGridViewButtonColumn column13 = new DataGridViewButtonColumn();
+            column13.CellTemplate = new DataGridViewButtonCell();
+            //column11.HeaderText = OsLocalization.Optimizer.Message44;
+            column13.ReadOnly = true;
+            column13.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            _gridResults.Columns.Add(column13);
+
             _gridResults.Rows.Add(null, null);
 
             WindowsFormsHostResults.Child = _gridResults;
@@ -573,6 +580,10 @@ namespace OsEngine.OsOptimizer
                 cell14.Value = OsLocalization.Optimizer.Message42;
                 row.Cells.Add(cell14);
 
+                DataGridViewButtonCell cell15 = new DataGridViewButtonCell();
+                cell15.Value = OsLocalization.Optimizer.Message44;
+                row.Cells.Add(cell15);
+
                 rows.Add(row);
             }
 
@@ -665,6 +676,11 @@ namespace OsEngine.OsOptimizer
             {
                 ShowParamsDialog(e);
             }
+
+            if (e.ColumnIndex == 14)
+            {
+                ShowBotFullChartDialog(e);
+            }
         }
 
         private void ShowBotChartDialog(DataGridViewCellMouseEventArgs e)
@@ -727,6 +743,43 @@ namespace OsEngine.OsOptimizer
 
             OptimizerBotParametersSimpleUi ui = new OptimizerBotParametersSimpleUi(fazeReport.Reports[e.RowIndex], fazeReport, _master.StrategyName);
             ui.Show();
+        }
+
+        private void ShowBotFullChartDialog(DataGridViewCellMouseEventArgs e)
+        {
+            OptimazerFazeReport fazeReport;
+
+            if (_gridFazesEnd.CurrentCell == null ||
+              _gridFazesEnd.CurrentCell.RowIndex == 0)
+            {
+                fazeReport = new OptimazerFazeReport(_reports[0]);
+            }
+            else
+            {
+                if (_gridFazesEnd.CurrentCell.RowIndex > _reports.Count)
+                {
+                    return;
+                }
+
+                fazeReport = new OptimazerFazeReport(_reports[_gridFazesEnd.CurrentCell.RowIndex]);
+            }
+
+            if (e.RowIndex >= fazeReport.Reports.Count)
+            {
+                return;
+            }
+
+            fazeReport.Faze.TimeStart = _master.TimeStart;
+            fazeReport.Faze.TimeEnd = _master.TimeEnd;
+
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex]);
+
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.ShowChartDialog();
         }
 
         /// <summary>
