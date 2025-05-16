@@ -768,7 +768,7 @@ namespace OsEngine.OsOptimizer
 
         private List<BotPanel> _botsInTest = new List<BotPanel>();
 
-        private OptimizerServer CreateNewServer(OptimazerFazeReport report,bool neadToDelete, bool fullTime = false)
+        private OptimizerServer CreateNewServer(OptimazerFazeReport report,bool neadToDelete)
         {
             // 1. Create a new server for optimization. And one thread respectively
             // 1. создаём новый сервер для оптимизации. И один поток соответственно
@@ -792,19 +792,8 @@ namespace OsEngine.OsOptimizer
             for (int i = 0; _master.TabsSimpleNamesAndTimeFrames != null
                             && i < _master.TabsSimpleNamesAndTimeFrames.Count; i++)
             {
-                Security secToStart =
-                    _master.Storage.Securities.Find(s => s.Name == _master.TabsSimpleNamesAndTimeFrames[i].NameSecurity);
-
-                if (fullTime)
-                {
-                    server.GetDataToSecurity(secToStart, _master.TabsSimpleNamesAndTimeFrames[i].TimeFrame, _master.TimeStart,
-                    _master.TimeEnd);
-                }
-                else
-                {
-                    server.GetDataToSecurity(secToStart, _master.TabsSimpleNamesAndTimeFrames[i].TimeFrame, report.Faze.TimeStart,
-                    report.Faze.TimeEnd);
-                }
+                Security secToStart = _master.Storage.Securities.Find(s => s.Name == _master.TabsSimpleNamesAndTimeFrames[i].NameSecurity);
+                server.GetDataToSecurity(secToStart, _master.TabsSimpleNamesAndTimeFrames[i].TimeFrame, report.Faze.TimeStart, report.Faze.TimeEnd);
             }
 
             for (int i = 0; _master.TabsIndexNamesAndTimeFrames != null &&
@@ -816,19 +805,8 @@ namespace OsEngine.OsOptimizer
                 {
                     string curSec = secNames[i2];
 
-                    Security secToStart =
-                        _master.Storage.Securities.Find(s => s.Name == curSec);
-
-                    if (fullTime)
-                    {
-                        server.GetDataToSecurity(secToStart, _master.TabsSimpleNamesAndTimeFrames[i].TimeFrame, _master.TimeStart,
-                        _master.TimeEnd);
-                    }
-                    else
-                    {
-                        server.GetDataToSecurity(secToStart, _master.TabsSimpleNamesAndTimeFrames[i].TimeFrame, report.Faze.TimeStart,
-                        report.Faze.TimeEnd);
-                    }
+                    Security secToStart = _master.Storage.Securities.Find(s => s.Name == curSec);
+                    server.GetDataToSecurity(secToStart, _master.TabsSimpleNamesAndTimeFrames[i].TimeFrame, report.Faze.TimeStart, report.Faze.TimeEnd);
                 }
             }
 
@@ -1058,7 +1036,7 @@ namespace OsEngine.OsOptimizer
         // единичный тест
 
         public BotPanel TestBot(OptimazerFazeReport reportFaze,
-            OptimizerReport reportToBot, StartProgram startProgram, AwaitObject awaitObj, bool fullTime = false)
+            OptimizerReport reportToBot, StartProgram startProgram, AwaitObject awaitObj)
         {
             if (_primeThreadWorker != null)
             {
@@ -1072,7 +1050,7 @@ namespace OsEngine.OsOptimizer
             List<string> names = new List<string> { botName };
             _asyncBotFactory.CreateNewBots(names, _master.StrategyName, _master.IsScript, startProgram);
 
-            OptimizerServer server = CreateNewServer(reportFaze,false, fullTime);
+            OptimizerServer server = CreateNewServer(reportFaze,false);
 
             List<IIStrategyParameter> parametrs = reportToBot.GetParameters();
 

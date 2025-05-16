@@ -3117,6 +3117,10 @@ namespace OsEngine.OsOptimizer
             {
                 ShowParamsDialog(e);
             }
+            if (e.ColumnIndex == 14)
+            {
+                ShowBotFullChartDialog(e);
+            }
         }
 
         private void ShowBotChartDialog(DataGridViewCellMouseEventArgs e)
@@ -3174,6 +3178,43 @@ namespace OsEngine.OsOptimizer
 
             OptimizerBotParametersSimpleUi ui = new OptimizerBotParametersSimpleUi(fazeReport.Reports[e.RowIndex], fazeReport, _master.StrategyName);
             ui.Show();
+        }
+
+        private void ShowBotFullChartDialog(DataGridViewCellMouseEventArgs e)
+        {
+            OptimazerFazeReport fazeReport;
+
+            if (_gridFazesEnd.CurrentCell == null ||
+              _gridFazesEnd.CurrentCell.RowIndex == 0)
+            {
+                fazeReport = new OptimazerFazeReport(_reports[0]);
+            }
+            else
+            {
+                if (_gridFazesEnd.CurrentCell.RowIndex > _reports.Count)
+                {
+                    return;
+                }
+
+                fazeReport = new OptimazerFazeReport(_reports[_gridFazesEnd.CurrentCell.RowIndex]);
+            }
+
+            if (e.RowIndex >= fazeReport.Reports.Count)
+            {
+                return;
+            }
+
+            fazeReport.Faze.TimeStart = _master.TimeStart;
+            fazeReport.Faze.TimeEnd = _master.TimeEnd;
+
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex]);
+
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.ShowChartDialog();
         }
 
         /// <summary>

@@ -769,7 +769,10 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], true);
+            fazeReport.Faze.TimeStart = _master.TimeStart;
+            fazeReport.Faze.TimeEnd = _master.TimeEnd;
+
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex]);
 
             if (bot == null)
             {
