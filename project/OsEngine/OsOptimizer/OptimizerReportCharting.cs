@@ -12,6 +12,7 @@ using OsEngine.Entity;
 using OsEngine.Language;
 using OsEngine.Logging;
 using OsEngine.OsOptimizer.OptEntity;
+using OsEngine.OsTrader.Panels;
 
 namespace OsEngine.OsOptimizer
 {
@@ -298,6 +299,12 @@ namespace OsEngine.OsOptimizer
             column9.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column9);
 
+            DataGridViewButtonColumn column10 = new DataGridViewButtonColumn();
+            column10.CellTemplate = new DataGridViewButtonCell();
+            column10.ReadOnly = true;
+            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            _gridStepsOfOptimization.Columns.Add(column10);
+
             _gridStepsOfOptimization.Rows.Add(null, null);
 
             _hostStepsOfOptimization.Child = _gridStepsOfOptimization;
@@ -434,12 +441,50 @@ namespace OsEngine.OsOptimizer
                     cell11.Value = reportToPaint.SmaDeviation.ToString();
                     row.Cells.Add(cell11);
 
+                    DataGridViewButtonCell cell12 = new DataGridViewButtonCell();
+                    cell12.Value = OsLocalization.Optimizer.Message44;
+                    row.Cells.Add(cell12);
+
                     _gridStepsOfOptimization.Rows.Add(row);
                 }
+
+                _gridStepsOfOptimization.CellMouseClick += _gridResults_CellMouseClick;
+
             }
             catch (Exception ex) 
             {
                 SendLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        // Bot Charting
+        void _gridResults_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.RowIndex < 0)
+            {
+                return;
+            }
+
+            if (e.ColumnIndex == 11)
+            {
+                ShowBotFullChartDialog(e);
+            }
+        }
+
+        private void ShowBotFullChartDialog(DataGridViewCellMouseEventArgs e)
+        {
+            OptimazerFazeReport fazeReport;
+
+            if (_reports.Count == 0)
+            {
+                return;
+            }
+
+            //_reports;
+
+            if (ChartButtonClickEvent != null)
+            {
+                ChartButtonClickEvent(0);
             }
         }
 
@@ -1381,6 +1426,8 @@ namespace OsEngine.OsOptimizer
         /// событие: новое сообщение для лога
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
+
+        public event Action<int> ChartButtonClickEvent; // TODO
 
     }
 }

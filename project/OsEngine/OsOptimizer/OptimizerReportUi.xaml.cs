@@ -43,6 +43,8 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
+            //_resultsCharting.ChartButtonClickEvent +=
+
             CreateTableFazes();
             CreateTableResults();
 
