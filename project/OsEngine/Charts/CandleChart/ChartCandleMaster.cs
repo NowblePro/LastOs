@@ -348,6 +348,10 @@ namespace OsEngine.Charts.CandleChart
                         {
                             CreateIndicator(new AtrChannel(indicator[1], Convert.ToBoolean(indicator[3])), indicator[2]);
                         }
+                        else if (indicator[0] == "FisherTransformIndicator")
+                        {
+                            CreateIndicator(new FisherTransformIndicator(indicator[1], Convert.ToBoolean(indicator[3])), indicator[2]);
+                        }
                         else 
                         {
                             NewLogMessage("Chart can`t load indicator with name: " + indicator[0], LogMessageType.Error);
