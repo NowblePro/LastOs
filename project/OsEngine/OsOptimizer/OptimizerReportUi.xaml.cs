@@ -43,7 +43,7 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
-            //_resultsCharting.ChartButtonClickEvent +=
+            _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
 
             CreateTableFazes();
             CreateTableResults();
@@ -782,6 +782,11 @@ namespace OsEngine.OsOptimizer
             }
 
             bot.ShowChartDialog();
+        }
+
+        private void ShowBotFullChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)
+        {
+            _master.SendLogMessage("showing chart", LogMessageType.NoName);
         }
 
         /// <summary>
