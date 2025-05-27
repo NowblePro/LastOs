@@ -473,19 +473,21 @@ namespace OsEngine.OsOptimizer
 
         private void ShowBotFullChartDialog(DataGridViewCellMouseEventArgs e)
         {
-            OptimazerFazeReport fazeReport = new OptimazerFazeReport();
-            OptimizerReport report = new OptimizerReport();
-
-            if (_reports.Count == 0)
+            if (_reports.Count < e.RowIndex + 1)
             {
                 return;
             }
 
-            //_reports;
+            OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
+
+            if (fazeReport.Reports.Count < 1)
+            {
+                return;
+            }
 
             if (ChartButtonClickEvent != null)
             {
-                ChartButtonClickEvent(fazeReport, report);
+                ChartButtonClickEvent(fazeReport);
             }
         }
 
@@ -1428,7 +1430,7 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
 
-        public event Action<OptimazerFazeReport, OptimizerReport> ChartButtonClickEvent; // TODO
+        public event Action<OptimazerFazeReport> ChartButtonClickEvent;
 
     }
 }

@@ -784,9 +784,19 @@ namespace OsEngine.OsOptimizer
             bot.ShowChartDialog();
         }
 
-        private void ShowBotFullChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)
+        private void ShowBotFullChartDialog(OptimazerFazeReport fazeReport)
         {
-            _master.SendLogMessage("showing chart", LogMessageType.NoName);
+            fazeReport.Faze.TimeStart = _master.TimeStart;
+            fazeReport.Faze.TimeEnd = _master.TimeEnd;
+
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[0]);
+
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.ShowChartDialog();
         }
 
         /// <summary>
