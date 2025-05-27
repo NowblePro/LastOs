@@ -784,12 +784,12 @@ namespace OsEngine.OsOptimizer
             bot.ShowChartDialog();
         }
 
-        private void ShowBotFullChartDialog(OptimazerFazeReport fazeReport)
+        private void ShowBotFullChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)
         {
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[0]);
+            BotPanel bot = _master.TestBot(fazeReport, report);
 
             if (bot == null)
             {
