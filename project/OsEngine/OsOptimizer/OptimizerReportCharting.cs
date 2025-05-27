@@ -252,58 +252,65 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column3 = new DataGridViewColumn();
             column3.CellTemplate = cell0;
-            column3.HeaderText = "Parameters";
+            column3.HeaderText = "Best bot in period";
             column3.ReadOnly = false;
             column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column3);
 
             DataGridViewColumn column4 = new DataGridViewColumn();
             column4.CellTemplate = cell0;
-            column4.HeaderText = "Bot results in OutOfSample";
+            column4.HeaderText = "Parameters";
             column4.ReadOnly = false;
             column4.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column4);
 
             DataGridViewColumn column5 = new DataGridViewColumn();
             column5.CellTemplate = cell0;
-            column5.HeaderText = "Profit";
+            column5.HeaderText = "Bot results in OutOfSample";
             column5.ReadOnly = false;
             column5.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column5);
 
             DataGridViewColumn column6 = new DataGridViewColumn();
             column6.CellTemplate = cell0;
-            column6.HeaderText = "Average profit %";
+            column6.HeaderText = "Profit";
             column6.ReadOnly = false;
             column6.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column6);
 
             DataGridViewColumn column7 = new DataGridViewColumn();
             column7.CellTemplate = cell0;
-            column7.HeaderText = "Position count";
+            column7.HeaderText = "Average profit %";
             column7.ReadOnly = false;
             column7.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column7);
 
             DataGridViewColumn column8 = new DataGridViewColumn();
             column8.CellTemplate = cell0;
-            column8.HeaderText = "Sharp ratio";
+            column8.HeaderText = "Position count";
             column8.ReadOnly = false;
             column8.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column8);
 
             DataGridViewColumn column9 = new DataGridViewColumn();
             column9.CellTemplate = cell0;
-            column9.HeaderText = "SMA(20) Deviation";
+            column9.HeaderText = "Sharp ratio";
             column9.ReadOnly = false;
             column9.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column9);
 
-            DataGridViewButtonColumn column10 = new DataGridViewButtonColumn();
-            column10.CellTemplate = new DataGridViewButtonCell();
-            column10.ReadOnly = true;
-            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            DataGridViewColumn column10 = new DataGridViewColumn();
+            column10.CellTemplate = cell0;
+            column10.HeaderText = "SMA(20) Deviation";
+            column10.ReadOnly = false;
+            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridStepsOfOptimization.Columns.Add(column10);
+
+            DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
+            column11.CellTemplate = new DataGridViewButtonCell();
+            column11.ReadOnly = true;
+            column11.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            _gridStepsOfOptimization.Columns.Add(column11);
 
             _gridStepsOfOptimization.Rows.Add(null, null);
 
@@ -398,10 +405,14 @@ namespace OsEngine.OsOptimizer
                     row.Cells.Add(cell4);
 
                     DataGridViewTextBoxCell cell5 = new DataGridViewTextBoxCell();
-                    cell5.Value = reportToPaint.GetParamsToDataTable();
+                    cell5.Value = curReport.Reports[0].BotName.Replace(" InSample", "").Replace(" OutOfSample", "").Replace("OpT", "");       
                     row.Cells.Add(cell5);
 
                     DataGridViewTextBoxCell cell6 = new DataGridViewTextBoxCell();
+                    cell6.Value = reportToPaint.GetParamsToDataTable();
+                    row.Cells.Add(cell6);
+
+                    DataGridViewTextBoxCell cell7 = new DataGridViewTextBoxCell();
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
                     {
@@ -414,36 +425,36 @@ namespace OsEngine.OsOptimizer
 
                             if (curName == botName)
                             {
-                                cell6.Value = (i2 + 1).ToString();
+                                cell7.Value = (i2 + 1).ToString();
                                 break;
                             }
                         }
                     }
-                    row.Cells.Add(cell6);
-
-                    DataGridViewTextBoxCell cell7 = new DataGridViewTextBoxCell();
-                    cell7.Value = Math.Round(reportToPaint.TotalProfit, 4).ToStringWithNoEndZero();
                     row.Cells.Add(cell7);
 
                     DataGridViewTextBoxCell cell8 = new DataGridViewTextBoxCell();
-                    cell8.Value = Math.Round(reportToPaint.AverageProfitPercentOneContract, 4).ToStringWithNoEndZero();
+                    cell8.Value = Math.Round(reportToPaint.TotalProfit, 4).ToStringWithNoEndZero();
                     row.Cells.Add(cell8);
 
                     DataGridViewTextBoxCell cell9 = new DataGridViewTextBoxCell();
-                    cell9.Value = reportToPaint.PositionsCount.ToString();
+                    cell9.Value = Math.Round(reportToPaint.AverageProfitPercentOneContract, 4).ToStringWithNoEndZero();
                     row.Cells.Add(cell9);
 
                     DataGridViewTextBoxCell cell10 = new DataGridViewTextBoxCell();
-                    cell10.Value = reportToPaint.SharpRatio.ToString();
+                    cell10.Value = reportToPaint.PositionsCount.ToString();
                     row.Cells.Add(cell10);
 
                     DataGridViewTextBoxCell cell11 = new DataGridViewTextBoxCell();
-                    cell11.Value = reportToPaint.SmaDeviation.ToString();
+                    cell11.Value = reportToPaint.SharpRatio.ToString();
                     row.Cells.Add(cell11);
 
-                    DataGridViewButtonCell cell12 = new DataGridViewButtonCell();
-                    cell12.Value = OsLocalization.Optimizer.Message44;
+                    DataGridViewTextBoxCell cell12 = new DataGridViewTextBoxCell();
+                    cell12.Value = reportToPaint.SmaDeviation.ToString();
                     row.Cells.Add(cell12);
+
+                    DataGridViewButtonCell cell13 = new DataGridViewButtonCell();
+                    cell13.Value = OsLocalization.Optimizer.Message44;
+                    row.Cells.Add(cell13);
 
                     _gridStepsOfOptimization.Rows.Add(row);
                 }
@@ -465,7 +476,7 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            if (e.ColumnIndex == 11)
+            if (e.ColumnIndex == 12)
             {
                 ShowBotFullChartDialog(e);
             }
@@ -480,14 +491,16 @@ namespace OsEngine.OsOptimizer
 
             OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
 
-            if (fazeReport.Reports.Count < 1)
+            if (fazeReport.Reports.Count < _sortBotNumber+1)
             {
                 return;
             }
 
+            OptimizerReport report = fazeReport.Reports[_sortBotNumber];
+
             if (ChartButtonClickEvent != null)
             {
-                ChartButtonClickEvent(fazeReport);
+                ChartButtonClickEvent(fazeReport, report);
             }
         }
 
@@ -1430,7 +1443,7 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
 
-        public event Action<OptimazerFazeReport> ChartButtonClickEvent;
+        public event Action<OptimazerFazeReport, OptimizerReport> ChartButtonClickEvent;
 
     }
 }
