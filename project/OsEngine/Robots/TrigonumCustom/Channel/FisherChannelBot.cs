@@ -66,6 +66,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private List<Candle> currentLastCandles = new List<Candle>();
 
         private decimal lastSar;
+        private decimal lastPrice;
 
         public FisherChannelBot(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -73,12 +74,12 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             tab = TabsSimple[0];
             slippage = CreateParameter("Slippage", 0.1m, 0.1m, 5, 0.1m, "Base");
 
-            topLine = CreateParameter("TopLine", 1m, 0.5m, 2m, 0.1m, "Base");
-            bottomLine = CreateParameter("BottomLine", -1m, -2m, -0.5m, 0.1m, "Base");
+            topLine = CreateParameter("TopLine", 0.5m, 0.5m, 2m, 0.1m, "Base");
+            bottomLine = CreateParameter("BottomLine", -0.5m, -2m, -0.5m, 0.1m, "Base");
 
             period = CreateParameter("Period", 20, 2, 50, 1, "Base");
-            fisherDelta = CreateParameter("FisherDelta", 0.2m, 0.1m, 3, 0.05m, "Base");
-            priceDelta = CreateParameter("PriceDelta", 1m, 1m, 200, 1m, "Base");
+            fisherDelta = CreateParameter("FisherDelta", 0.1m, 0.1m, 3, 0.05m, "Base");
+            priceDelta = CreateParameter("PriceDelta", 50m, 1m, 200, 1m, "Base");
 
             fisherPeriod = CreateParameter("FisherPeriod", 10, 2, 50, 1, "Fisher");
             smaPeriod = CreateParameter("SMAPeriod", 3, 2, 50, 1, "Fisher");
@@ -89,9 +90,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             TrailingStopIsOn = CreateParameter("Is Trailing stop On", false, "Trailing Stop");
             TrailingStopTypeOrder = CreateParameter("Type order", OrderPriceType.Market.ToString(), new[] { OrderPriceType.Market.ToString(), OrderPriceType.Limit.ToString() }, "Trailing Stop");
             PointOrPercent = CreateParameter("Choise Points or Percent", "Points", new[] { "Points", "Percent" }, "Trailing Stop");
-            ChangeStepStop = CreateParameter("Stop level change step", 1, 1, 10000, 001m, "Trailing Stop");
-            MinDist = CreateParameter("Minimum distance to price", 1, 1, 10000, 0.01m, "Trailing Stop");
-            QuantityStepsPrices = CreateParameter("Quantity steps prices for limit order", 0m, 0, 10000, 1, "Trailing Stop");
+            ChangeStepStop = CreateParameter("Stop level change step", 100, 1, 10000, 001m, "Trailing Stop");
+            MinDist = CreateParameter("Minimum distance to price", 500, 1, 10000, 0.01m, "Trailing Stop");
+            QuantityStepsPrices = CreateParameter("Quantity steps prices for limit order", 1000m, 0, 10000, 1, "Trailing Stop");
             #endregion
 
             ps = IndicatorsFactory.CreateIndicatorByName(nameClass: "ParabolicSAR", name: name + "Parabolic", canDelete: false);
@@ -156,6 +157,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         {
             if (candles.Count < 2 || fisher.FisherPeriod > candles.Count || period.ValueInt > candles.Count) return;
             lastSar = ps.DataSeries[0].Last;
+            lastPrice = candles[candles.Count - 1].Close;
 
             if (lastSar == 0)
             {
@@ -167,9 +169,11 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             IEnumerable<decimal> fisherSma = fisher.ValuesToChart[1].Skip(skip);
             List<Position> positions = tab.PositionsOpenAll;
 
+            UpdateExtremums(fisherValues, fisherSma, lastCandles);
+
             if (positions.Count == 0)
             {
-                CheckEnterPositionSignals(fisherValues, fisherSma, lastCandles);
+                CheckEnterPosition();
             }
             else
             {
@@ -178,11 +182,12 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         }
 
         /// <summary>
-        /// Проверить сигналы входа в позицию <see cref="period"/>
+        /// Обновить максимумы и минимумы за последние <see cref="period"/> свечей
         /// </summary>
         /// <param name="fisherValues"></param>
         /// <param name="fisherSma"></param>
-        private void CheckEnterPositionSignals(IEnumerable<decimal> fisherValues, IEnumerable<decimal> fisherSma, IEnumerable<Candle> candles)
+        /// <param name="candles"></param>
+        private void UpdateExtremums(IEnumerable<decimal> fisherValues, IEnumerable<decimal> fisherSma, IEnumerable<Candle> candles)
         {
             currentFisher.Clear();
             currentFisher.AddRange(fisherValues);
@@ -257,6 +262,21 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 }
             }
 
+            for (int i = 0; i < currentMinimums.Count; i++)
+            {
+                if (currentMinimums[i] != 0)
+                {
+                    currentMinPrices.Add(currentLastCandles[i].Low);
+                }
+                else
+                {
+                    currentMinPrices.Add(0);
+                }
+            }
+        }
+
+        private void CheckEnterPosition()
+        {
             //Оставить 2 последних максимума
             int lastExtremumsCount = 2;
             int maxCount = currentMaximums.Where(i => i != 0).Count();
@@ -274,18 +294,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                     decimal slippage = this.slippage.ValueDecimal * lastSar / 100;
                     tab.SellAtStopCancel();
                     tab.SellAtStop(GetVolume(), lastSar - slippage, lastSar, StopActivateType.LowerOrEqual, 1);
-                }
-            }
-
-            for (int i = 0; i < currentMinimums.Count; i++)
-            {
-                if (currentMinimums[i] != 0)
-                {
-                    currentMinPrices.Add(currentLastCandles[i].Low);
-                }
-                else
-                {
-                    currentMinPrices.Add(0);
+                    currentMinimums.Clear();
                 }
             }
 
@@ -303,6 +312,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                     decimal slippage = this.slippage.ValueDecimal * lastSar / 100;
                     tab.BuyAtStopCancel();
                     tab.BuyAtStop(GetVolume(), lastSar + slippage, lastSar, StopActivateType.HigherOrEqual, 1);
+                    currentMinimums.Clear();
                 }
             }
         }
@@ -326,17 +336,16 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                     continue;
                 }
 
-                decimal priceLine = lastSar;
                 decimal priceOrder = lastSar;
                 decimal _slippage = slippage.ValueDecimal * priceOrder / 100;
 
-                if (pos.Direction == Side.Buy)
+                if (pos.Direction == Side.Buy && currentMaximums.LastOrDefault() != 0)
                 {
-                    tab.CloseAtStop(pos, priceLine, priceOrder - _slippage);
+                    tab.CloseAtStop(pos, lastPrice, lastPrice - _slippage);
                 }
-                else if (pos.Direction == Side.Sell)
+                else if (pos.Direction == Side.Sell && currentMinimums.LastOrDefault() != 0)
                 {
-                    tab.CloseAtStop(pos, priceLine, priceOrder + _slippage);
+                    tab.CloseAtStop(pos, lastPrice, lastPrice + _slippage);
                 }
             }
         }
