@@ -104,18 +104,20 @@ namespace OsEngine.Charts.CandleChart.Indicators
             this.candles = candles;
             // Новые свечи, в первый расчёт == period, потом обычно 1 штука
             IEnumerable<Candle> newCandles = candles.Skip(values.Count);
-            // Последние 10 свечей (по умолчанию)
-            IEnumerable<Candle> lastCandles = candles.AsEnumerable().Reverse().Take(period);
+            // Последние 10 свечей (period свечей)
+            IEnumerable<Candle> lastCandles = candles.Skip(candles.Count - period);
 
             decimal min = lastCandles.Min(c => c.Low);
             decimal max = lastCandles.Max(c => c.High);
 
             foreach (Candle candle in newCandles)
             {
-                decimal close = candle.Close;
+                decimal price = candle.Center;
                 decimal prevV1 = v1.Any() ? v1.Last() : 0;
                 decimal prevFish = values.Any() ? values.Last() : 0;
-                decimal currV1 = ((close - min) / (max - min)) - 0.5m + 0.5m * prevV1;
+                decimal currV1 = ((price - min) / (max - min)) - 0.5m + 0.5m * prevV1;
+                if (currV1 > 0.999m) currV1 = 0.999m;
+                if (currV1 < -0.999m) currV1 = -0.999m;
                 v1.Add(currV1);
                 decimal currFish = 0.25m * (decimal)Math.Log((double)((1m + currV1) / (1m - currV1))) + 0.5m * prevFish;
                 values.Add(currFish);
