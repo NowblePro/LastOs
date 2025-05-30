@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using OsEngine.Entity;
@@ -14,11 +15,12 @@ namespace OsEngine.Charts.CandleChart.Indicators
     {
         /// <summary> Результат </summary>
         private List<decimal> values = new List<decimal>();
+        /// <summary>  </summary>
+        private List<decimal> valuesOffset = new List<decimal>();
+
         /// <summary> Промежуточные значения </summary>
         private List<decimal> v1 = new List<decimal>();
-        private List<Candle> candles;
         /// <summary> SMA для значений индикатора Фишера </summary>
-        private MovingAverage fma = new MovingAverage(false);
         private int period;
         private int smaPeriod;
 
@@ -28,7 +30,6 @@ namespace OsEngine.Charts.CandleChart.Indicators
             CanDelete = canDelete;
             period = 10;
             smaPeriod = 3;
-            fma.Length = smaPeriod;
             PaintOn = true;
         }
 
@@ -56,7 +57,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
 
         public List<Color> Colors => new List<Color>() { Color.Red, Color.Blue };
 
-        public List<List<decimal>> ValuesToChart => new List<List<decimal>>() { values, fma.Values ?? new List<decimal>() };
+        public List<List<decimal>> ValuesToChart => new List<List<decimal>>() { values, valuesOffset };
 
         public bool CanDelete { get; set; }
         public string NameSeries { get; set; }
@@ -70,6 +71,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         {
             values.Clear();
             v1.Clear();
+            valuesOffset.Clear();
         }
 
         public void Delete()
@@ -101,7 +103,6 @@ namespace OsEngine.Charts.CandleChart.Indicators
             if (candles.Count < period) return;
             int count = candles.Count - values.Count;
             if (count < 1) return;
-            this.candles = candles;
             // Новые свечи, в первый расчёт == period, потом обычно 1 штука
             IEnumerable<Candle> newCandles = candles.Skip(values.Count);
             // Последние 10 свечей (period свечей)
@@ -112,17 +113,19 @@ namespace OsEngine.Charts.CandleChart.Indicators
 
             foreach (Candle candle in newCandles)
             {
-                decimal price = candle.Center;
-                decimal prevV1 = v1.Any() ? v1.Last() : 0;
+                decimal prevValue1 = v1.Any() ? v1.Last() : 0;
                 decimal prevFish = values.Any() ? values.Last() : 0;
-                decimal currV1 = ((price - min) / (max - min)) - 0.5m + 0.5m * prevV1;
-                if (currV1 > 0.999m) currV1 = 0.999m;
-                if (currV1 < -0.999m) currV1 = -0.999m;
-                v1.Add(currV1);
-                decimal currFish = 0.25m * (decimal)Math.Log((double)((1m + currV1) / (1m - currV1))) + 0.5m * prevFish;
-                values.Add(currFish);
+                decimal price = candle.Center;
+
+                decimal value = 0.66m * ((price - min) / (max - min) - 0.5m) + 0.67m * prevValue1;
+                v1.Add(value);
+                if (value > 0.999m) value = 0.999m;
+                if (value < -0.999m) value = -0.999m;
+                decimal fish = 0.5m * (decimal)(Math.Log((double)((1m + value) / (1m - value)))) + 0.5m * prevFish;
+
+                values.Add(fish);
+                valuesOffset.Add(prevFish);
             }
-            fma.Process(values);
         }
 
         public void Save()
