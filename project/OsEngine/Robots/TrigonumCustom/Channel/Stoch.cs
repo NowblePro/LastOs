@@ -28,6 +28,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         #endregion
 
         #region Parameters
+        private StrategyParameterInt Length;
         private StrategyParameterInt periodK;
         private StrategyParameterInt periodD;
         private StrategyParameterDecimal overbought;
@@ -80,7 +81,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             #region Stochastic parameters init
             regimeString = CreateParameter("Regime", StochasticRegime.Off.ToString(), Enum.GetNames(typeof(StochasticRegime)), "Stochastic");
-            periodK = CreateParameter("PeriodK", 14, 2, 50, 1, "Stochastic");
+            Length = CreateParameter("Length", 14, 2, 50, 1, "Stochastic");
+            periodK = CreateParameter("PeriodK", 3, 2, 50, 1, "Stochastic");
             periodD = CreateParameter("PeriodD", 3, 2, 50, 1, "Stochastic");
             overbought = CreateParameter("Overbuy", 20m, 1, 40, 1, "Stochastic");
             oversold = CreateParameter("OverSell", 80m, 60, 99, 1, "Stochastic");
@@ -131,8 +133,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void SetStochasticParameters()
         {
-            stochasticOscillator.P1 = periodK.ValueInt;
-            stochasticOscillator.P2 = periodD.ValueInt;
+            stochasticOscillator.P1 = Length.ValueInt;
+            stochasticOscillator.P2 = periodK.ValueInt;
             stochasticOscillator.P3 = periodD.ValueInt;
 
             if (Enum.TryParse(regimeString.ValueString, out StochasticRegime regime))
