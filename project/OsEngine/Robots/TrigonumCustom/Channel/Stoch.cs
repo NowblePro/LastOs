@@ -84,8 +84,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             Length = CreateParameter("Length", 14, 2, 50, 1, "Stochastic");
             periodK = CreateParameter("PeriodK", 3, 2, 50, 1, "Stochastic");
             periodD = CreateParameter("PeriodD", 3, 2, 50, 1, "Stochastic");
-            overbought = CreateParameter("Overbuy", 20m, 1, 40, 1, "Stochastic");
-            oversold = CreateParameter("OverSell", 80m, 60, 99, 1, "Stochastic");
+            overbought = CreateParameter("OverSell", 20m, 1, 40, 1, "Stochastic");
+            oversold = CreateParameter("OverBuy", 80m, 60, 99, 1, "Stochastic");
             #endregion
 
             #region Indicators init
