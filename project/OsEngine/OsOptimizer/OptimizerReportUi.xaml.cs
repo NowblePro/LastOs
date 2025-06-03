@@ -43,6 +43,8 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
+            _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
+
             CreateTableFazes();
             CreateTableResults();
 
@@ -773,6 +775,21 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
             BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex]);
+
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.ShowChartDialog();
+        }
+
+        private void ShowBotFullChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)
+        {
+            fazeReport.Faze.TimeStart = _master.TimeStart;
+            fazeReport.Faze.TimeEnd = _master.TimeEnd;
+
+            BotPanel bot = _master.TestBot(fazeReport, report);
 
             if (bot == null)
             {
