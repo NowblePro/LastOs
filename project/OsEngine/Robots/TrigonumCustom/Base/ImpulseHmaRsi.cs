@@ -9,7 +9,6 @@ using OsEngine.OsTrader.Panels.Attributes;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
-
     [Bot("ImpulseHmaRsi")]
     public class ImpulseHmaRsi : BotPanel
     {
@@ -19,6 +18,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         public StrategyParameterDecimal VolumeOnPosition;
         public StrategyParameterString VolumeRegime;
         public StrategyParameterDecimal Slippage;
+        public StrategyParameterString _orderType;
 
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
@@ -59,6 +59,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+            _orderType = CreateParameter("Order type", "Stop", new[] { "Stop", "Market"}, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -295,160 +296,175 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (positions.Count == 0 && Regime.ValueString != "OnlyClosePosition")
             {// enter logic
-                if (!BuySignalIsFiltered(candles))
+                if (_orderType.ValueString == "Stop")
                 {
-                    _slippage = Slippage.ValueDecimal * (lastHma + lastAtr * _multiplerAtr.ValueDecimal) / 100;
-                    _tab.BuyAtStop(GetVolume(), (lastHma + lastAtr * _multiplerAtr.ValueDecimal) + _slippage, lastHma + lastAtr * _multiplerAtr.ValueDecimal, StopActivateType.HigherOrEqual, 1);
-                }
-                if (!SellSignalIsFiltered(candles))
-                {
-                    _slippage = Slippage.ValueDecimal * (lastHma - lastAtr * _multiplerAtr.ValueDecimal) / 100;
-                    _tab.SellAtStop(GetVolume(), (lastHma - lastAtr * _multiplerAtr.ValueDecimal) - _slippage, lastHma - lastAtr * _multiplerAtr.ValueDecimal, StopActivateType.LowerOrEqyal, 1);
-                }
+                    if (!BuySignalIsFiltered(candles))
+                    {
+                        _slippage = Slippage.ValueDecimal * (lastHma + lastAtr * _multiplerAtr.ValueDecimal) / 100;
+                        _tab.BuyAtStop(GetVolume(), (lastHma + lastAtr * _multiplerAtr.ValueDecimal) + _slippage, lastHma + lastAtr * _multiplerAtr.ValueDecimal, StopActivateType.HigherOrEqual, 1);
+                    }
+                    if (!SellSignalIsFiltered(candles))
+                    {
+                        _slippage = Slippage.ValueDecimal * (lastHma - lastAtr * _multiplerAtr.ValueDecimal) / 100;
+                        _tab.SellAtStop(GetVolume(), (lastHma - lastAtr * _multiplerAtr.ValueDecimal) - _slippage, lastHma - lastAtr * _multiplerAtr.ValueDecimal, StopActivateType.LowerOrEqyal, 1);
+                    }
 
-                if (BuySignalIsFiltered(candles))
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                if (SellSignalIsFiltered(candles))
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    if (BuySignalIsFiltered(candles))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    if (SellSignalIsFiltered(candles))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                // the younger HMA grows more slowly than the older HMA
-                if (lastPrice < lastSma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                // the younger HMA decreases more slowly than the older HMA
-                if (lastPrice > lastSma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    // the younger HMA grows more slowly than the older HMA
+                    if (lastPrice < lastSma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    // the younger HMA decreases more slowly than the older HMA
+                    if (lastPrice > lastSma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                // the younger HMA grows more slowly than the older HMA
-                if (lastPrice < lastSma && Math.Abs(prewHma - prew2Hma) < Math.Abs(prewHma2 - prew2Hma2))
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                // the younger HMA decreases more slowly than the older HMA
-                if (lastPrice > lastSma && Math.Abs(prewHma - prew2Hma) < Math.Abs(prewHma2 - prew2Hma2))
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    // the younger HMA grows more slowly than the older HMA
+                    if (lastPrice < lastSma && Math.Abs(prewHma - prew2Hma) < Math.Abs(prewHma2 - prew2Hma2))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    // the younger HMA decreases more slowly than the older HMA
+                    if (lastPrice > lastSma && Math.Abs(prewHma - prew2Hma) < Math.Abs(prewHma2 - prew2Hma2))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                // SMA decreases and picks up speed
-                if (prewSma > lastSma && Math.Abs(prewSma - lastSma) > Math.Abs(prew2Sma - prewSma))
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                // SMA is growing and picking up speed
-                if (prewSma < lastSma && Math.Abs(lastSma - prewSma) > Math.Abs(prewSma - prew2Sma))
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    // SMA decreases and picks up speed
+                    if (prewSma > lastSma && Math.Abs(prewSma - lastSma) > Math.Abs(prew2Sma - prewSma))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    // SMA is growing and picking up speed
+                    if (prewSma < lastSma && Math.Abs(lastSma - prewSma) > Math.Abs(prewSma - prew2Sma))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                // closing below the fast HMA, which 'grows' worse than the slow HMA
-                if (lastPrice < lastHma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                // closing above the fast HMA, which 'grows' worse than the slow HMA
-                if (lastPrice > lastHma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    // closing below the fast HMA, which 'grows' worse than the slow HMA
+                    if (lastPrice < lastHma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    // closing above the fast HMA, which 'grows' worse than the slow HMA
+                    if (lastPrice > lastHma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                // Junior HMA is below SMA and slowing down
-                if (lastHma < lastSma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
-                {
-                    _tab.BuyAtStopCancel();
-                }
+                    // Junior HMA is below SMA and slowing down
+                    if (lastHma < lastSma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
 
-                // Junior HMA is above SMA and slowing down
-                if (lastHma > lastSma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    // Junior HMA is above SMA and slowing down
+                    if (lastHma > lastSma && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                //
-                if (lastHma < prewHma)
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                if (lastHma > prewHma)
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    //
+                    if (lastHma < prewHma)
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    if (lastHma > prewHma)
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                if (lastFHma < lastHma)
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                if (lastFHma > lastHma)
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    if (lastFHma < lastHma)
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    if (lastFHma > lastHma)
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                if (lastHma2 < lastSma)
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                if (lastHma2 > lastSma)
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    if (lastHma2 < lastSma)
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    if (lastHma2 > lastSma)
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                if (lastHma2 < prewHma2)
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                if (lastHma2 > prewHma2)
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    if (lastHma2 < prewHma2)
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    if (lastHma2 > prewHma2)
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                if (lastFHma2 < lastHma2)
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                if (lastFHma2 > lastHma2)
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    if (lastFHma2 < lastHma2)
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    if (lastFHma2 > lastHma2)
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                // The junior HMA is lower than the senior HMA and the junior HMA is slower than the SMA
-                if (lastHma < lastHma2 && Math.Abs(lastHma - prewHma) < Math.Abs(lastSma - prewSma))
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                // The junior HMA is higher than the senior HMA and the junior HMA is slower than the SMA
-                if (lastHma > lastHma2 && Math.Abs(lastHma - prewHma) < Math.Abs(lastSma - prewSma))
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    // The junior HMA is lower than the senior HMA and the junior HMA is slower than the SMA
+                    if (lastHma < lastHma2 && Math.Abs(lastHma - prewHma) < Math.Abs(lastSma - prewSma))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    // The junior HMA is higher than the senior HMA and the junior HMA is slower than the SMA
+                    if (lastHma > lastHma2 && Math.Abs(lastHma - prewHma) < Math.Abs(lastSma - prewSma))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                // The junior HMA is lower than the senior HMA and the senior HMA is slower than the SMA
-                if (lastHma < lastHma2 && Math.Abs(lastHma2 - prewHma2) < Math.Abs(lastSma - prewSma))
-                {
-                    _tab.BuyAtStopCancel();
-                }
-                // The junior HMA is higher than the senior HMA and the senior HMA is slower than the SMA
-                if (lastHma > lastHma2 && Math.Abs(lastHma2 - prewHma2) < Math.Abs(lastSma - prewSma))
-                {
-                    _tab.SellAtStopCancel();
-                }
+                    // The junior HMA is lower than the senior HMA and the senior HMA is slower than the SMA
+                    if (lastHma < lastHma2 && Math.Abs(lastHma2 - prewHma2) < Math.Abs(lastSma - prewSma))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    // The junior HMA is higher than the senior HMA and the senior HMA is slower than the SMA
+                    if (lastHma > lastHma2 && Math.Abs(lastHma2 - prewHma2) < Math.Abs(lastSma - prewSma))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
 
-                // The junior HMA is lower than the senior HMA and the junior HMA is slower than the senior HMA
-                if (lastHma < lastHma2 && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
-                {
-                    _tab.BuyAtStopCancel();
+                    // The junior HMA is lower than the senior HMA and the junior HMA is slower than the senior HMA
+                    if (lastHma < lastHma2 && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                    {
+                        _tab.BuyAtStopCancel();
+                    }
+                    // The younger HMA is higher than the older HMA and the younger HMA is slower than the older HMA
+                    if (lastHma > lastHma2 && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                    {
+                        _tab.SellAtStopCancel();
+                    }
                 }
-                // The younger HMA is higher than the older HMA and the younger HMA is slower than the older HMA
-                if (lastHma > lastHma2 && Math.Abs(lastHma - prewHma) < Math.Abs(lastHma2 - prewHma2))
+                else if (_orderType.ValueString == "Market")
                 {
-                    _tab.SellAtStopCancel();
+                    if (!BuySignalIsFiltered(candles))
+                    {
+                        _tab.BuyAtMarket(GetVolume());
+                    }
+                    if (!SellSignalIsFiltered(candles))
+                    {
+                        _tab.SellAtMarket(GetVolume());
+                    }
                 }
+                
             }
             else
             {//exit logic
