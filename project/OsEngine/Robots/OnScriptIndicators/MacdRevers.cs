@@ -10,7 +10,8 @@ using OsEngine.OsTrader.Panels.Attributes;
 /// “рендова€ стратеги€ на пересечение индикатора MACD
 /// </summary>
 [Bot("MacdRevers")]
-public class MacdRevers : BotPanel
+public class 
+    MacdRevers : BotPanel
 {
     public MacdRevers(string name, StartProgram startProgram)
         : base(name, startProgram)

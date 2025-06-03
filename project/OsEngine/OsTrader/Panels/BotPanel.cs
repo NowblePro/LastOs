@@ -1255,6 +1255,31 @@ position => position.State != PositionStateType.OpeningFail
         }
 
         /// <summary>
+        /// Get rounded volume according to volume step
+        /// Получить округлённый объём, кратный шагу 
+        /// </summary>
+        /// <param name="tab"></param>
+        /// <param name="volume"></param>
+        /// <returns></returns>
+        public static decimal GetRoundedVolume(BotTabSimple tab, decimal volume)
+        {
+            decimal remainder = volume % tab.Security.MinTradeAmount;
+            if (remainder > 0) volume -= remainder;
+
+            // If the robot is running in the tester
+            if (tab.StartProgram == StartProgram.IsTester)
+            {
+                volume = Math.Round(volume, 6);
+            }
+            else
+            {
+                volume = Math.Round(volume, tab.Security.DecimalsVolume);
+            }
+
+            return volume;
+        }
+
+        /// <summary>
         /// the list of options available in the panel
         /// </summary>
         public List<IIStrategyParameter> Parameters

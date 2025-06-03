@@ -205,7 +205,7 @@ namespace OsEngine.Robots.Screeners
                         volume = Volume.ValueDecimal / (contractPrice * tab.Security.Lot);
                     }
 
-                    volume = Math.Round(volume, tab.Security.DecimalsVolume);
+                    volume = GetRoundedVolume(tab, volume);
                 }
                 else // Tester or Optimizer
                 {

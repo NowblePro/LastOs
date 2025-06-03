@@ -256,7 +256,7 @@ namespace OsEngine.Robots.VolatilityStageRotationSamples
                         volume = Volume.ValueDecimal / (contractPrice * tab.Security.Lot);
                     }
 
-                    volume = Math.Round(volume, tab.Security.DecimalsVolume);
+                    volume = GetRoundedVolume(_tab, volume);
                 }
                 else // Tester or Optimizer
                 {
@@ -309,7 +309,7 @@ namespace OsEngine.Robots.VolatilityStageRotationSamples
 
                 if (tab.StartProgram == StartProgram.IsOsTrader)
                 {
-                    qty = Math.Round(qty, tab.Security.DecimalsVolume);
+                    qty = GetRoundedVolume(_tab, qty);
                 }
                 else
                 {

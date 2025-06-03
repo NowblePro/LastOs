@@ -233,7 +233,7 @@ namespace OsEngine.Robots.Patterns
             else if (VolumeType.ValueString == "Contract currency")
             {
                 decimal contractPrice = tab.PriceBestAsk;
-                volume = Volume.ValueDecimal / contractPrice;
+                volume = GetRoundedVolume(tab, Volume.ValueDecimal / contractPrice);
 
                 if (StartProgram == StartProgram.IsOsTrader)
                 {
@@ -247,7 +247,7 @@ namespace OsEngine.Robots.Patterns
                         volume = Volume.ValueDecimal / (contractPrice * tab.Security.Lot);
                     }
 
-                    volume = Math.Round(volume, tab.Security.DecimalsVolume);
+                    volume = GetRoundedVolume(tab, volume);
                 }
                 else // Tester or Optimizer
                 {
@@ -300,7 +300,7 @@ namespace OsEngine.Robots.Patterns
 
                 if (tab.StartProgram == StartProgram.IsOsTrader)
                 {
-                    qty = Math.Round(qty, tab.Security.DecimalsVolume);
+                    qty = GetRoundedVolume(tab, qty);
                 }
                 else
                 {

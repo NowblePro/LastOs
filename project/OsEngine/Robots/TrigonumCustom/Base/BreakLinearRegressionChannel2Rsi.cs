@@ -506,7 +506,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (VolumeRegime.ValueString == "Contract currency") // "Валюта контракта"
             {
                 decimal contractPrice = TabsSimple[0].PriceBestAsk;
-                volume = Math.Round(VolumeOnPosition.ValueDecimal / contractPrice, VolumeDecimals.ValueInt);
+                volume = GetRoundedVolume(_tab, VolumeOnPosition.ValueDecimal / contractPrice);
                 return volume;
             }
             else if (VolumeRegime.ValueString == "Number of contracts")
@@ -515,7 +515,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
             else //if (VolumeRegime.ValueString == "% of the total portfolio")
             {
-                return Math.Round(_tab.Portfolio.ValueCurrent * (volume / 100) / _tab.PriceBestAsk / _tab.Security.Lot, VolumeDecimals.ValueInt);
+                return GetRoundedVolume(_tab, _tab.Portfolio.ValueCurrent * (volume / 100) / _tab.PriceBestAsk / _tab.Security.Lot);
             }
         }
     }

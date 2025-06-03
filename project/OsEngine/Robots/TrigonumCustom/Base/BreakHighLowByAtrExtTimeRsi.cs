@@ -478,15 +478,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 volume = _tab.Portfolio.ValueCurrent * (VolumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
-            // If the robot is running in the tester
-            if (StartProgram == StartProgram.IsTester)
-            {
-                volume = Math.Round(volume, 6);
-            }
-            else
-            {
-                volume = Math.Round(volume, _tab.Security.DecimalsVolume);
-            }
+            volume = GetRoundedVolume(_tab, volume);
 
             return volume;
         }

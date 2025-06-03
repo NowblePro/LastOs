@@ -305,7 +305,7 @@ namespace OsEngine.Robots.PositionsMicromanagement
                         volume = Volume.ValueDecimal / (contractPrice * tab.Security.Lot);
                     }
 
-                    volume = Math.Round(volume, tab.Security.DecimalsVolume);
+                    volume = GetRoundedVolume(tab, volume);
                 }
                 else // Tester or Optimizer
                 {
@@ -358,7 +358,7 @@ namespace OsEngine.Robots.PositionsMicromanagement
 
                 if (tab.StartProgram == StartProgram.IsOsTrader)
                 {
-                    qty = Math.Round(qty, tab.Security.DecimalsVolume);
+                    qty = GetRoundedVolume(tab, qty);
                 }
                 else
                 {

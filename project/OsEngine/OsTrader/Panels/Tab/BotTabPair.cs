@@ -2287,7 +2287,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             }
             else
             {
-                volume = Math.Round(volume, tab.Security.DecimalsVolume);
+                volume = BotPanel.GetRoundedVolume(tab, volume);
             }
             return volume;
         }
