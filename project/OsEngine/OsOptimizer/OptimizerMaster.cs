@@ -1354,7 +1354,7 @@ namespace OsEngine.OsOptimizer
 
         public BotPanel TestBot(OptimazerFazeReport faze, OptimizerReport report, bool fullTime = false)
         {
-            if(_aloneTestIsOver == false)
+            if(_aloneTestIsOver == false) // TODO check this
             {
                 return null;
             }
