@@ -301,6 +301,7 @@
       <DependentUpon>EnvelopsUi.xaml</DependentUpon>
     </Compile>
     <Compile Include="Charts\CandleChart\Indicators\Envelops.cs" />
+    <Compile Include="Charts\CandleChart\Indicators\FisherTransformIndicator.cs" />
     <Compile Include="Charts\CandleChart\Indicators\ForceIndex.cs" />
     <Compile Include="Charts\CandleChart\Indicators\ForceIndexUi.xaml.cs">
       <DependentUpon>ForceIndexUi.xaml</DependentUpon>
@@ -1371,6 +1372,7 @@
     <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakLinearRegressionChannelReverseCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakNadarayaWatsonReverseRsiCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakZZChannelReverseCG.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\FisherChannelBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Rsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Tm.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\Stoch.cs" />
