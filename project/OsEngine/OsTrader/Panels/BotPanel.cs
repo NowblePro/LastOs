@@ -1263,8 +1263,15 @@ position => position.State != PositionStateType.OpeningFail
         /// <returns></returns>
         public static decimal GetRoundedVolume(BotTabSimple tab, decimal volume)
         {
-            decimal remainder = volume % tab.Security.MinTradeAmount;
+            if (volume == 0) return 0;
+            decimal volumeStep = (decimal)(1.0 / ( Math.Pow(10, (double)tab.Security.DecimalsVolume)));
+            decimal remainder = volume % volumeStep;
             if (remainder > 0) volume -= remainder;
+
+            if (volume < tab.Security.MinTradeAmount)
+            {
+                volume = tab.Security.MinTradeAmount;
+            }
 
             // If the robot is running in the tester
             if (tab.StartProgram == StartProgram.IsTester)
