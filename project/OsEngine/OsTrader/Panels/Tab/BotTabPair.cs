@@ -2287,7 +2287,11 @@ namespace OsEngine.OsTrader.Panels.Tab
             }
             else
             {
-                volume = BotPanel.GetRoundedVolume(tab, volume);
+                if (volume < tab.Security.MinTradeAmount)
+                {
+                    SendNewLogMessage($"Рассчитанный объём получился меньше, чем минимальный для инструмента ({volume}). Выставлен минимальный объём ({tab.Security.MinTradeAmount}).", LogMessageType.NoName);
+                }
+                volume = BotPanel.GetRoundedVolume(null, tab, volume);
             }
             return volume;
         }

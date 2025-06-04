@@ -1261,15 +1261,21 @@ position => position.State != PositionStateType.OpeningFail
         /// <param name="tab"></param>
         /// <param name="volume"></param>
         /// <returns></returns>
-        public static decimal GetRoundedVolume(BotTabSimple tab, decimal volume)
+        public decimal GetRoundedVolume(BotTabSimple tab, decimal volume)
+        {
+            return GetRoundedVolume(this, tab, volume);
+        }
+
+        public static decimal GetRoundedVolume(BotPanel botPanel, BotTabSimple tab, decimal volume)
         {
             if (volume == 0) return 0;
-            decimal volumeStep = (decimal)(1.0 / ( Math.Pow(10, (double)tab.Security.DecimalsVolume)));
+            decimal volumeStep = (decimal)(1.0 / (Math.Pow(10, (double)tab.Security.DecimalsVolume)));
             decimal remainder = volume % volumeStep;
             if (remainder > 0) volume -= remainder;
 
             if (volume < tab.Security.MinTradeAmount)
             {
+                botPanel?.SendNewLogMessage($"Рассчитанный объём получился меньше, чем минимальный для инструмента ({volume}). Выставлен минимальный объём ({tab.Security.MinTradeAmount}).", LogMessageType.NoName);
                 volume = tab.Security.MinTradeAmount;
             }
 
