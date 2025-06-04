@@ -128,15 +128,14 @@ namespace OsEngine.Robots.OnScriptIndicators
             {
                 return;
             }
-
-            if(FBD.DataSeries[0].Last > IndicatorDivergence.ValueDecimal)
+            decimal volume = _tab.Portfolio.ValueCurrent / candles[candles.Count - 1].Close;
+            volume = GetRoundedVolume(_tab, volume);
+            if (FBD.DataSeries[0].Last > IndicatorDivergence.ValueDecimal)
             {
-                decimal volume = _tab.Portfolio.ValueCurrent /  candles[candles.Count - 1].Close;
                 _tab.SellAtMarket(volume, candles[candles.Count - 1].TimeStart.AddDays(DaysInPosition.ValueInt).ToString());
             }
             if (FBD.DataSeries[0].Last < -IndicatorDivergence.ValueDecimal)
             {
-                decimal volume = _tab.Portfolio.ValueCurrent / candles[candles.Count - 1].Close;
                 _tab.BuyAtMarket(volume, candles[candles.Count - 1].TimeStart.AddDays(DaysInPosition.ValueInt).ToString());
             }
 
