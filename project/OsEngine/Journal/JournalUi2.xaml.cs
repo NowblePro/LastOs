@@ -28,6 +28,8 @@ using Series = System.Windows.Forms.DataVisualization.Charting.Series;
 using System.Threading;
 using OsEngine.Layout;
 using Excel = Microsoft.Office.Interop.Excel;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace OsEngine.Journal
 {
@@ -545,7 +547,7 @@ namespace OsEngine.Journal
                 column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 _gridStatistics.Columns.Add(column3);
 
-                for (int i = 0; i < 31; i++)
+                for (int i = 0; i < 32; i++)
                 {
                     _gridStatistics.Rows.Add(); //string addition/ добавление строки
                 }
@@ -555,34 +557,34 @@ namespace OsEngine.Journal
                 _gridStatistics.Rows[2].Cells[0].Value = OsLocalization.Journal.GridRow3;
                 _gridStatistics.Rows[3].Cells[0].Value = OsLocalization.Journal.GridRow17;
                 _gridStatistics.Rows[4].Cells[0].Value = OsLocalization.Journal.GridRow18;
+                _gridStatistics.Rows[5].Cells[0].Value = OsLocalization.Journal.GridRow19;
+                _gridStatistics.Rows[6].Cells[0].Value = OsLocalization.Journal.GridRow4;
+                _gridStatistics.Rows[7].Cells[0].Value = OsLocalization.Journal.GridRow5;
 
-                _gridStatistics.Rows[5].Cells[0].Value = OsLocalization.Journal.GridRow4;
-                _gridStatistics.Rows[6].Cells[0].Value = OsLocalization.Journal.GridRow5;
-
-                _gridStatistics.Rows[8].Cells[0].Value = OsLocalization.Journal.GridRow6;
-                _gridStatistics.Rows[9].Cells[0].Value = OsLocalization.Journal.GridRow7;
-                _gridStatistics.Rows[10].Cells[0].Value = OsLocalization.Journal.GridRow8;
-                _gridStatistics.Rows[11].Cells[0].Value = OsLocalization.Journal.GridRow9;
+                _gridStatistics.Rows[9].Cells[0].Value = OsLocalization.Journal.GridRow6;
+                _gridStatistics.Rows[10].Cells[0].Value = OsLocalization.Journal.GridRow7;
+                _gridStatistics.Rows[11].Cells[0].Value = OsLocalization.Journal.GridRow8;
+                _gridStatistics.Rows[12].Cells[0].Value = OsLocalization.Journal.GridRow9;
 
 
-                _gridStatistics.Rows[13].Cells[0].Value = OsLocalization.Journal.GridRow10;
-                _gridStatistics.Rows[14].Cells[0].Value = OsLocalization.Journal.GridRow11;
-                _gridStatistics.Rows[15].Cells[0].Value = OsLocalization.Journal.GridRow6;
-                _gridStatistics.Rows[16].Cells[0].Value = OsLocalization.Journal.GridRow7;
-                _gridStatistics.Rows[17].Cells[0].Value = OsLocalization.Journal.GridRow8;
-                _gridStatistics.Rows[18].Cells[0].Value = OsLocalization.Journal.GridRow9;
-                _gridStatistics.Rows[19].Cells[0].Value = OsLocalization.Journal.GridRow12;
+                _gridStatistics.Rows[14].Cells[0].Value = OsLocalization.Journal.GridRow10;
+                _gridStatistics.Rows[15].Cells[0].Value = OsLocalization.Journal.GridRow11;
+                _gridStatistics.Rows[16].Cells[0].Value = OsLocalization.Journal.GridRow6;
+                _gridStatistics.Rows[17].Cells[0].Value = OsLocalization.Journal.GridRow7;
+                _gridStatistics.Rows[18].Cells[0].Value = OsLocalization.Journal.GridRow8;
+                _gridStatistics.Rows[19].Cells[0].Value = OsLocalization.Journal.GridRow9;
+                _gridStatistics.Rows[20].Cells[0].Value = OsLocalization.Journal.GridRow12;
 
-                _gridStatistics.Rows[21].Cells[0].Value = OsLocalization.Journal.GridRow13;
-                _gridStatistics.Rows[22].Cells[0].Value = OsLocalization.Journal.GridRow14;
-                _gridStatistics.Rows[23].Cells[0].Value = OsLocalization.Journal.GridRow6;
-                _gridStatistics.Rows[24].Cells[0].Value = OsLocalization.Journal.GridRow7;
-                _gridStatistics.Rows[25].Cells[0].Value = OsLocalization.Journal.GridRow8;
-                _gridStatistics.Rows[26].Cells[0].Value = OsLocalization.Journal.GridRow9;
-                _gridStatistics.Rows[27].Cells[0].Value = OsLocalization.Journal.GridRow12;
-                _gridStatistics.Rows[28].Cells[0].Value = "";
-                _gridStatistics.Rows[29].Cells[0].Value = OsLocalization.Journal.GridRow15;
-                _gridStatistics.Rows[30].Cells[0].Value = OsLocalization.Journal.GridRow16;
+                _gridStatistics.Rows[22].Cells[0].Value = OsLocalization.Journal.GridRow13;
+                _gridStatistics.Rows[23].Cells[0].Value = OsLocalization.Journal.GridRow14;
+                _gridStatistics.Rows[24].Cells[0].Value = OsLocalization.Journal.GridRow6;
+                _gridStatistics.Rows[25].Cells[0].Value = OsLocalization.Journal.GridRow7;
+                _gridStatistics.Rows[26].Cells[0].Value = OsLocalization.Journal.GridRow8;
+                _gridStatistics.Rows[27].Cells[0].Value = OsLocalization.Journal.GridRow9;
+                _gridStatistics.Rows[28].Cells[0].Value = OsLocalization.Journal.GridRow12;
+                _gridStatistics.Rows[29].Cells[0].Value = "";
+                _gridStatistics.Rows[30].Cells[0].Value = OsLocalization.Journal.GridRow15;
+                _gridStatistics.Rows[31].Cells[0].Value = OsLocalization.Journal.GridRow16;
             }
             catch (Exception error)
             {
@@ -4031,6 +4033,7 @@ namespace OsEngine.Journal
 
         #endregion
 
+        #region ExcelSave
         private void ButtonSave_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -4290,6 +4293,91 @@ namespace OsEngine.Journal
                 }
             }
         }
+
+        #endregion
+
+        #region JsonSave
+
+        private void _buttonJsonClick(object sender, RoutedEventArgs e)
+        {
+            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(_allPositions);
+            List<string> positionsLongState = PositionStatisticGenerator.GetStatisticNew(_longPositions);
+            List<string> positionsShortState = PositionStatisticGenerator.GetStatisticNew(_shortPositions);
+
+            var data = new RunData
+            {
+                data_parameters = new DataParameters
+                {
+                    ticker = "BTCUSDT",
+                    timeframe = "15m",
+                    time_start = "20.03.2025 5:15",
+                    time_end = "20.03.2025 6:00"
+                },
+
+                summary = new Summary
+                {
+                    total_PL = positionsAllState[0].ToDecimal(),
+                    total_long_PL = positionsLongState[0].ToDecimal(),
+                    total_short_PL = positionsShortState[0].ToDecimal(),
+                    position_count = _allPositions.Count,
+                    long_position_count = _longPositions.Count,
+                    short_position_count = _shortPositions.Count,
+                    sharp_ratio = positionsAllState[4].ToDecimal(),
+                    profit_factor = 4.3m,
+                    sma_deviation = 0.0m
+                }
+            };
+
+            // Сериализуем объект в JSON-строку с форматированием
+            string json = JsonConvert.SerializeObject(data, Formatting.Indented);
+
+            // Получаем путь к рабочему столу текущего пользователя
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+            // Путь к файлу (можно изменить)
+            string fileName = "run_data.json";
+
+            // Полный путь к файлу
+            string fullPath = Path.Combine(desktopPath, fileName);
+
+            // Записываем JSON в файл
+            File.WriteAllText(fullPath, json);
+
+            //Console.WriteLine($"Файл успешно создан: {filePath}");
+            //Console.WriteLine("Содержимое файла:");
+            //Console.WriteLine(json);
+            return;
+        }
+
+        private class DataParameters
+        {
+            public string ticker { get; set; }
+            public string timeframe { get; set; }
+            public string time_start { get; set; }
+            public string time_end { get; set; }
+        }
+
+        private class Summary
+        {
+            public decimal total_PL { get; set; }
+            public decimal total_long_PL { get; set; }
+            public decimal total_short_PL { get; set; }
+            public int position_count { get; set; }
+            public int long_position_count { get; set; }
+            public int short_position_count { get; set; }
+            public decimal sharp_ratio { get; set; }
+            public decimal profit_factor { get; set; }
+            public decimal sma_deviation { get; set; }
+        }
+
+        private class RunData
+        {
+            public DataParameters data_parameters { get; set; }
+            public Summary summary { get; set; }
+        }
+
+        #endregion
+
     }
 
     public class BotTabJournal
