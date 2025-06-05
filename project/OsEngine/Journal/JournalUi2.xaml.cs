@@ -28,6 +28,8 @@ using Series = System.Windows.Forms.DataVisualization.Charting.Series;
 using System.Threading;
 using OsEngine.Layout;
 using Excel = Microsoft.Office.Interop.Excel;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace OsEngine.Journal
 {
@@ -4298,7 +4300,80 @@ namespace OsEngine.Journal
 
         private void _buttonJsonClick(object sender, RoutedEventArgs e)
         {
+            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(_allPositions);
+            List<string> positionsLongState = PositionStatisticGenerator.GetStatisticNew(_longPositions);
+            List<string> positionsShortState = PositionStatisticGenerator.GetStatisticNew(_shortPositions);
+
+            var data = new RunData
+            {
+                data_parameters = new DataParameters
+                {
+                    ticker = "BTCUSDT",
+                    timeframe = "15m",
+                    time_start = "20.03.2025 5:15",
+                    time_end = "20.03.2025 6:00"
+                },
+
+                summary = new Summary
+                {
+                    total_PL = positionsAllState[0].ToDecimal(),
+                    total_long_PL = positionsLongState[0].ToDecimal(),
+                    total_short_PL = positionsShortState[0].ToDecimal(),
+                    position_count = _allPositions.Count,
+                    long_position_count = _longPositions.Count,
+                    short_position_count = _shortPositions.Count,
+                    sharp_ratio = positionsAllState[4].ToDecimal(),
+                    profit_factor = 4.3m,
+                    sma_deviation = 0.0m
+                }
+            };
+
+            // Сериализуем объект в JSON-строку с форматированием
+            string json = JsonConvert.SerializeObject(data, Formatting.Indented);
+
+            // Получаем путь к рабочему столу текущего пользователя
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+            // Путь к файлу (можно изменить)
+            string fileName = "run_data.json";
+
+            // Полный путь к файлу
+            string fullPath = Path.Combine(desktopPath, fileName);
+
+            // Записываем JSON в файл
+            File.WriteAllText(fullPath, json);
+
+            //Console.WriteLine($"Файл успешно создан: {filePath}");
+            //Console.WriteLine("Содержимое файла:");
+            //Console.WriteLine(json);
             return;
+        }
+
+        private class DataParameters
+        {
+            public string ticker { get; set; }
+            public string timeframe { get; set; }
+            public string time_start { get; set; }
+            public string time_end { get; set; }
+        }
+
+        private class Summary
+        {
+            public decimal total_PL { get; set; }
+            public decimal total_long_PL { get; set; }
+            public decimal total_short_PL { get; set; }
+            public int position_count { get; set; }
+            public int long_position_count { get; set; }
+            public int short_position_count { get; set; }
+            public decimal sharp_ratio { get; set; }
+            public decimal profit_factor { get; set; }
+            public decimal sma_deviation { get; set; }
+        }
+
+        private class RunData
+        {
+            public DataParameters data_parameters { get; set; }
+            public Summary summary { get; set; }
         }
 
         #endregion
