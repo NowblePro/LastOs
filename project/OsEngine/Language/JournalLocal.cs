@@ -251,6 +251,10 @@ namespace OsEngine.Language
             "Eng:Sharp ratio_" +
             "Ru:Sharp ratio_");
 
+        public string GridRow19 => OsLocalization.ConvertToLocString(
+            "Eng:SMA deviation_" +
+            "Ru:Отклонение от SMA_");
+
         public string Message1 => OsLocalization.ConvertToLocString(
             "Eng:You must select a file to save!_" +
             "Ru:Необходимо выбрать файл для сохранения!_");
