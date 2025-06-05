@@ -4031,6 +4031,7 @@ namespace OsEngine.Journal
 
         #endregion
 
+        #region ExcelSave
         private void ButtonSave_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -4290,6 +4291,18 @@ namespace OsEngine.Journal
                 }
             }
         }
+
+        #endregion
+
+        #region JsonSave
+
+        private void _buttonJsonClick(object sender, RoutedEventArgs e)
+        {
+            return;
+        }
+
+        #endregion
+
     }
 
     public class BotTabJournal
