@@ -40,6 +40,7 @@
                         <Button Name="ButtonRiskManager" Content="Risk manager" HorizontalAlignment="Left" Margin="66,157,0,0" VerticalAlignment="Top" Width="161" Click="ButtonRiskManager_Click" />
                         <Button Name="ButtonRedactTab" Content="Data settings"  HorizontalAlignment="Left" Margin="66,217,0,0" VerticalAlignment="Top" Width="161" Click="ButtonRedactTab_Click"   />
                         <Button Name="ButtonStrategSettingsIndividual" Content="Bot trade settings" HorizontalAlignment="Left" Margin="66,98,0,0" VerticalAlignment="Top" Width="161" Click="ButtonStrategIndividualSettings_Click" Height="24"/>
+                        <Button Name="ButtonLoadJson" Content="Load json"  HorizontalAlignment="Left" Margin="66,350,0,0" VerticalAlignment="Top" Width="161" Click="ButtonJson_Click"   />
 
                     </Grid>
                 </TabItem>

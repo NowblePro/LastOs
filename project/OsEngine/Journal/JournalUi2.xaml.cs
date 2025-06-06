@@ -3828,6 +3828,13 @@ namespace OsEngine.Journal
             }
         }
 
+        public List<Position> AllPositions
+        {
+            get
+            {
+                return _allPositions;
+            }
+        }
         private List<Position> _allPositions;
 
         private List<Position> _longPositions;
@@ -4329,24 +4336,13 @@ namespace OsEngine.Journal
                 }
             };
 
-            // Сериализуем объект в JSON-строку с форматированием
             string json = JsonConvert.SerializeObject(data, Formatting.Indented);
-
-            // Получаем путь к рабочему столу текущего пользователя
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-
-            // Путь к файлу (можно изменить)
             string fileName = "run_data.json";
-
-            // Полный путь к файлу
             string fullPath = Path.Combine(desktopPath, fileName);
 
-            // Записываем JSON в файл
             File.WriteAllText(fullPath, json);
 
-            //Console.WriteLine($"Файл успешно создан: {filePath}");
-            //Console.WriteLine("Содержимое файла:");
-            //Console.WriteLine(json);
             return;
         }
 
