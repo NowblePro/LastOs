@@ -415,7 +415,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             }
             else
             {
-                volume = Math.Round(volume, tab.Security.DecimalsVolume);
+                volume = GetRoundedVolume(tab, volume);
             }
             return volume;
         }

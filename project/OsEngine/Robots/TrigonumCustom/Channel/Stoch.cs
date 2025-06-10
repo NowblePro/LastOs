@@ -319,7 +319,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
             else
             {
-                volume = Math.Round(volume, tab.Security.DecimalsVolume);
+                volume = GetRoundedVolume(tab, volume);
             }
             return volume;
         }
