@@ -29,6 +29,7 @@ using OsEngine.Market.Servers.Tester;
 using OsEngine.OsTrader.Panels.Tab.Internal;
 using OsEngine.OsTrader.Panels.JsonData;
 using OsEngine.Journal.Internal;
+using OsEngine.Charts.CandleChart.Indicators;
 
 namespace OsEngine.OsTrader.Panels.Tab
 {
@@ -160,6 +161,30 @@ namespace OsEngine.OsTrader.Panels.Tab
         }
         private JsonRunData _jsonData;
 
+        JsonDataParameters _dataParameters;
+
+        public void setJsonBotParameters(List<IIStrategyParameter> parameters)
+        {
+            if (_jsonData.robot_parameters == null)
+            {
+                _jsonData.robot_parameters = new Dictionary<string, string>();
+            }
+            foreach (var parameter in parameters)
+            {
+                _jsonData.robot_parameters.Add(parameter.Name, parameter.StrValue);
+            }
+        }
+
+        public void setStrategyTypeName(string name)
+        {
+            if (_jsonData != null && _jsonData.data_parameters != null)
+            {
+                _jsonData.data_parameters.strategy_type = name;
+            }
+        }
+
+        JsonCandlePosition _candlePosition;
+
         private void writeCandleData(Candle candle)
         {
             if (_jsonData == null)
@@ -171,11 +196,32 @@ namespace OsEngine.OsTrader.Panels.Tab
                 _jsonData.run_results = new List<JsonCandleResult>();
             }
 
-            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(PositionsCloseAll);
-            //List<string> positionsLongState = PositionStatisticGenerator.GetStatisticNew(_longPositions);
-            //List<string> positionsShortState = PositionStatisticGenerator.GetStatisticNew(_shortPositions);
+            if (_candlePosition == null)
+            {
+                _candlePosition = new JsonCandlePosition
+                {
+                    opened = false,
+                    closed = false,
+                    open_side = "no_side",
+                    close_side = "no_side",
+                    open_volume = 0.0m
+                };
+            }
 
-            string date = candle.TimeStart.AddMinutes(15).ToString();
+            if (_jsonData.data_parameters == null)
+            {
+                _jsonData.data_parameters = new JsonDataParameters
+                {
+                    ticker = _connector.SecurityName,
+                    timeframe = _connector.TimeFrame.ToString(),
+                    strategy_name = NameStrategy,
+                    strategy_type = "unknown"
+                };
+            }
+
+            //List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(PositionsCloseAll);
+
+            string date = (candle.TimeStart + TimeFrame).ToString();
 
             JsonCandle j_candle = new JsonCandle
             {
@@ -228,33 +274,49 @@ namespace OsEngine.OsTrader.Panels.Tab
                 total_short_PL = stp
             };
 
-            JsonCandleStatistics candle_statistics = new JsonCandleStatistics
-            {
-                sharp_ratio = 0.0m,
-                max_sma_deviation = 0.0m,
-                profit_factor = 0.0m,
-                recovery = 0.0m,
-                max_drow_down = 0.0m
-            };
+            //JsonCandleStatistics candle_statistics = new JsonCandleStatistics
+            //{
+            //    sharp_ratio = 0.0m,
+            //    max_sma_deviation = 0.0m,
+            //    profit_factor = 0.0m,
+            //    recovery = 0.0m,
+            //    max_drow_down = 0.0m
+            //};
 
-            if (positionsAllState != null)
+            //if (positionsAllState != null)
+            //{
+            //    candle_statistics.sharp_ratio = positionsAllState[4].ToDecimal();
+            //    candle_statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
+            //    candle_statistics.profit_factor = positionsAllState[6].ToDecimal();
+            //    candle_statistics.recovery = positionsAllState[7].ToDecimal();
+            //    candle_statistics.max_drow_down = positionsAllState[30].ToDecimal();
+            //}
+
+            JsonCandlePosition position = new JsonCandlePosition
             {
-                candle_statistics.sharp_ratio = positionsAllState[4].ToDecimal();
-                candle_statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
-                candle_statistics.profit_factor = positionsAllState[6].ToDecimal();
-                candle_statistics.recovery = positionsAllState[7].ToDecimal();
-                candle_statistics.max_drow_down = positionsAllState[30].ToDecimal();
-            }
+                opened = _candlePosition.opened,
+                closed = _candlePosition.closed,
+                open_side = _candlePosition.open_side,
+                close_side = _candlePosition.close_side,
+                open_volume = _candlePosition.open_volume
+            };
 
             JsonCandleResult candle_res = new JsonCandleResult
             {
                 time_close = date,
                 candle_data = j_candle,
+                position = position,
                 equity = j_equity,
-                statistics = candle_statistics
+                statistics = { }//candle_statistics
             };
 
             _jsonData.run_results.Add(candle_res);
+
+            _candlePosition.opened = false;
+            _candlePosition.closed = false;
+            _candlePosition.open_side = "no_side";
+            _candlePosition.close_side = "no_side";
+            _candlePosition.open_volume = 0.0m;
         }
 
         #endregion
@@ -426,6 +488,19 @@ namespace OsEngine.OsTrader.Panels.Tab
                 BuyAtStopCancel();
 
                 SellAtStopCancel();
+
+                if (_jsonData != null)
+                {
+                    _jsonData = null;
+                }
+                if (_candlePosition != null)
+                {
+                    _candlePosition = null;
+                }
+                if (_dataParameters != null)
+                {
+                    _dataParameters = null;
+                }
 
                 if (_journal != null)
                 {
@@ -4339,6 +4414,25 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 _connector.OrderExecute(newDeal.OpenOrders[0]);
 
+                if (_saveData)
+                {
+                    if (_candlePosition == null)
+                    {
+                        _candlePosition = new JsonCandlePosition
+                        {
+                            opened = false,
+                            closed = false,
+                            open_side = "no_side",
+                            close_side = "no_side",
+                            open_volume = 0.0m
+                        };
+                    }
+
+                    _candlePosition.open_volume = volume;
+                    _candlePosition.open_side = "sell";
+                    _candlePosition.opened = true;
+                }
+
                 return newDeal;
             }
             catch (Exception error)
@@ -4462,6 +4556,25 @@ namespace OsEngine.OsTrader.Panels.Tab
                 _journal.SetNewDeal(newDeal);
 
                 _connector.OrderExecute(newDeal.OpenOrders[0]);
+
+                if (_saveData)
+                {
+                    if (_candlePosition == null)
+                    {
+                        _candlePosition = new JsonCandlePosition
+                        {
+                            opened = false,
+                            closed = false,
+                            open_side = "no_side",
+                            close_side = "no_side",
+                            open_volume = 0.0m
+                        };
+                    }
+
+                    _candlePosition.open_volume = volume;
+                    _candlePosition.open_side = "buy";
+                    _candlePosition.opened = true;
+                }
 
                 return newDeal;
             }
@@ -4633,6 +4746,31 @@ namespace OsEngine.OsTrader.Panels.Tab
                 {
                     _connector.OrderExecute(closeOrder);
                 }
+
+                if (_saveData)
+                {
+                    if (_candlePosition == null)
+                    {
+                        _candlePosition = new JsonCandlePosition
+                        {
+                            opened = false,
+                            closed = false,
+                            open_side = "no_side",
+                            close_side = "no_side",
+                            open_volume = 0.0m
+                        };
+                    }
+
+                    if (position.Direction == Side.Buy)
+                    {
+                        _candlePosition.close_side = "buy";
+                    }
+                    else if (position.Direction == Side.Sell)
+                    {
+                        _candlePosition.close_side = "sell";
+                    }
+                    _candlePosition.closed = true;
+                }
             }
             catch (Exception error)
             {
@@ -4721,6 +4859,31 @@ namespace OsEngine.OsTrader.Panels.Tab
                 else
                 {
                     _connector.OrderExecute(closeOrder);
+                }
+
+                if (_saveData)
+                {
+                    if (_candlePosition == null)
+                    {
+                        _candlePosition = new JsonCandlePosition
+                        {
+                            opened = false,
+                            closed = false,
+                            open_side = "no_side",
+                            close_side = "no_side",
+                            open_volume = 0.0m
+                        };
+                    }
+
+                    if (position.Direction == Side.Buy)
+                    {
+                        _candlePosition.close_side = "buy";
+                    }
+                    else if (position.Direction == Side.Sell)
+                    {
+                        _candlePosition.close_side = "sell";
+                    }
+                    _candlePosition.closed = true;
                 }
             }
             catch (Exception error)

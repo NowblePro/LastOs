@@ -1057,7 +1057,19 @@ namespace OsEngine.OsOptimizer
             BotPanel bot = CreateNewBot(botName,
                 parametrs, parametrs, server, startProgram);
 
-            if(bot == null)
+            // TODO statistics capture
+            try
+            {
+                var save_data_parameter = bot.Parameters.Find(parameter => parameter.Name == "Save Json Data");
+                StrategyParameterBool converted = (StrategyParameterBool)save_data_parameter;
+                converted.ValueBool = true;
+            }
+            catch (Exception ex)
+            {
+                SendLogMessage("The robot does not have the ability to record statistics on candles in json", LogMessageType.System);
+            }
+
+            if (bot == null)
             {
                 SendLogMessage("Test over whith error. A different robot is selected in the optimizer", LogMessageType.Error);
                 awaitObj.Dispose();

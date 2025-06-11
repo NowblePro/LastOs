@@ -717,6 +717,9 @@ namespace OsEngine.OsTrader.Panels
                 return;
             }
 
+            _panel.TabsSimple[0].setJsonBotParameters(_panel.Parameters);
+            _panel.TabsSimple[0].setStrategyTypeName(_panel.GetNameStrategyType());
+
             string json = JsonConvert.SerializeObject(_panel.TabsSimple[0].JsonData, Formatting.Indented);
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string fileName = "run_data.json";

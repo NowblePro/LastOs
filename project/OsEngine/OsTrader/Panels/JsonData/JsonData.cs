@@ -1,10 +1,12 @@
 ﻿using System.Collections.Generic;
+using Google.Protobuf.Collections;
 
 namespace OsEngine.OsTrader.Panels.JsonData
 {
     public class JsonRunData
     {
         public JsonDataParameters data_parameters;
+        public Dictionary<string, string> robot_parameters;
         public List<JsonCandleResult> run_results;
     }
 
@@ -12,8 +14,10 @@ namespace OsEngine.OsTrader.Panels.JsonData
     {
         public string ticker { get; set; }
         public string timeframe { get; set; }
-        public string time_start { get; set; }
-        public string time_end { get; set; }
+        public string strategy_name { get; set; }
+        public string strategy_type { get; set; }
+        //public string time_start { get; set; }
+        //public string time_end { get; set; }
     }
 
     public class JsonCandle
@@ -44,10 +48,20 @@ namespace OsEngine.OsTrader.Panels.JsonData
         public decimal max_drow_down { get; set; }
     }
 
+    public class JsonCandlePosition
+    {
+        public bool opened { get; set; }
+        public bool closed { get; set; }
+        public string open_side { get; set; }
+        public string close_side { get; set; }
+        public decimal open_volume { get; set; }
+    }
+
     public class JsonCandleResult
     {
         public string time_close { get; set; }
         public JsonCandle candle_data { get; set; }
+        public JsonCandlePosition position {  get; set; }
         public JsonEquity equity { get; set; }
         public JsonCandleStatistics statistics { get; set; }
     }
