@@ -23,6 +23,7 @@ using OsEngine.Alerts;
 using OsEngine.Journal.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using OsEngine.OsTrader.Panels.JsonData;
 
 namespace OsEngine.OsTrader.Panels
 {
@@ -716,33 +717,7 @@ namespace OsEngine.OsTrader.Panels
                 return;
             }
 
-            List<Candle> candles = _panel.TabsSimple[0].Connector.Candles(true);
-
-            List<CandleResult> run_results = new List<CandleResult>();
-
-            for (int i = 0; i < candles.Count; ++i)
-            {
-                string date = candles[i].TimeStart.AddMinutes(15).ToString();
-
-                CandleData candle = new CandleData
-                {
-                    open = candles[i].Open,
-                    close = candles[i].Close,
-                    high = candles[i].High,
-                    low = candles[i].Low
-                };
-
-                CandleResult candle_res = new CandleResult
-                {
-                    time_close = date,
-                    candle_data = candle,
-                    equity = {}
-                };
-
-                run_results.Add(candle_res);
-            }
-
-            string json = JsonConvert.SerializeObject(run_results, Formatting.Indented);
+            string json = JsonConvert.SerializeObject(_panel.TabsSimple[0].JsonData, Formatting.Indented);
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string fileName = "run_data.json";
             string fullPath = Path.Combine(desktopPath, fileName);
@@ -750,28 +725,6 @@ namespace OsEngine.OsTrader.Panels
             File.WriteAllText(fullPath, json);
 
             return;
-        }
-
-        private class CandleData
-        {
-            public decimal open { get; set; }
-            public decimal close { get; set; }
-            public decimal high { get; set; }
-            public decimal low { get; set; }
-        }
-
-        private class Equity
-        {
-            public decimal candle_PL { get; set; }
-            public decimal unrealized_candle_PL { get; set; }
-            public decimal total_PL { get; set; }
-        }
-
-        private class CandleResult
-        {
-            public string time_close { get; set; }
-            public CandleData candle_data { get; set; }
-            public Equity equity { get; set; }
         }
 
         #endregion

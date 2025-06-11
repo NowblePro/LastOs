@@ -27,6 +27,8 @@ using OsEngine.Market.Servers;
 using OsEngine.Market.Servers.Optimizer;
 using OsEngine.Market.Servers.Tester;
 using OsEngine.OsTrader.Panels.Tab.Internal;
+using OsEngine.OsTrader.Panels.JsonData;
+using OsEngine.Journal.Internal;
 
 namespace OsEngine.OsTrader.Panels.Tab
 {
@@ -38,10 +40,12 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <summary>
         /// Constructor
         /// </summary>
-        public BotTabSimple(string name, StartProgram startProgram)
+        public BotTabSimple(string name, StartProgram startProgram, bool saveData = false)
         {
             TabName = name;
             StartProgram = startProgram;
+
+            _saveData = saveData;
 
             try
             {
@@ -52,7 +56,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 _connector.PortfolioOnExchangeChangedEvent += _connector_PortfolioOnExchangeChangedEvent;
                 _connector.GlassChangeEvent += _connector_GlassChangeEvent;
                 _connector.TimeChangeEvent += StrategOneSecurity_TimeServerChangeEvent;
-                _connector.NewCandlesChangeEvent += LogicToEndCandle;
+                _connector.NewCandlesChangeEvent += LogicToEndCandle; // here
                 _connector.LastCandlesChangeEvent += LogicToUpdateLastCandle;
                 _connector.TickChangeEvent += _connector_TickChangeEvent;
                 _connector.LogMessageEvent += SetNewLogMessage;
@@ -137,6 +141,123 @@ namespace OsEngine.OsTrader.Panels.Tab
                 SetNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
+
+        #region Json Data
+
+        private bool _saveData;
+
+        public void setSaveData(bool saveData)
+        {
+            _saveData = saveData;
+        }
+
+        public JsonRunData JsonData
+        {
+            get
+            {
+                return _jsonData;
+            }
+        }
+        private JsonRunData _jsonData;
+
+        private void writeCandleData(Candle candle)
+        {
+            if (_jsonData == null)
+            {
+                _jsonData = new JsonRunData();
+            }
+            if (_jsonData.run_results == null)
+            {
+                _jsonData.run_results = new List<JsonCandleResult>();
+            }
+
+            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(PositionsCloseAll);
+            //List<string> positionsLongState = PositionStatisticGenerator.GetStatisticNew(_longPositions);
+            //List<string> positionsShortState = PositionStatisticGenerator.GetStatisticNew(_shortPositions);
+
+            string date = candle.TimeStart.AddMinutes(15).ToString();
+
+            JsonCandle j_candle = new JsonCandle
+            {
+                open = candle.Open,
+                close = candle.Close,
+                high = candle.High,
+                low = candle.Low
+            };
+
+            decimal up = 0.0m;
+            decimal lup = 0.0m;
+            decimal sup = 0.0m;
+            decimal tp = 0.0m;
+            decimal ltp = 0.0m;
+            decimal stp = 0.0m;
+
+            foreach (Position pos in PositionsOpenAll)
+            {
+                up += pos.ProfitPortfolioPunkt;
+                if (pos.Direction == Side.Buy)
+                {
+                    lup += pos.ProfitPortfolioPunkt;
+                }
+                else if (pos.Direction == Side.Sell)
+                {
+                    sup += pos.ProfitPortfolioPunkt;
+                }
+            }
+
+            foreach (Position pos in PositionsCloseAll)
+            {
+                tp += pos.ProfitPortfolioPunkt;
+                if (pos.Direction == Side.Buy)
+                {
+                    ltp += pos.ProfitPortfolioPunkt;
+                }
+                else if (pos.Direction == Side.Sell)
+                {
+                    stp += pos.ProfitPortfolioPunkt;
+                }
+            }
+
+            JsonEquity j_equity = new JsonEquity
+            {
+                unrealized_candle_PL = up,
+                total_PL = tp,
+                unrealized_long_PL = lup,
+                total_long_PL = ltp,
+                unrealized_short_PL = sup,
+                total_short_PL = stp
+            };
+
+            JsonCandleStatistics candle_statistics = new JsonCandleStatistics
+            {
+                sharp_ratio = 0.0m,
+                max_sma_deviation = 0.0m,
+                profit_factor = 0.0m,
+                recovery = 0.0m,
+                max_drow_down = 0.0m
+            };
+
+            if (positionsAllState != null)
+            {
+                candle_statistics.sharp_ratio = positionsAllState[4].ToDecimal();
+                candle_statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
+                candle_statistics.profit_factor = positionsAllState[6].ToDecimal();
+                candle_statistics.recovery = positionsAllState[7].ToDecimal();
+                candle_statistics.max_drow_down = positionsAllState[30].ToDecimal();
+            }
+
+            JsonCandleResult candle_res = new JsonCandleResult
+            {
+                time_close = date,
+                candle_data = j_candle,
+                equity = j_equity,
+                statistics = candle_statistics
+            };
+
+            _jsonData.run_results.Add(candle_res);
+        }
+
+        #endregion
 
         /// <summary>
         /// source type
@@ -5758,7 +5879,7 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// candle is finished
         /// </summary>
         /// <param name="candles">candles</param>
-        private void LogicToEndCandle(List<Candle> candles)
+        private void LogicToEndCandle(List<Candle> candles) // here
         {
             try
             {
@@ -5790,6 +5911,11 @@ namespace OsEngine.OsTrader.Panels.Tab
                 catch (Exception error)
                 {
                     SetNewLogMessage(error.ToString(), LogMessageType.Error);
+                }
+
+                if (_saveData)
+                {
+                    writeCandleData(candles[candles.Count - 1]);
                 }
             }
             catch (Exception error)
