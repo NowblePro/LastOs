@@ -75,6 +75,9 @@ namespace OsEngine.OsOptimizer
             CommissionValueTextBox.Text = _master.CommissionValue.ToString();
             CommissionValueTextBox.TextChanged += CommissionValueTextBoxOnTextChanged;
 
+            CheckBoxDataCapture.IsChecked = _captureData;
+            CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
+
             // filters/фильтры
             CheckBoxFilterProfitIsOn.IsChecked = _master.FilterProfitIsOn;
             CheckBoxFilterMaxDrowDownIsOn.IsChecked = _master.FilterMaxDrowDownIsOn;
@@ -849,6 +852,13 @@ namespace OsEngine.OsOptimizer
                 _master.SendLogMessage(ex.ToString(),LogMessageType.Error);
             }
         }
+
+        private void CheckBoxDataCapture_Click(object sender, RoutedEventArgs e)
+        {
+            _captureData = CheckBoxDataCapture.IsChecked.Value;
+        }
+
+        private bool _captureData = false;
 
         private void CheckBoxLastInSample_Click(object sender, RoutedEventArgs e)
         {
@@ -3151,7 +3161,7 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex]);
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], _captureData);
 
             bot.ShowChartDialog();
         }
@@ -3211,7 +3221,7 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex]);
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], _captureData);
 
             if (bot == null)
             {
@@ -3226,7 +3236,7 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, report);
+            BotPanel bot = _master.TestBot(fazeReport, report, _captureData);
 
             if (bot == null)
             {

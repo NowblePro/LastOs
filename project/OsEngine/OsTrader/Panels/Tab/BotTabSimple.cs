@@ -165,22 +165,35 @@ namespace OsEngine.OsTrader.Panels.Tab
 
         public void setJsonBotParameters(List<IIStrategyParameter> parameters)
         {
+            if (_jsonData == null)
+            {
+                _jsonData = new JsonRunData();
+            }
             if (_jsonData.robot_parameters == null)
             {
                 _jsonData.robot_parameters = new Dictionary<string, string>();
             }
+            _jsonData.robot_parameters.Clear();
             foreach (var parameter in parameters)
             {
                 _jsonData.robot_parameters.Add(parameter.Name, parameter.StrValue);
             }
         }
 
-        public void setStrategyTypeName(string name)
+        public void setJsonDataParameters(string name)
         {
-            if (_jsonData != null && _jsonData.data_parameters != null)
+            if (_jsonData == null)
             {
-                _jsonData.data_parameters.strategy_type = name;
+                _jsonData = new JsonRunData();
             }
+            if (_jsonData.data_parameters == null)
+            {
+                _jsonData.data_parameters = new JsonDataParameters();
+            }
+            _jsonData.data_parameters.ticker = _connector.SecurityName;
+            _jsonData.data_parameters.timeframe = _connector.TimeFrame.ToString();
+            _jsonData.data_parameters.strategy_name = NameStrategy;
+            _jsonData.data_parameters.strategy_type = name;
         }
 
         JsonCandlePosition _candlePosition;

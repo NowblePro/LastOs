@@ -718,11 +718,11 @@ namespace OsEngine.OsTrader.Panels
             }
 
             _panel.TabsSimple[0].setJsonBotParameters(_panel.Parameters);
-            _panel.TabsSimple[0].setStrategyTypeName(_panel.GetNameStrategyType());
+            _panel.TabsSimple[0].setJsonDataParameters(_panel.GetNameStrategyType());
 
             string json = JsonConvert.SerializeObject(_panel.TabsSimple[0].JsonData, Formatting.Indented);
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string fileName = "run_data.json";
+            string fileName = _panel.NameStrategyUniq + ".json";
             string fullPath = Path.Combine(desktopPath, fileName);
 
             File.WriteAllText(fullPath, json);
