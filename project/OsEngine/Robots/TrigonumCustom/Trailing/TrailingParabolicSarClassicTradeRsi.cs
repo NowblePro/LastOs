@@ -305,25 +305,21 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             {
                 if (BuySignalIsFiltered(candles) == false)
                 {
-                    if (_lastPrice > _lastSar)
+                    if (_lastPrice < _lastSar)
                     {
-                        return;
+                        decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
+                        _tab.BuyAtStopCancel();
+                        _tab.BuyAtStop(GetVolume(), _lastSar + _slippage, _lastSar, StopActivateType.HigherOrEqual, 1);
                     }
-
-                    decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
-                    _tab.BuyAtStopCancel();
-                    _tab.BuyAtStop(GetVolume(), _lastSar + _slippage, _lastSar, StopActivateType.HigherOrEqual, 1);
                 }
                 if (SellSignalIsFiltered(candles) == false)
                 {
-                    if (_lastPrice < _lastSar)
+                    if (_lastPrice > _lastSar)
                     {
-                        return;
+                        decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
+                        _tab.SellAtStopCancel();
+                        _tab.SellAtStop(GetVolume(), _lastSar - _slippage, _lastSar, StopActivateType.LowerOrEqual, 1);
                     }
-
-                    decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
-                    _tab.SellAtStopCancel();
-                    _tab.SellAtStop(GetVolume(), _lastSar - _slippage, _lastSar, StopActivateType.LowerOrEqual, 1);
                 }
             }
             else
