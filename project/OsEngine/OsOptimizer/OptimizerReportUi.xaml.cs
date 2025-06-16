@@ -45,6 +45,9 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
 
+            CheckBoxDataCapture.IsChecked = _captureData;
+            CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
+
             CreateTableFazes();
             CreateTableResults();
 
@@ -709,7 +712,7 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex]);
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], _captureData);
 
             if(bot == null)
             {
@@ -774,7 +777,7 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex]);
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], _captureData);
 
             if (bot == null)
             {
@@ -789,7 +792,7 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, report);
+            BotPanel bot = _master.TestBot(fazeReport, report, _captureData);
 
             if (bot == null)
             {
@@ -990,6 +993,13 @@ namespace OsEngine.OsOptimizer
                 MessageBox.Show(error.ToString());
             }
         }
+
+        private void CheckBoxDataCapture_Click(object sender, RoutedEventArgs e)
+        {
+            _captureData = CheckBoxDataCapture.IsChecked.Value;
+        }
+
+        private bool _captureData = false;
 
     }
 }

@@ -39,6 +39,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterTimeOfDay startTradeTime;
         private StrategyParameterTimeOfDay endTradeTime;
         private StrategyParameterDecimal volumeOnPosition;
+        private StrategyParameterBool _saveJson;
         #endregion
 
         #region Trailing stop
@@ -77,6 +78,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             startTradeTime = CreateParameterTimeOfDay("Start trade time", 0, 0, 0, 0, "Base");
             endTradeTime = CreateParameterTimeOfDay("End trade time", 24, 0, 0, 0, "Base");
             volumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
             #endregion
 
             #region Stochastic parameters init
@@ -126,6 +128,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void UpdateParameters()
         {
+            tab.setSaveData(_saveJson.ValueBool);
             SetTrailingParameters();
             SetStochasticParameters();
             SetAIndicatorParameters();

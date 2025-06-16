@@ -24,6 +24,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
+        private StrategyParameterBool _saveJson;
+
         public StrategyParameterInt AdxHigh;
         public StrategyParameterInt Lookback;
         public StrategyParameterInt TrailBars;
@@ -55,6 +57,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -107,6 +111,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private void Breakout_Param_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             if (_adx.Length != AdxPeriod.ValueInt)
             {

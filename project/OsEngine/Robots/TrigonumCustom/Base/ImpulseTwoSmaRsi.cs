@@ -22,6 +22,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
+        private StrategyParameterBool _saveJson;
+
         public Aindicator _sma1;
         public StrategyParameterInt _periodSma1;
 
@@ -55,6 +57,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             LookBack = CreateParameter("Candles Look Back", 4, 1, 10, 1, "Robot parameters");
 
@@ -111,6 +115,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private void LRegBot_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             if (_sma1.ParametersDigit[0].Value != _periodSma1.ValueInt)
             {

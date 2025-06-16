@@ -504,6 +504,13 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        //public bool CaptureData
+        //{
+        //    get { return _captureData; }
+        //    set { _captureData = value; }
+        //}
+        //private bool _captureData = false;
+
         // Robustness
 
         private WindowsFormsHost _hostRobustness;

@@ -19,6 +19,8 @@ namespace OsEngine.Entity
         /// </summary>
         string Name { get; }
 
+        string StrValue { get; }
+
         /// <summary>
         /// Get formatted string to save to file
         /// </summary>
@@ -95,6 +97,14 @@ namespace OsEngine.Entity
         /// Displayed value
         /// </summary>
         public string Value;
+
+        public string StrValue
+        {
+            get
+            {
+                return Value;
+            }
+        }
 
         /// <summary>
         /// Row height
@@ -267,6 +277,14 @@ namespace OsEngine.Entity
         public StrategyParameterType Type
         {
             get { return StrategyParameterType.Int; }
+        }
+
+        public string StrValue
+        {
+            get
+            {
+                return _valueInt.ToString();
+            }
         }
 
         /// <summary>
@@ -458,6 +476,14 @@ namespace OsEngine.Entity
 
         private StrategyParameterType _type;
 
+        public string StrValue
+        {
+            get
+            {
+                return _valueDecimal.ToString();
+            }
+        }
+
         /// <summary>
         /// Current value of the Decimal parameter
         /// </summary>
@@ -632,6 +658,14 @@ namespace OsEngine.Entity
         }
 
         private StrategyParameterType _type;
+
+        public string StrValue
+        {
+            get
+            {
+                return _valueBool.ToString();
+            }
+        }
 
         /// <summary>
         /// Parameter Boolean value
@@ -819,6 +853,14 @@ namespace OsEngine.Entity
 
         private StrategyParameterType _type;
 
+        public string StrValue
+        {
+            get
+            {
+                return _valueString.ToString();
+            }
+        }
+
         /// <summary>
         /// Current value of the string type parameter
         /// </summary>
@@ -920,6 +962,14 @@ namespace OsEngine.Entity
         /// Current parameter value
         /// </summary>
         public TimeOfDay Value;
+
+        public string StrValue
+        {
+            get
+            {
+                return Value.ToString();
+            }
+        }
 
         /// <summary>
         /// Get formatted string to save to file
@@ -1246,6 +1296,14 @@ namespace OsEngine.Entity
 
         private StrategyParameterType _type;
 
+        public string StrValue
+        {
+            get
+            {
+                return "button";
+            }
+        }
+
         /// <summary>
         /// Event: parameter state changed
         /// </summary>
@@ -1399,6 +1457,21 @@ namespace OsEngine.Entity
             get { return _type; }
         }
 
+        public string StrValue
+        {
+            get
+            {
+                if (_checkState == CheckState.Checked)
+                {
+                    return "true";
+                }
+                else
+                {
+                    return "false";
+                }
+            }
+        }
+
         private StrategyParameterType _type;
 
         /// <summary>
@@ -1542,6 +1615,21 @@ namespace OsEngine.Entity
         }
 
         private StrategyParameterType _type;
+
+        public string StrValue
+        {
+            get
+            {
+                if (_checkState == CheckState.Checked)
+                {
+                    return "true " + _valueDecimal.ToString();
+                }
+                else
+                {
+                    return "false " + _valueDecimal.ToString();
+                }
+            }
+        }
 
         /// <summary>
         /// Current value of the Decimal parameter

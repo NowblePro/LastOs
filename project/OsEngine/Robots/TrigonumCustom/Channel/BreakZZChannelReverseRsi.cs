@@ -22,6 +22,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
+        private StrategyParameterBool _saveJson;
+
         private Aindicator _smaFilter;
         private StrategyParameterInt SmaLengthFilter;
         private StrategyParameterBool SmaPositionFilterIsOn;
@@ -49,6 +51,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -98,6 +102,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void LRegBot_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             if (_zz.ParametersDigit[0].Value != _lengthZZ.ValueInt)
             {
