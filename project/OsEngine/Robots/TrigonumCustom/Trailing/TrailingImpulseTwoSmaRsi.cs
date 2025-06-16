@@ -23,6 +23,8 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
+        private StrategyParameterBool _saveJson;
+
         public Aindicator _sma1;
         public StrategyParameterInt _periodSma1;
 
@@ -64,6 +66,8 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" }, "Base");
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -149,6 +153,8 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
         private void LRegBot_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             if (_sma1.ParametersDigit[0].Value != _periodSma1.ValueInt)
             {

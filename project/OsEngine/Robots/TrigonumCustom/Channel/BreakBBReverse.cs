@@ -23,6 +23,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
+        private StrategyParameterBool _saveJson;
+
         private Aindicator _bbc_long;
         private StrategyParameterInt _length_long;
         private StrategyParameterString _TwoPoint_long;
@@ -53,6 +55,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             VolumeDecimals = CreateParameter("Decimals Volume", 2, 1, 50, 4, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -109,6 +113,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void LRegBot_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             if (_bbc_long.ParametersDigit[0].Value != _length_long.ValueInt
                 || ((IndicatorParameterString)_bbc_long.Parameters[0]).ValueString != _TwoPoint_long.ValueString)
