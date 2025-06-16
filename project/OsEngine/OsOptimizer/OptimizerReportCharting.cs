@@ -69,6 +69,8 @@ namespace OsEngine.OsOptimizer
 
         System.Windows.Controls.Label _labelRobustnessMetricValue;
 
+        public event EventHandler<decimal> SCSCalculated;
+
         private void _boxTypeSortBotNum_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             try
@@ -171,6 +173,7 @@ namespace OsEngine.OsOptimizer
                 UpdateTotalProfitChart();
                 UpdateAverageProfitChart();
                 UpdateProfitFactorChart();
+                CalculateSCS();
             }
             catch (Exception e)
             {
@@ -544,6 +547,21 @@ namespace OsEngine.OsOptimizer
             _chartRobustness.SuppressExceptions = true;
         }
 
+        private void CalculateSCS()
+        {
+            if (_gridStepsOfOptimization.InvokeRequired)
+            {
+                _gridStepsOfOptimization.Invoke(new Action(CalculateSCS));
+                return;
+            }
+
+            decimal result = 0.0m;
+
+            //
+
+            SCSCalculated?.Invoke(this, result);
+        }
+
         private void UpdateRobustnessChart()
         {
             if (_gridStepsOfOptimization.InvokeRequired)
@@ -755,23 +773,28 @@ namespace OsEngine.OsOptimizer
 
         private void CreateTotalProfitChart()
         {
-            _chartTotalProfit = new Chart();
+            _chartTotalProfit = GetTotalProfitChart();
+        }
+
+        public Chart GetTotalProfitChart()
+        {
+            Chart result = new Chart();
 
             ChartArea area = new ChartArea("Prime");
 
-            _chartTotalProfit.ChartAreas.Clear();
-            _chartTotalProfit.ChartAreas.Add(area);
-            _chartTotalProfit.BackColor = Color.FromArgb(21, 26, 30);
-            _chartTotalProfit.ChartAreas[0].AxisX.TitleForeColor = Color.FromArgb(149, 159, 176);
+            result.ChartAreas.Clear();
+            result.ChartAreas.Add(area);
+            result.BackColor = Color.FromArgb(21, 26, 30);
+            result.ChartAreas[0].AxisX.TitleForeColor = Color.FromArgb(149, 159, 176);
 
-            for (int i = 0; _chartTotalProfit.ChartAreas != null && i < _chartTotalProfit.ChartAreas.Count; i++)
+            for (int i = 0; result.ChartAreas != null && i < result.ChartAreas.Count; i++)
             {
-                _chartTotalProfit.ChartAreas[i].BackColor = Color.FromArgb(21, 26, 30);
-                _chartTotalProfit.ChartAreas[i].BorderColor = Color.FromArgb(17, 18, 23);
-                _chartTotalProfit.ChartAreas[i].CursorY.LineColor = Color.FromArgb(149, 159, 176);
-                _chartTotalProfit.ChartAreas[i].CursorX.LineColor = Color.FromArgb(149, 159, 176);
+                result.ChartAreas[i].BackColor = Color.FromArgb(21, 26, 30);
+                result.ChartAreas[i].BorderColor = Color.FromArgb(17, 18, 23);
+                result.ChartAreas[i].CursorY.LineColor = Color.FromArgb(149, 159, 176);
+                result.ChartAreas[i].CursorX.LineColor = Color.FromArgb(149, 159, 176);
 
-                foreach (var axe in _chartTotalProfit.ChartAreas[i].Axes)
+                foreach (var axe in result.ChartAreas[i].Axes)
                 {
                     axe.LabelStyle.ForeColor = Color.FromArgb(149, 159, 176);
                 }
@@ -779,12 +802,13 @@ namespace OsEngine.OsOptimizer
 
             Series series = new Series();
             series.ChartType = SeriesChartType.Candlestick;
-            _chartTotalProfit.Series.Clear();
-            _chartTotalProfit.Series.Add(series);
+            result.Series.Clear();
+            result.Series.Add(series);
 
-            _hostTotalProfit.Child = _chartTotalProfit;
+            _hostTotalProfit.Child = result;
 
-            _chartTotalProfit.SuppressExceptions = true;
+            result.SuppressExceptions = true;
+            return result;
         }
 
         private void UpdateTotalProfitChart()

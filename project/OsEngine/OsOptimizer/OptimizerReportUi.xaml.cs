@@ -44,6 +44,7 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.SCSCalculated += _resultsCharting_SCSCalculated;
 
             CreateTableFazes();
             CreateTableResults();
@@ -70,6 +71,11 @@ namespace OsEngine.OsOptimizer
 
             this.Activate();
             this.Focus();
+        }
+
+        private void _resultsCharting_SCSCalculated(object sender, decimal e)
+        {
+            LabelCSCMetricValue.Content = e;
         }
 
         public void Paint(List<OptimazerFazeReport> reports)

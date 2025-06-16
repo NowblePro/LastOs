@@ -25,7 +25,7 @@
                             <TabItem Name="TabControlResultsOutOfSampleResults" Header="Out of sample statistic">
                                 <Grid Name="PrimeGrid">
                                     <Grid Name="BottomGrid" Height="218" VerticalAlignment="Bottom" Margin="0,0,284,0" >
-                                        <Grid.ColumnDefinitions>
+                                    <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="47*"/>
                                             <ColumnDefinition Width="63*"/>
                                         </Grid.ColumnDefinitions>
@@ -54,7 +54,42 @@
                                     <WindowsFormsHost x:Name="HostStepsOfOptimizationTable"  Foreground="Black" Margin="0,37,287,229"/>
                                     <ComboBox Name="ComboBoxSortResultsType" HorizontalAlignment="Left" Margin="182,10,0,0" VerticalAlignment="Top" Width="214" Height="22"/>
                                     <Label Name="LabelSortBy" Content="Sort by" HorizontalAlignment="Left" Margin="28,10,0,0" VerticalAlignment="Top"/>
-                                    <ComboBox x:Name="ComboBoxSortResultsBotNumPercent" HorizontalAlignment="Left" Margin="407,10,0,0" VerticalAlignment="Top" Width="67" Height="22"/>
+                                    <ComboBox x:Name="ComboBoxSortResultsBotNumPercent" HorizontalAlignment="Left" Margin="137,10,0,0" VerticalAlignment="Top" Width="67" Height="22" Grid.Column="1"/>
+                                </Grid>
+                            </TabItem>
+                            <TabItem Name="TabControlResultsOutOfSampleResults1" Header="CSC">
+                                <Grid Name="PrimeGrid1">
+                                    <Grid Name="BottomGrid1" Height="218" VerticalAlignment="Bottom" Margin="0,0,284,0" >
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="47*"/>
+                                            <ColumnDefinition Width="63*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <WindowsFormsHost x:Name="HostTotalProfit1"  Foreground="Black" Height="190" Margin="1,28,0,0" VerticalAlignment="Top" Grid.Column="1"/>
+                                        <WindowsFormsHost x:Name="HostRobustness1"  Foreground="Black" Height="190" VerticalAlignment="Top" Margin="0,28,0,0"/>
+                                        <Label x:Name="LabelCSCMetric" Content="CSC: " HorizontalAlignment="Left" VerticalAlignment="Top" Width="219" Height="23"/>
+                                        <Label x:Name="LabelCSCMetricValue" Content="value" HorizontalAlignment="Left" Margin="224,0,0,0" VerticalAlignment="Top" Width="87" Height="23"/>
+                                        <Label x:Name="LabelTotalProfit1" Content="Total profit summ" VerticalAlignment="Top" Height="23" HorizontalAlignment="Left" Width="143" Grid.Column="1"/>
+                                        <ComboBox Name="ComboBoxTotalProfit1" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Top" Width="155" Margin="163,0,0,0"/>
+
+                                    </Grid>
+                                    <Grid Name="LeftGrid1"  HorizontalAlignment="Right" Width="279" >
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="200*"/>
+                                            <RowDefinition Height="200*"/>
+                                        </Grid.RowDefinitions>
+                                        <WindowsFormsHost x:Name="HostAverageProfit1"  Foreground="Black" Margin="0,25,0,0"/>
+                                        <Label x:Name="LabelAverageProfitPersent1" Content="P/L % 1 contract" VerticalAlignment="Top" HorizontalAlignment="Left" Width="198" Height="23"/>
+
+
+
+                                        <WindowsFormsHost x:Name="HostProfitFactor1"  Foreground="Black" Margin="0,33,0,0" Grid.Row="1"/>
+
+                                        <Label x:Name="LabelAverageProfitFactor1" Content="Profit Factor" VerticalAlignment="Top" HorizontalAlignment="Left" Width="149" Height="23" Grid.Row="1" Margin="0,6,0,0"/>
+                                    </Grid>
+                                    <WindowsFormsHost x:Name="HostStepsOfOptimizationTable1"  Foreground="Black" Margin="0,37,287,229"/>
+                                    <ComboBox Name="ComboBoxSortResultsType1" HorizontalAlignment="Left" Margin="182,10,0,0" VerticalAlignment="Top" Width="214" Height="22"/>
+                                    <Label Name="LabelSortBy1" Content="Sort by" HorizontalAlignment="Left" Margin="28,10,0,0" VerticalAlignment="Top"/>
+                                    <ComboBox x:Name="ComboBoxSortResultsBotNumPercent1" HorizontalAlignment="Left" Margin="407,10,0,0" VerticalAlignment="Top" Width="67" Height="22"/>
                                 </Grid>
                             </TabItem>
                         </TabControl>
