@@ -29,6 +29,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
+        private StrategyParameterBool _saveJson;
+
         public Aindicator _APC;
         private StrategyParameterInt AdxPeriod;
         private StrategyParameterInt Ratio;
@@ -70,6 +72,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
 
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -151,6 +155,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void RoncoParam_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             if (_APC.ParametersDigit[0].Value != AdxPeriod.ValueInt ||
                 _APC.ParametersDigit[1].Value != Ratio.ValueInt)

@@ -46,6 +46,9 @@ namespace OsEngine.Journal.Internal
                  Количество сделок
                  Среднее время удержания
                  Шарп
+                 SMA dev
+                 Profit factor
+                 Recovery
 
                  Сред. П\У по движению
                  Сред. П\У % по движению

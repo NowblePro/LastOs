@@ -3828,6 +3828,13 @@ namespace OsEngine.Journal
             }
         }
 
+        public List<Position> AllPositions
+        {
+            get
+            {
+                return _allPositions;
+            }
+        }
         private List<Position> _allPositions;
 
         private List<Position> _longPositions;
@@ -4308,7 +4315,7 @@ namespace OsEngine.Journal
             {
                 data_parameters = new DataParameters
                 {
-                    ticker = "BTCUSDT",
+                    ticker = "",
                     timeframe = "15m",
                     time_start = "20.03.2025 5:15",
                     time_end = "20.03.2025 6:00"
@@ -4323,29 +4330,19 @@ namespace OsEngine.Journal
                     long_position_count = _longPositions.Count,
                     short_position_count = _shortPositions.Count,
                     sharp_ratio = positionsAllState[4].ToDecimal(),
-                    profit_factor = 4.3m,
-                    sma_deviation = 0.0m
+                    profit_factor = positionsAllState[6].ToDecimal(),
+                    recovery = positionsAllState[7].ToDecimal(),
+                    sma_deviation = positionsAllState[5].ToDecimal()
                 }
             };
 
-            // Сериализуем объект в JSON-строку с форматированием
             string json = JsonConvert.SerializeObject(data, Formatting.Indented);
-
-            // Получаем путь к рабочему столу текущего пользователя
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-
-            // Путь к файлу (можно изменить)
             string fileName = "run_data.json";
-
-            // Полный путь к файлу
             string fullPath = Path.Combine(desktopPath, fileName);
 
-            // Записываем JSON в файл
             File.WriteAllText(fullPath, json);
 
-            //Console.WriteLine($"Файл успешно создан: {filePath}");
-            //Console.WriteLine("Содержимое файла:");
-            //Console.WriteLine(json);
             return;
         }
 
@@ -4367,6 +4364,7 @@ namespace OsEngine.Journal
             public int short_position_count { get; set; }
             public decimal sharp_ratio { get; set; }
             public decimal profit_factor { get; set; }
+            public decimal recovery { get; set; }
             public decimal sma_deviation { get; set; }
         }
 

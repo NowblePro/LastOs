@@ -44,6 +44,8 @@ public class BreakKeltnerChannelsWithAtr : BotPanel
     private bool _needUpdateIterator;
     private int _iterator = 1;
 
+    private StrategyParameterBool _saveJson;
+
     public BreakKeltnerChannelsWithAtr(string name, StartProgram startProgram) : base(name, startProgram)
     {
         TabCreate(BotTabType.Simple);
@@ -53,6 +55,8 @@ public class BreakKeltnerChannelsWithAtr : BotPanel
         VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
         VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
         Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+        _saveJson = CreateParameter("Save Json Data", false, "Base");
 
         TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
         TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -102,6 +106,8 @@ public class BreakKeltnerChannelsWithAtr : BotPanel
     private void KeltnerChannelsBot_ParametrsChangeByUser()
     {
         StopOrActivateIndicators();
+
+        _tab.setSaveData(_saveJson.ValueBool);
 
         _keltnerChannels.ParametersDigit[0].Value = KeltnerPeriod.ValueInt;
         _keltnerChannels.ParametersDigit[3].Value = AtrMultiplier.ValueDecimal;

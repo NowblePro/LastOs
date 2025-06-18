@@ -22,6 +22,8 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
+        private StrategyParameterBool _saveJson;
+
         public Aindicator _PS;
         private StrategyParameterDecimal _Step;
         private StrategyParameterDecimal _MaxStep;
@@ -65,6 +67,8 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
 
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -148,6 +152,8 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
         private void ParabolicSarClassicTrade_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             if (_PS.ParametersDigit[0].Value != _Step.ValueDecimal ||
                 _PS.ParametersDigit[1].Value != _MaxStep.ValueDecimal)
@@ -299,25 +305,21 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             {
                 if (BuySignalIsFiltered(candles) == false)
                 {
-                    if (_lastPrice > _lastSar)
+                    if (_lastPrice < _lastSar)
                     {
-                        return;
+                        decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
+                        _tab.BuyAtStopCancel();
+                        _tab.BuyAtStop(GetVolume(), _lastSar + _slippage, _lastSar, StopActivateType.HigherOrEqual, 1);
                     }
-
-                    decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
-                    _tab.BuyAtStopCancel();
-                    _tab.BuyAtStop(GetVolume(), _lastSar + _slippage, _lastSar, StopActivateType.HigherOrEqual, 1);
                 }
                 if (SellSignalIsFiltered(candles) == false)
                 {
-                    if (_lastPrice < _lastSar)
+                    if (_lastPrice > _lastSar)
                     {
-                        return;
+                        decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
+                        _tab.SellAtStopCancel();
+                        _tab.SellAtStop(GetVolume(), _lastSar - _slippage, _lastSar, StopActivateType.LowerOrEqual, 1);
                     }
-
-                    decimal _slippage = Slippage.ValueDecimal * _lastSar / 100;
-                    _tab.SellAtStopCancel();
-                    _tab.SellAtStop(GetVolume(), _lastSar - _slippage, _lastSar, StopActivateType.LowerOrEqual, 1);
                 }
             }
             else

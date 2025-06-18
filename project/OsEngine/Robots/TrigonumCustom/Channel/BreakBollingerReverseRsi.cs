@@ -28,6 +28,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterTimeOfDay StartTradeTime;
         private StrategyParameterTimeOfDay EndTradeTime;
 
+        private StrategyParameterBool _saveJson;
+
         // Indicator setting 
         private StrategyParameterInt BollingerLength;
         private StrategyParameterDecimal BollingerDeviation;
@@ -59,6 +61,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 1, 1.0m, 50, 4, "Base");
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
+
             StartTradeTime = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             EndTradeTime = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
 
@@ -107,6 +112,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void BreakBollinger_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             ((IndicatorParameterInt)_Bollinger.Parameters[0]).ValueInt = BollingerLength.ValueInt;
             ((IndicatorParameterDecimal)_Bollinger.Parameters[1]).ValueDecimal = BollingerDeviation.ValueDecimal;

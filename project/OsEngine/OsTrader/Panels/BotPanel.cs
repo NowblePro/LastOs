@@ -1644,7 +1644,7 @@ position => position.State != PositionStateType.OpeningFail
 
                 if (tabType == BotTabType.Simple)
                 {
-                    newTab = new BotTabSimple(nameTab, StartProgram);
+                    newTab = new BotTabSimple(nameTab, StartProgram); // here is bot are creating
                     _tabSimple.Add((BotTabSimple)newTab);
                 }
                 else if (tabType == BotTabType.Index)

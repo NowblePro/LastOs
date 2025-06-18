@@ -1120,6 +1120,7 @@
     <Compile Include="OsTrader\Panels\BotPanelChartUI.xaml.cs">
       <DependentUpon>BotPanelChartUI.xaml</DependentUpon>
     </Compile>
+    <Compile Include="OsTrader\Panels\JsonData\JsonData.cs" />
     <Compile Include="OsTrader\Panels\Tab\BotTabNews.cs" />
     <Compile Include="OsTrader\Panels\Tab\BotTabPair.cs" />
     <Compile Include="OsTrader\Panels\Tab\BotTabPairAutoSelectPairsUi.xaml.cs">

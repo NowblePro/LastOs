@@ -22,6 +22,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterTimeOfDay _startTradeTime;
         private StrategyParameterTimeOfDay _endTradeTime;
 
+        private StrategyParameterBool _saveJson;
+
         // Indicator setting 
         private StrategyParameterInt _NWLength;
         private StrategyParameterDecimal _NWMultiplier;
@@ -56,6 +58,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _volumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             _volumeOnPosition = CreateParameter("Volume", 1, 1.0m, 50, 4, "Base");
             _slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
+
             _startTradeTime = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             _endTradeTime = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
 
@@ -104,6 +109,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void NW_ParametersChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             ((IndicatorParameterInt)_NW.Parameters[0]).ValueInt = _NWLength.ValueInt;
             ((IndicatorParameterDecimal)_NW.Parameters[1]).ValueDecimal = _NWMultiplier.ValueDecimal;

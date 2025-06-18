@@ -44,6 +44,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterDecimal slippage;
         private StrategyParameterDecimal volumeOnPosition;
 
+        private StrategyParameterBool _saveJson;
+
         #region Trailing stop
         private TrailingStop trailingStop;
         private StrategyParameterBool TrailingStopIsOn;
@@ -89,6 +91,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             TabCreate(BotTabType.Simple);
             tab = TabsSimple[0];
             slippage = CreateParameter("Slippage", 0.1m, 0.1m, 5, 0.1m, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             topLine = CreateParameter("TopLine", 0.5m, 0.5m, 2m, 0.1m, "Base");
             bottomLine = CreateParameter("BottomLine", -0.5m, -2m, -0.5m, 0.1m, "Base");
@@ -169,6 +173,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         private void UpdateParameters()
         {
+            tab.setSaveData(_saveJson.ValueBool);
             SetFisherParameters();
             SetTrailingParameters();
             SetATRParameters();

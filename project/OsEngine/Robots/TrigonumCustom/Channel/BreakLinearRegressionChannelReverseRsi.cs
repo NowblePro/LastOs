@@ -20,6 +20,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterInt VolumeDecimals;
         private StrategyParameterDecimal Slippage;
 
+        private StrategyParameterBool _saveJson;
+
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
@@ -52,6 +54,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
 
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -102,6 +106,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void LinearRegressionTraderParam_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
+
+            _tab.setSaveData(_saveJson.ValueBool);
 
             if (_LinearRegression.ParametersDigit[0].Value != PeriodLR.ValueInt ||
             _LinearRegression.ParametersDigit[1].Value != UpDeviation.ValueDecimal ||

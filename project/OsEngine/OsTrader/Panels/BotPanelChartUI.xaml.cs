@@ -20,6 +20,10 @@ using OsEngine.Layout;
 using System.IO;
 using OsEngine.OsTrader.Panels.Tab.Internal;
 using OsEngine.Alerts;
+using OsEngine.Journal.Internal;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using OsEngine.OsTrader.Panels.JsonData;
 
 namespace OsEngine.OsTrader.Panels
 {
@@ -698,6 +702,37 @@ namespace OsEngine.OsTrader.Panels
             {
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
+        }
+
+        #endregion
+
+        #region Load Json
+
+        private void ButtonJson_Click(object sender, RoutedEventArgs e)
+        {
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop); ;
+            if (TextBoxDirectoryPath.Text != "" && Directory.Exists(TextBoxDirectoryPath.Text))
+            {
+                desktopPath = TextBoxDirectoryPath.Text;
+            }
+            string fileName = _panel.NameStrategyUniq + ".json";
+            string fullPath = Path.Combine(desktopPath, fileName);
+
+            //List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(_journalUi.AllPositions);
+
+            if (_panel.TabsSimple.Count < 1)
+            {
+                return;
+            }
+
+            _panel.TabsSimple[0].setJsonBotParameters(_panel.Parameters);
+            _panel.TabsSimple[0].setJsonDataParameters(_panel.GetNameStrategyType());
+
+            string json = JsonConvert.SerializeObject(_panel.TabsSimple[0].JsonData, Formatting.Indented);
+
+            File.WriteAllText(fullPath, json);
+
+            return;
         }
 
         #endregion

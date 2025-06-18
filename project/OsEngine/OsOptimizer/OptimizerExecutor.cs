@@ -768,7 +768,7 @@ namespace OsEngine.OsOptimizer
 
         private List<BotPanel> _botsInTest = new List<BotPanel>();
 
-        private OptimizerServer CreateNewServer(OptimazerFazeReport report,bool neadToDelete, bool fullTime = false)
+        private OptimizerServer CreateNewServer(OptimazerFazeReport report,bool neadToDelete)
         {
             // 1. Create a new server for optimization. And one thread respectively
             // 1. создаём новый сервер для оптимизации. И один поток соответственно
@@ -1036,7 +1036,7 @@ namespace OsEngine.OsOptimizer
         // единичный тест
 
         public BotPanel TestBot(OptimazerFazeReport reportFaze,
-            OptimizerReport reportToBot, StartProgram startProgram, AwaitObject awaitObj, bool fullTime = false)
+            OptimizerReport reportToBot, StartProgram startProgram, AwaitObject awaitObj, bool capture_data = false)
         {
             if (_primeThreadWorker != null)
             {
@@ -1050,14 +1050,35 @@ namespace OsEngine.OsOptimizer
             List<string> names = new List<string> { botName };
             _asyncBotFactory.CreateNewBots(names, _master.StrategyName, _master.IsScript, startProgram);
 
-            OptimizerServer server = CreateNewServer(reportFaze,false, fullTime);
+            OptimizerServer server = CreateNewServer(reportFaze,false);
 
             List<IIStrategyParameter> parametrs = reportToBot.GetParameters();
 
             BotPanel bot = CreateNewBot(botName,
                 parametrs, parametrs, server, startProgram);
 
-            if(bot == null)
+            if (capture_data)
+            {
+                try
+                {
+                    var save_data_parameter = bot.Parameters.Find(parameter => parameter.Name == "Save Json Data");
+                    if (save_data_parameter == null)
+                    {
+                        SendLogMessage("The robot does not have the ability to record statistics on candles in json", LogMessageType.System);
+                    }
+                    else
+                    {
+                        StrategyParameterBool converted = (StrategyParameterBool)save_data_parameter;
+                        converted.ValueBool = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SendLogMessage("The robot does not have the ability to record statistics on candles in json", LogMessageType.System);
+                }
+            }
+
+            if (bot == null)
             {
                 SendLogMessage("Test over whith error. A different robot is selected in the optimizer", LogMessageType.Error);
                 awaitObj.Dispose();
