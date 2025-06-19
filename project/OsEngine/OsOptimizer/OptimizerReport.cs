@@ -174,7 +174,7 @@ namespace OsEngine.OsOptimizer
 
             for (int i = 0; i < parameters.Count; i++)
             {
-                result += parameters[i].Name + " =; ";
+                result += parameters[i].Name + " = ";
 
                 if (parameters[i].Type == StrategyParameterType.Bool)
                 {
@@ -396,6 +396,16 @@ namespace OsEngine.OsOptimizer
         public decimal SharpRatio;
 
         public decimal SmaDeviation;
+
+        public decimal CSC;
+
+        public decimal PSR;
+
+        public decimal DDS;
+
+        public decimal SRC;
+
+        public decimal FRS;
 
         public string GetSaveString()
         {

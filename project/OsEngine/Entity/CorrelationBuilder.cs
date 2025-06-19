@@ -139,7 +139,7 @@ namespace OsEngine.Entity
             _correlationList.Add(value);
         }
 
-        private double Correlation(Double[] Xs, Double[] Ys)
+        public static double Correlation(Double[] Xs, Double[] Ys)
         {
             Double sumX = 0;
             Double sumX2 = 0;

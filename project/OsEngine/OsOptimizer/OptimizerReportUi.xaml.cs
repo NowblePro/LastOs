@@ -32,15 +32,19 @@ namespace OsEngine.OsOptimizer
             _resultsCharting = new OptimizerReportCharting(
             HostStepsOfOptimizationTable,
             HostRobustness,
+            HostStepsOfOptimizationTable1,
             ComboBoxSortResultsType,
             LabelRobustnessMetricValue,
-            ComboBoxSortResultsBotNumPercent);
+            ComboBoxSortResultsBotNumPercent,
+            ComboBoxSortResultsType1,
+            ComboBoxSortResultsBotNumPercent1
+            );
 
             _resultsCharting.ActivateTotalProfitChart(HostTotalProfit, ComboBoxTotalProfit);
 
             _resultsCharting.ActivateAverageProfitChart(HostAverageProfit);
             _resultsCharting.ActivateProfitFactorChart(HostProfitFactor);
-
+            _resultsCharting.ActivateCSCChart(HostFRS);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
