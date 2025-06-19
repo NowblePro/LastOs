@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -18,16 +19,23 @@ namespace OsEngine.OsOptimizer
 {
     public class OptimizerReportCharting
     {
+        private DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
+
         public OptimizerReportCharting(
             WindowsFormsHost hostStepsOfOptimization, 
             WindowsFormsHost hostRobustness,
-            System.Windows.Controls.ComboBox boxTypeSort, 
+            WindowsFormsHost hostStepsOfOptimizationCSC,
+            System.Windows.Controls.ComboBox boxTypeSort,
             System.Windows.Controls.Label labelRobustnessMetricValue,
-            System.Windows.Controls.ComboBox boxTypeSortBotNum)
+            System.Windows.Controls.ComboBox boxTypeSortBotNum,
+            System.Windows.Controls.ComboBox boxTypeSortCSC,
+            System.Windows.Controls.ComboBox boxTypeSortBotNumCSC
+            )
         {
             _sortBotsType = SortBotsType.TotalProfit;
             _currentCulture = OsLocalization.CurCulture;
             _hostStepsOfOptimization = hostStepsOfOptimization;
+            _hostStepsOfOptimizationCSC = hostStepsOfOptimizationCSC;
             _hostRobustness = hostRobustness;
             _labelRobustnessMetricValue = labelRobustnessMetricValue;
 
@@ -57,8 +65,34 @@ namespace OsEngine.OsOptimizer
             _boxTypeSortBotNum.SelectedItem = "0";
             _boxTypeSortBotNum.SelectionChanged += _boxTypeSortBotNum_SelectionChanged;
 
+            _boxTypeSortCSC = boxTypeSortCSC;
+            boxTypeSortCSC.Items.Add(CSCSortType.CSC.ToString());
+            boxTypeSortCSC.Items.Add(CSCSortType.PSR.ToString());
+            boxTypeSortCSC.Items.Add(CSCSortType.DDS.ToString());
+            boxTypeSortCSC.Items.Add(CSCSortType.SRC.ToString());
+            boxTypeSortCSC.Items.Add(CSCSortType.FRS.ToString());
+            boxTypeSortCSC.SelectedItem = CSCSortType.CSC.ToString();
+            boxTypeSortCSC.SelectionChanged += BoxTypeSortCSC_SelectionChanged;
+
             CreateStepsOfOptimization();
             CreateRobustnessChart();
+        }
+
+        private void BoxTypeSortCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            try
+            {
+                //_sortBotPercent = Convert.ToInt32(_boxTypeSortBotNum.SelectedItem.ToString());
+
+                if (_reports != null)
+                {
+                    ReLoadCSC(_reports);
+                }
+            }
+            catch
+            {
+
+            }
         }
 
         private CultureInfo _currentCulture;
@@ -66,6 +100,9 @@ namespace OsEngine.OsOptimizer
         private System.Windows.Controls.ComboBox _boxTypeSort;
 
         private System.Windows.Controls.ComboBox _boxTypeSortBotNum;
+
+        private System.Windows.Controls.ComboBox _boxTypeSortCSC;
+        private System.Windows.Controls.ComboBox _boxTypeSortBotNumCSC;
 
         System.Windows.Controls.Label _labelRobustnessMetricValue;
 
@@ -181,6 +218,76 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        private void ReLoadCSC(List<OptimazerFazeReport> reports)
+        {
+            // Группировка ботов с одинаковыми параметрами из разных периодов
+            var bots = reports.SelectMany(r => r.Reports.Select(report => new {Report = report, FazeType = r.Faze.TypeFaze })).GroupBy(r => r.Report.GetParamsToDataTable());
+
+            Parallel.ForEach(bots, (group) =>
+            {
+                string key = group.Key;
+                IEnumerable<OptimizerReport> allInSampleReports = group.Where(r => r.FazeType == OptimizerFazeType.InSample).Select(r => r.Report);
+                IEnumerable<OptimizerReport> allOutSampleReports = group.Where(r => r.FazeType == OptimizerFazeType.OutOfSample).Select(r => r.Report);
+
+                decimal avgProfitIS = allInSampleReports.Sum(r => r.AverageProfit) / allInSampleReports.Count();
+                decimal avgProfitOOS = allOutSampleReports.Sum(r => r.AverageProfit) / allOutSampleReports.Count();
+                decimal csc = 0;
+                if (Math.Max(avgProfitIS, avgProfitOOS) > 0)
+                {
+                    csc = ((1 - Math.Abs(avgProfitIS - avgProfitOOS)) / Math.Max(avgProfitIS, avgProfitOOS)) * 100;
+                }
+
+                int profitCountIS = allInSampleReports.Where(r => r.TotalProfit > 0).Count();
+                int profitCountOOS = allOutSampleReports.Where(r => r.TotalProfit > 0).Count();
+                decimal psr = 0;
+
+                if (profitCountIS > 0)
+                {
+                    psr = (decimal)profitCountOOS / (decimal)profitCountIS * 100;
+                }
+
+                decimal avgDDIS = allInSampleReports.Sum(r => r.MaxDrowDawn) / allInSampleReports.Count();
+                decimal avgDDOOS = allOutSampleReports.Sum(r => r.MaxDrowDawn) / allOutSampleReports.Count();
+                decimal dds = 0;
+                if (avgDDIS > 0)
+                {
+                    dds = (1 - ((avgDDOOS / avgDDIS) - 1)) * 100;
+                    dds = Math.Max(0, dds);
+                }
+
+                double[] sharpIS = allInSampleReports.Select(r => (double)r.SharpRatio).ToArray();
+                double[] sharpOOS = allOutSampleReports.Select(r => (double)r.SharpRatio).ToArray();
+                double temp = CorrelationBuilder.Correlation(sharpIS, sharpOOS);
+                decimal src = (decimal)temp;
+
+                using (Chart chart = new Chart())
+                {
+                    Series ser1 = new Series("1");
+                    Series ser2 = new Series("2");
+                    for (int i = 0; i < sharpIS.Length; i++)
+                    {
+                        ser1.Points.AddXY(i, sharpIS[i]);
+                        ser2.Points.AddXY(i, sharpOOS[i]);
+                    }
+                    
+                    chart.Series.Add(ser1);
+                    chart.Series.Add(ser2);
+                    src = (decimal)chart.DataManipulator.Statistics.Correlation("1", "2");
+                }
+
+                decimal frs = 0.25m * csc + 0.25m * psr + 0.25m * dds + 0.25m * src;
+
+                
+
+                foreach (var r in group)
+                {
+
+                }
+            });
+        }
+
+
+
         private void GetBestBotNum(List<OptimizerReport> reports)
         {
             if(_sortBotPercent == 0)
@@ -212,112 +319,94 @@ namespace OsEngine.OsOptimizer
         // fazes in table
 
         private WindowsFormsHost _hostStepsOfOptimization;
+        private WindowsFormsHost _hostStepsOfOptimizationCSC;
         private DataGridView _gridStepsOfOptimization;
+        private DataGridView _gridStepsOfOptimizationCSC;
 
-        private void CreateStepsOfOptimization()
+        private DataGridView GetStepsOfOptimizationDGV()
         {
-            _gridStepsOfOptimization = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect, 
-                DataGridViewAutoSizeRowsMode.None,true);
+            DataGridView gridStepsOfOptimization = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
+                DataGridViewAutoSizeRowsMode.None, true);
 
-            _gridStepsOfOptimization.ScrollBars = ScrollBars.Vertical;
+            cell0.Style = gridStepsOfOptimization.DefaultCellStyle;
 
-            DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = _gridStepsOfOptimization.DefaultCellStyle;
+            gridStepsOfOptimization.ScrollBars = ScrollBars.Vertical;
 
-            DataGridViewColumn column0 = new DataGridViewColumn();
-            column0.CellTemplate = cell0;
-            column0.HeaderText = "Period";
-            column0.ReadOnly = true;
-            column0.Width = 80;
-
-            _gridStepsOfOptimization.Columns.Add(column0);
-
-            DataGridViewColumn column1 = new DataGridViewColumn();
-            column1.CellTemplate = cell0;
-            column1.HeaderText = "Start";
-            column1.ReadOnly = false;
-            column1.Width = 80;
-            _gridStepsOfOptimization.Columns.Add(column1);
-
-            DataGridViewColumn column21 = new DataGridViewColumn();
-            column21.CellTemplate = cell0;
-            column21.HeaderText = "End";
-            column21.ReadOnly = false;
-            column21.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column21);
-
-            DataGridViewColumn column2 = new DataGridViewColumn();
-            column2.CellTemplate = cell0;
-            column2.HeaderText = "Best bot number InSample";
-            column2.ReadOnly = false;
-            column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column2);
-
-            DataGridViewColumn column3 = new DataGridViewColumn();
-            column3.CellTemplate = cell0;
-            column3.HeaderText = "Best bot in period";
-            column3.ReadOnly = false;
-            column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column3);
-
-            DataGridViewColumn column4 = new DataGridViewColumn();
-            column4.CellTemplate = cell0;
-            column4.HeaderText = "Parameters";
-            column4.ReadOnly = false;
-            column4.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column4);
-
-            DataGridViewColumn column5 = new DataGridViewColumn();
-            column5.CellTemplate = cell0;
-            column5.HeaderText = "Bot results in OutOfSample";
-            column5.ReadOnly = false;
-            column5.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column5);
-
-            DataGridViewColumn column6 = new DataGridViewColumn();
-            column6.CellTemplate = cell0;
-            column6.HeaderText = "Profit";
-            column6.ReadOnly = false;
-            column6.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column6);
-
-            DataGridViewColumn column7 = new DataGridViewColumn();
-            column7.CellTemplate = cell0;
-            column7.HeaderText = "Average profit %";
-            column7.ReadOnly = false;
-            column7.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column7);
-
-            DataGridViewColumn column8 = new DataGridViewColumn();
-            column8.CellTemplate = cell0;
-            column8.HeaderText = "Position count";
-            column8.ReadOnly = false;
-            column8.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column8);
-
-            DataGridViewColumn column9 = new DataGridViewColumn();
-            column9.CellTemplate = cell0;
-            column9.HeaderText = "Sharp ratio";
-            column9.ReadOnly = false;
-            column9.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column9);
-
-            DataGridViewColumn column10 = new DataGridViewColumn();
-            column10.CellTemplate = cell0;
-            column10.HeaderText = "SMA(20) Deviation";
-            column10.ReadOnly = false;
-            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column10);
+            gridStepsOfOptimization.Columns.Add(GetColumn("Period", 80));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Start", 80, false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("End", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Best bot number InSample", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Best bot in period", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Parameters", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Bot results in OutOfSample", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Profit", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Average profit %", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Position count", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("SMA(20) Deviation", readOnly: false));
 
             DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
             column11.CellTemplate = new DataGridViewButtonCell();
             column11.ReadOnly = true;
             column11.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-            _gridStepsOfOptimization.Columns.Add(column11);
+            gridStepsOfOptimization.Columns.Add(column11);
 
-            _gridStepsOfOptimization.Rows.Add(null, null);
+            gridStepsOfOptimization.Rows.Add(null, null);
+            return gridStepsOfOptimization;
+        }
+
+        private void CreateStepsOfOptimization()
+        {
+            _gridStepsOfOptimization = GetStepsOfOptimizationDGV();
+            _gridStepsOfOptimizationCSC = GetStepsOfOptimizationDGV();
 
             _hostStepsOfOptimization.Child = _gridStepsOfOptimization;
+            _hostStepsOfOptimizationCSC.Child = _gridStepsOfOptimizationCSC;
+        }
+
+        private WindowsFormsHost _hostFRS;
+        private DataGridView _gridFRS;
+        
+        internal void ActivateCSCChart(WindowsFormsHost hostFRS)
+        {
+            _hostFRS = hostFRS;
+            _gridFRS = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
+                DataGridViewAutoSizeRowsMode.None, true);
+
+            try
+            {
+                _gridFRS.ScrollBars = ScrollBars.Vertical;
+
+                _gridFRS.Columns.Add(GetColumn(""));
+                _gridFRS.Columns.Add(GetColumn("PSR", 80));
+                _gridFRS.Columns.Add(GetColumn("DDS", 80));
+                _gridFRS.Columns.Add(GetColumn("SRC", 80));
+                _gridFRS.Columns.Add(GetColumn("FRS", 80));
+
+                _gridFRS.Rows.Add(null, null);
+                _hostFRS.Child = _gridFRS;
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
+
+        DataGridViewColumn GetColumn(string name, int width = 0, bool readOnly = true)
+        {
+            DataGridViewColumn column = new DataGridViewColumn();
+            column.CellTemplate = cell0;
+            column.HeaderText = name;
+            column.ReadOnly = readOnly;
+            if (width > 0)
+            {
+                column.Width = width;
+            }
+            else
+            {
+                column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            }
+            return column;
         }
 
         private void UpdGridStepsOfOptimization()
