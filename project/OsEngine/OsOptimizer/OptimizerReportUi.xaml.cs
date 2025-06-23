@@ -41,9 +41,11 @@ namespace OsEngine.OsOptimizer
             );
 
             _resultsCharting.ActivateTotalProfitChart(HostTotalProfit, ComboBoxTotalProfit);
-
+            _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
             _resultsCharting.ActivateAverageProfitChart(HostAverageProfit);
+            _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
             _resultsCharting.ActivateProfitFactorChart(HostProfitFactor);
+            _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
             _resultsCharting.ActivateCSCChart(HostFRS);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
@@ -76,8 +78,21 @@ namespace OsEngine.OsOptimizer
                 Title += "  " + master.TabsSimpleNamesAndTimeFrames[0].NameSecurity + "  " + master.TabsSimpleNamesAndTimeFrames[0].TimeFrame;
             }
 
+            TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
+            TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
+
             this.Activate();
             this.Focus();
+        }
+
+        private void TabControlResultsOutOfSampleResults_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.ReLoad(_reports);
+        }
+
+        private void TabControlResultsOutOfSampleResults1_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.ReLoadCSC(_reports);
         }
 
         private void _resultsCharting_SCSCalculated(object sender, decimal e)
@@ -119,8 +134,16 @@ namespace OsEngine.OsOptimizer
 
                 PaintTableFazes();
                 PaintTableResults();
-
-                _resultsCharting.ReLoad(_reports);
+                if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
+                {
+                    _resultsCharting.ReLoadCSC(_reports);
+                    _resultsCharting.ReLoad(_reports);
+                }
+                else
+                {
+                    _resultsCharting.ReLoad(_reports);
+                    _resultsCharting.ReLoadCSC(_reports);
+                }
             }
             catch (Exception error)
             {
