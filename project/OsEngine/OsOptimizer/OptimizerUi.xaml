@@ -41,7 +41,7 @@
                         <TextBox Name="TextBoxStrategyName" HorizontalAlignment="Left" IsReadOnly="True" Margin="24,71,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" Height="25"/>
                         <Button x:Name="ButtonStrategyReload" Content="Reload" HorizontalAlignment="Left" Margin="156,81,0,0" VerticalAlignment="Top" Width="60" Click="ButtonStrategyReload_Click"/>
                         <Button x:Name="ButtonPositionSupport" Content="Position support"  HorizontalAlignment="Left" Margin="231,190,0,0" VerticalAlignment="Top" Width="195" Click="ButtonPositionSupport_Click" />
-                        <CheckBox Name="CheckBoxDataCapture" Content="Data capture on charts" HorizontalAlignment="Left" Margin="450,190,0,0" VerticalAlignment="Top"/>
+                        <CheckBox Name="CheckBoxSaveJson" Content="Save run results to json" HorizontalAlignment="Left" Margin="450,190,0,0" VerticalAlignment="Top"/>
                     </Grid>
                 </TabItem>
                 <TabItem Name="TabItemParams" Header="Parameters" FontSize="14" Width="120">
@@ -86,7 +86,7 @@
                 <TabItem Name="TabItemResults" Header="Results" FontSize="14"  Width="120">
 
                     <Grid>
-                        <TabControl  Name="TabControlResults" Margin="0,0,0,0">
+                        <TabControl  Name="TabControlResults" Margin="0,0,0,35">
                             <TabItem Name="TabControlResultsSeries"  Header="Series and Results">
                                 <Grid >
                                     <WindowsFormsHost x:Name="WindowsFormsHostFazeNumOnTubResult"  Foreground="Black" Height="92" Margin="0,34,8,0" VerticalAlignment="Top"/>
@@ -146,6 +146,7 @@
                                 </Grid>
                             </TabItem>
                         </TabControl>
+                        <CheckBox Name="CheckBoxDataCapture" Content="Data capture on charts" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom"/>
                     </Grid>
                 </TabItem>
 
