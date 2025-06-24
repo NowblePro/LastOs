@@ -78,6 +78,11 @@ namespace OsEngine.OsOptimizer
             CheckBoxDataCapture.IsChecked = _captureData;
             CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
 
+            CheckBoxSaveJson.IsChecked = _master.SaveJson;
+            CheckBoxSaveJson.Click += CheckBoxSaveJson_Click;
+            SaveJsonPath.Text = _master.SaveJsonPath;
+            SaveJsonPath.TextChanged += SaveJsonPath_TextChanged;
+
             // filters/фильтры
             CheckBoxFilterProfitIsOn.IsChecked = _master.FilterProfitIsOn;
             CheckBoxFilterMaxDrowDownIsOn.IsChecked = _master.FilterMaxDrowDownIsOn;
@@ -566,6 +571,10 @@ namespace OsEngine.OsOptimizer
             {
                 TabControlPrime.SelectedItem = TabControlPrime.Items[2];
             }
+            if (move == NeadToMoveUiTo.JsonPath)
+            {
+                TabControlPrime.SelectedItem = TabControlPrime.Items[0];
+            }
             if (move == NeadToMoveUiTo.Filters)
             {
                 TabControlPrime.SelectedItem = TabControlPrime.Items[3];
@@ -859,6 +868,16 @@ namespace OsEngine.OsOptimizer
         }
 
         private bool _captureData = false;
+
+        private void CheckBoxSaveJson_Click(object sender, RoutedEventArgs e)
+        {
+            _master.SaveJson = CheckBoxSaveJson.IsChecked.Value;
+        }
+
+        private void SaveJsonPath_TextChanged(object sender, RoutedEventArgs e)
+        {
+            _master.SaveJsonPath = SaveJsonPath.Text;
+        }
 
         private void CheckBoxLastInSample_Click(object sender, RoutedEventArgs e)
         {

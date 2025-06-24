@@ -187,6 +187,10 @@ namespace OsEngine.Language
             "Eng:Full Chart_" +
             "Ru:Полный График_");
 
+        public string Message45 => OsLocalization.ConvertToLocString(
+           "Eng:You must enter the correct path to save the data_" +
+           "Ru:Необходимо ввести корректный путь для сохранения данных_");
+
         public string Label1 => OsLocalization.ConvertToLocString(
             "Eng:Index securities_" +
             "Ru:Бумаги для индекса_");

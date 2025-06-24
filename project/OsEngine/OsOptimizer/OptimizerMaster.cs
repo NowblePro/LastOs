@@ -118,6 +118,9 @@ namespace OsEngine.OsOptimizer
                     writer.WriteLine(_commissionValue);
                     writer.WriteLine(_lastInSample);
 
+                    writer.WriteLine(_saveJson);
+                    writer.WriteLine(_saveJsonPath);
+
                     writer.Close();
                 }
             }
@@ -165,6 +168,9 @@ namespace OsEngine.OsOptimizer
                         reader.ReadLine() ?? ComissionType.None.ToString());
                     _commissionValue = reader.ReadLine().ToDecimal();
                     _lastInSample = Convert.ToBoolean(reader.ReadLine());
+
+                    _saveJson = Convert.ToBoolean(reader.ReadLine());
+                    _saveJsonPath = reader.ReadLine();
 
                     reader.Close();
                 }
@@ -341,6 +347,34 @@ namespace OsEngine.OsOptimizer
         public event Action<List<Security>> NewSecurityEvent;
 
         // Management 1 tab/управление 1 вкладка
+
+        public bool SaveJson
+        {
+            get
+            {
+                return _saveJson;
+            }
+            set
+            {
+                _saveJson = value;
+                Save();
+            }
+        }
+        private bool _saveJson = false;
+
+        public string SaveJsonPath
+        {
+            get
+            {
+                return _saveJsonPath;
+            }
+            set
+            {
+                _saveJsonPath = value;
+                Save();
+            }
+        }
+        private string _saveJsonPath = "";
 
         /// <summary>
         /// number of threads that will simultaneously work on optimization
@@ -1328,6 +1362,18 @@ namespace OsEngine.OsOptimizer
             }
             // Regime / конец
 
+            if (_saveJson && (SaveJsonPath.Length > 0 && !Directory.Exists(SaveJsonPath)))
+            {
+                CustomMessageBoxUi ui = new CustomMessageBoxUi(OsLocalization.Optimizer.Message45);
+                ui.ShowDialog();
+                SendLogMessage(OsLocalization.Optimizer.Message45, LogMessageType.System);
+                if (NeadToMoveUiToEvent != null)
+                {
+                    NeadToMoveUiToEvent(NeadToMoveUiTo.JsonPath);
+                }
+                return false;
+            }
+
             return true;
         }
 
@@ -1787,6 +1833,7 @@ namespace OsEngine.OsOptimizer
         /// Robot regime mode
         /// режим работы робота
         /// </summary>
-        RegimeRow
+        RegimeRow,
+        JsonPath
     }
 }
