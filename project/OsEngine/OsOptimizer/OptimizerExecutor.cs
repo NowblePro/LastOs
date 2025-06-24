@@ -15,6 +15,10 @@ using OsEngine.Market.Servers.Tester;
 using OsEngine.OsTrader.Panels;
 using OsEngine.Robots;
 using OsEngine.OsOptimizer.OptimizerEntity;
+using System.IO;
+using Newtonsoft.Json;
+using System.Windows.Shapes;
+using Path = System.IO.Path;
 
 namespace OsEngine.OsOptimizer
 {
@@ -513,7 +517,7 @@ namespace OsEngine.OsOptimizer
 
                 //SendLogMessage("BotInSample" ,LogMessageType.System);
                 // (startServerIndex + i) + " OpT " + faze;
-                StartNewBot(_parameters, optimizeParamCurrent, report, " OpT InSample");
+                StartNewBot(_parameters, optimizeParamCurrent, report, " OpT InSample", _master.SaveJson);
             }
 
             while (true)
@@ -565,7 +569,7 @@ namespace OsEngine.OsOptimizer
                 }
                 // SendLogMessage("Bot Out of Sample", LogMessageType.System);
                 StartNewBot(reportInSample.Reports[i].GetParameters(), null, report,
-                    reportInSample.Reports[i].BotName.Replace(" InSample", "") + " OutOfSample");
+                    reportInSample.Reports[i].BotName.Replace(" InSample", "") + " OutOfSample", _master.SaveJson);
             }
 
             while (true)
@@ -717,8 +721,9 @@ namespace OsEngine.OsOptimizer
         /// <param name="report">current optimization phase/текущая фаза оптимизации</param>
         /// <param name="botsInFaze">list of bots already running in the current phase/список ботов уже запущенный в текущей фазе</param>
         /// <param name="botName">the name of the created robot/имя создаваемого робота</param>
+        /// /// <param name="capture_data">flag to save candles data/флаг для сохранения данных по свечам</param>
         private void StartNewBot(List<IIStrategyParameter> parametrs, List<IIStrategyParameter> paramOptimized,
-            OptimazerFazeReport report, string botName)
+            OptimazerFazeReport report, string botName, bool capture_data = false)
         {
             OptimizerServer server = CreateNewServer(report,true);
 
@@ -737,6 +742,27 @@ namespace OsEngine.OsOptimizer
             {
                 SendLogMessage("Critical Optimizer Error. Robot cannot be created", LogMessageType.Error);
                 return;
+            }
+
+            if (capture_data)
+            {
+                try
+                {
+                    var save_data_parameter = bot.Parameters.Find(parameter => parameter.Name == "Save Json Data");
+                    if (save_data_parameter == null)
+                    {
+                        SendLogMessage("The robot does not have the ability to record statistics on candles in json", LogMessageType.System);
+                    }
+                    else
+                    {
+                        StrategyParameterBool converted = (StrategyParameterBool)save_data_parameter;
+                        converted.ValueBool = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SendLogMessage("The robot does not have the ability to record statistics on candles in json", LogMessageType.System);
+                }
             }
 
             // wait for the robot to connect to its data server
@@ -1057,6 +1083,13 @@ namespace OsEngine.OsOptimizer
             BotPanel bot = CreateNewBot(botName,
                 parametrs, parametrs, server, startProgram);
 
+            if (bot == null)
+            {
+                SendLogMessage("Test over whith error. A different robot is selected in the optimizer", LogMessageType.Error);
+                awaitObj.Dispose();
+                return null;
+            }
+
             if (capture_data)
             {
                 try
@@ -1076,13 +1109,6 @@ namespace OsEngine.OsOptimizer
                 {
                     SendLogMessage("The robot does not have the ability to record statistics on candles in json", LogMessageType.System);
                 }
-            }
-
-            if (bot == null)
-            {
-                SendLogMessage("Test over whith error. A different robot is selected in the optimizer", LogMessageType.Error);
-                awaitObj.Dispose();
-                return null;
             }
 
             DateTime timeStartWaiting = DateTime.Now;
@@ -1220,6 +1246,11 @@ namespace OsEngine.OsOptimizer
                 }
             }
 
+            if (_master.SaveJson)
+            {
+                SaveJson(bot);
+            }
+
             if (bot != null)
             {
                 // уничтожаем робота
@@ -1231,6 +1262,49 @@ namespace OsEngine.OsOptimizer
             {
                 ServerMaster.RemoveOptimizerServer(server);
             }
+        }
+
+        private void SaveJson(BotPanel bot)
+        {
+            string initialPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+            if (_master.SaveJsonPath.Length > 0)
+            {
+                initialPath = Path.Combine(_master.SaveJsonPath, bot.GetNameStrategyType());
+            }
+            else
+            {
+                initialPath = Path.Combine(initialPath, bot.GetNameStrategyType());
+            }
+
+            if (!Directory.Exists(initialPath))
+            {
+                Directory.CreateDirectory(initialPath);
+            }
+
+            string fileName = bot.NameStrategyUniq + ".json";
+            string fullPath = Path.Combine(initialPath, fileName);
+
+            //List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(_journalUi.AllPositions);
+
+            if (bot.TabsSimple.Count < 1)
+            {
+                return;
+            }
+
+            if (bot.TabsSimple[0].JsonData == null)
+            {
+                return;
+            }
+
+            bot.TabsSimple[0].setJsonBotParameters(bot.Parameters);
+            bot.TabsSimple[0].setJsonDataParameters(bot.GetNameStrategyType());
+
+            string json = JsonConvert.SerializeObject(bot.TabsSimple[0].JsonData, Formatting.Indented);
+
+            File.WriteAllText(fullPath, json);
+
+            return;
         }
 
         /// <summary>
