@@ -230,11 +230,11 @@ namespace OsEngine.OsOptimizer
 
                 GetBestBotNum(reports[0].Reports);
 
-                UpdGridStepsOfOptimization();
+                UpdGridStepsOfOptimization(_gridStepsOfOptimization, _sortBotNumber);
                 UpdateRobustnessChart();
-                UpdateTotalProfitChart();
-                UpdateAverageProfitChart();
-                UpdateProfitFactorChart();
+                UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
+                UpdateAverageProfitChart(_hostAverageProfitChart, _chartAverageProfit, _sortBotNumber);
+                UpdateProfitFactorChart(_hostProfitFactor, _chartProfitFactor);
             }
             catch (Exception e)
             {
@@ -264,11 +264,11 @@ namespace OsEngine.OsOptimizer
                 SortCSCResults(reports);
                 GetBestBotNum(reports[0].Reports);
                 CalculateCSCResults(reports);
-                UpdGridStepsOfOptimizationCSC();
+                UpdGridStepsOfOptimization(_gridStepsOfOptimizationCSC, _sortBotNumberCSC);
                 UpdateCSCTable();
-                UpdateAverageProfitChartCSC();
-                UpdateProfitFactorChartCSC();
-                UpdateTotalProfitChartCSC();
+                UpdateAverageProfitChart(_hostAverageProfitChartCSC, _chartAverageProfitCSC, _sortBotNumberCSC);
+                UpdateProfitFactorChart(_hostProfitFactorCSC, _chartProfitFactorCSC);
+                UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
                 GetCSC();
             }
             catch (Exception e)
@@ -449,167 +449,15 @@ namespace OsEngine.OsOptimizer
             return column;
         }
 
-        private void UpdGridStepsOfOptimization()
+        private void UpdGridStepsOfOptimization(DataGridView gridStepsOfOptimization, int sortBotNumber)
         {
-            if (_gridStepsOfOptimization.InvokeRequired)
+            if (gridStepsOfOptimization.InvokeRequired)
             {
-                _gridStepsOfOptimization.Invoke(new Action(UpdGridStepsOfOptimization));
+                gridStepsOfOptimization.Invoke(new Action<DataGridView, int>(UpdGridStepsOfOptimization), gridStepsOfOptimization, sortBotNumber);
                 return;
             }
 
-            _gridStepsOfOptimization.Rows.Clear();
-
-            if (_reports == null)
-            {
-                return;
-            }
-
-            try
-            {
-                if (_reports.Count <= 1)
-                {
-                    return;
-                }
-
-                if (_reports.Count == 2 &&
-                    _reports[1].Reports.Count == 0)
-                {
-                    return;
-                }
-
-                int num = 0;
-
-                OptimizerReport inSampleReport = null;
-
-                for (int i = 0; i < _reports.Count; i++)
-                {
-                    OptimazerFazeReport curReport = _reports[i];
-
-                    if (curReport == null ||
-                        curReport.Reports == null ||
-                        curReport.Reports.Count == 0)
-                    {
-                        continue;
-                    }
-
-                    if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
-                    {
-                        inSampleReport = curReport.Reports[_sortBotNumber];
-                    }
-
-                    OptimizerReport reportToPaint;
-
-                    if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
-                    {
-                        reportToPaint = curReport.Reports[_sortBotNumber];
-                    }
-                    else // if(curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
-                    {
-                        string botName = inSampleReport.BotName.Replace(" InSample", "").Replace("OpT", "");
-                        reportToPaint = curReport.Reports.Find(rep => rep.BotName.StartsWith(botName));
-                    }
-
-                    if (reportToPaint == null)
-                    {
-                        continue;
-                    }
-
-                    DataGridViewRow row = new DataGridViewRow();
-                    row.Height = 30;
-                    row.Cells.Add(new DataGridViewTextBoxCell());
-                    row.Cells[0].Value = curReport.Faze.TypeFaze.ToString();
-
-
-                    DataGridViewTextBoxCell cell2 = new DataGridViewTextBoxCell();
-                    cell2.Value = curReport.Faze.TimeStart.ToString(OsLocalization.ShortDateFormatString);
-                    row.Cells.Add(cell2);
-
-                    DataGridViewTextBoxCell cell3 = new DataGridViewTextBoxCell();
-                    cell3.Value = curReport.Faze.TimeEnd.ToString(OsLocalization.ShortDateFormatString);
-                    row.Cells.Add(cell3);
-
-                    DataGridViewTextBoxCell cell4 = new DataGridViewTextBoxCell();
-
-                    if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
-                    {
-                        cell4.Value = inSampleReport.BotName.Replace(" InSample", "").Replace("OpT", "");
-                    }
-                    row.Cells.Add(cell4);
-
-                    DataGridViewTextBoxCell cell5 = new DataGridViewTextBoxCell();
-                    cell5.Value = curReport.Reports[0].BotName.Replace(" InSample", "").Replace(" OutOfSample", "").Replace("OpT", "");       
-                    row.Cells.Add(cell5);
-
-                    DataGridViewTextBoxCell cell6 = new DataGridViewTextBoxCell();
-                    cell6.Value = reportToPaint.GetParamsToDataTable();
-                    row.Cells.Add(cell6);
-
-                    DataGridViewTextBoxCell cell7 = new DataGridViewTextBoxCell();
-
-                    if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
-                    {
-                        string botName = inSampleReport.BotName.Replace(" InSample", "");
-                        // reportToPaint = curReport.Reports.Find(rep => rep.BotName.StartsWith(botName));
-
-                        for (int i2 = 0; i2 < curReport.Reports.Count; i2++)
-                        {
-                            string curName = curReport.Reports[i2].BotName.Replace(" InSample", "").Replace(" OutOfSample", "");
-
-                            if (curName == botName)
-                            {
-                                cell7.Value = (i2 + 1).ToString();
-                                break;
-                            }
-                        }
-                    }
-                    row.Cells.Add(cell7);
-
-                    DataGridViewTextBoxCell cell8 = new DataGridViewTextBoxCell();
-                    cell8.Value = Math.Round(reportToPaint.TotalProfit, 4).ToStringWithNoEndZero();
-                    row.Cells.Add(cell8);
-
-                    DataGridViewTextBoxCell cell9 = new DataGridViewTextBoxCell();
-                    cell9.Value = Math.Round(reportToPaint.AverageProfitPercentOneContract, 4).ToStringWithNoEndZero();
-                    row.Cells.Add(cell9);
-
-                    DataGridViewTextBoxCell cell10 = new DataGridViewTextBoxCell();
-                    cell10.Value = reportToPaint.PositionsCount.ToString();
-                    row.Cells.Add(cell10);
-
-                    DataGridViewTextBoxCell cell11 = new DataGridViewTextBoxCell();
-                    cell11.Value = reportToPaint.SharpRatio.ToString();
-                    row.Cells.Add(cell11);
-
-                    DataGridViewTextBoxCell cell12 = new DataGridViewTextBoxCell();
-                    cell12.Value = reportToPaint.SmaDeviation.ToString();
-                    row.Cells.Add(cell12);
-
-                    DataGridViewButtonCell cell13 = new DataGridViewButtonCell();
-                    cell13.Value = OsLocalization.Optimizer.Message44;
-                    row.Cells.Add(cell13);
-
-                    _gridStepsOfOptimization.Rows.Add(row);
-                }
-
-                _gridStepsOfOptimization.CellMouseClick += _gridResults_CellMouseClick;
-
-            }
-            catch (Exception ex) 
-            {
-                SendLogMessage(ex.ToString(), LogMessageType.Error);
-            }
-        }
-
-        private void UpdGridStepsOfOptimizationCSC()
-        {
-            // todo: метод скопирован из верхнего (за исключением _sortBotNumberCSC), надо объединить логику, а потом зарефакторить
-            if (_gridStepsOfOptimizationCSC.InvokeRequired)
-            {
-                _gridStepsOfOptimizationCSC.Invoke(new Action(UpdGridStepsOfOptimizationCSC));
-                return;
-            }
-
-            _gridStepsOfOptimizationCSC.Rows.Clear();
+            gridStepsOfOptimization.Rows.Clear();
 
             if (_reports == null)
             {
@@ -644,14 +492,14 @@ namespace OsEngine.OsOptimizer
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
                     {
-                        inSampleReport = curReport.Reports[_sortBotNumberCSC];
+                        inSampleReport = curReport.Reports[sortBotNumber];
                     }
 
                     OptimizerReport reportToPaint;
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
                     {
-                        reportToPaint = curReport.Reports[_sortBotNumberCSC];
+                        reportToPaint = curReport.Reports[sortBotNumber];
                     }
                     else // if(curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
                     {
@@ -738,10 +586,10 @@ namespace OsEngine.OsOptimizer
                     cell13.Value = OsLocalization.Optimizer.Message44;
                     row.Cells.Add(cell13);
 
-                    _gridStepsOfOptimizationCSC.Rows.Add(row);
+                    gridStepsOfOptimization.Rows.Add(row);
                 }
 
-                _gridStepsOfOptimizationCSC.CellMouseClick += _gridResults_CellMouseClick;
+                gridStepsOfOptimization.CellMouseClick += _gridResults_CellMouseClick;
 
             }
             catch (Exception ex)
@@ -1111,7 +959,7 @@ namespace OsEngine.OsOptimizer
 
             _chartTotalProfit = GetTotalProfitChart();
             _hostTotalProfit.Child = _chartTotalProfit;
-            UpdateTotalProfitChart();
+            UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
 
             _comboBoxTotalProfitEquityType.SelectionChanged += _comboBoxprofitType_SelectionChanged;
         }
@@ -1133,7 +981,7 @@ namespace OsEngine.OsOptimizer
 
             _chartTotalProfitCSC = GetTotalProfitChart();
             _hostTotalProfitCSC.Child = _chartTotalProfitCSC;
-            UpdateTotalProfitChartCSC();
+            UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
 
             _comboBoxTotalProfitEquityTypeCSC.SelectionChanged += _comboBoxTotalProfitEquityTypeCSC_SelectionChanged; ;
         }
@@ -1141,12 +989,12 @@ namespace OsEngine.OsOptimizer
 
         private void _comboBoxprofitType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            UpdateTotalProfitChart();
+            UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
         }
 
         private void _comboBoxTotalProfitEquityTypeCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            UpdateTotalProfitChartCSC();
+            UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
         }
 
         public Chart GetTotalProfitChart()
@@ -1182,16 +1030,16 @@ namespace OsEngine.OsOptimizer
             return result;
         }
 
-        private void UpdateTotalProfitChart()
+        private void UpdateTotalProfitChart(DataGridView gridStepsOfOptimization, Chart chartTotalProfit, System.Windows.Controls.ComboBox comboBoxTotalProfitEquityType, int sortBotNumber)
         {
-            if(_chartTotalProfit == null)
+            if (chartTotalProfit == null)
             {
                 return;
             }
 
-            if (_gridStepsOfOptimization.InvokeRequired)
+            if (gridStepsOfOptimization.InvokeRequired)
             {
-                _gridStepsOfOptimization.Invoke(new Action(UpdateTotalProfitChart));
+                gridStepsOfOptimization.Invoke(new Action<DataGridView, Chart, System.Windows.Controls.ComboBox, int>(UpdateTotalProfitChart), gridStepsOfOptimization, chartTotalProfit, comboBoxTotalProfitEquityType, sortBotNumber);
                 return;
             }
 
@@ -1208,7 +1056,7 @@ namespace OsEngine.OsOptimizer
             try
             {
 
-                string profitType = _comboBoxTotalProfitEquityType.SelectedItem.ToString();
+                string profitType = comboBoxTotalProfitEquityType.SelectedItem.ToString();
 
                 List<decimal> profitsSumm = new List<decimal>();
 
@@ -1231,7 +1079,7 @@ namespace OsEngine.OsOptimizer
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
                     {
-                        inSampleReport = curReport.Reports[_sortBotNumber];
+                        inSampleReport = curReport.Reports[sortBotNumber];
                     }
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
@@ -1277,199 +1125,7 @@ namespace OsEngine.OsOptimizer
                     }
                 }
 
-                Series series = _chartTotalProfit.Series[0];
-
-                series.Points.ClearFast();
-
-                if (profitsSumm.Count == 0)
-                {
-                    return;
-                }
-
-                decimal max = decimal.MinValue;
-                decimal min = decimal.MaxValue;
-
-                for (int i = 0; i < profitsSumm.Count; i++)
-                {
-                    decimal open = 0;
-                    decimal close = 0;
-                    decimal low = 0;
-                    decimal high = 0;
-
-                    if (i > 0)
-                    {
-                        open = profitsSumm[i - 1];
-                    }
-                    close = profitsSumm[i];
-
-                    if(close > max)
-                    {
-                        max = close;
-                    }
-                    if(close < min)
-                    {
-                        min = close;
-                    }
-
-                    if (close > open)
-                    {
-                        low = open;
-                        high = close;
-                    }
-                    else
-                    {
-                        high = open;
-                        low = close;
-                    }
-
-                    series.Points.AddXY(i + 1, low, high, open, close);
-
-                    if (close > open)
-                    {
-                        series.Points[series.Points.Count - 1].Color = Color.DarkGreen;
-                        series.Points[series.Points.Count - 1].BorderColor = Color.DarkGreen;
-                        series.Points[series.Points.Count - 1].BackSecondaryColor = Color.DarkGreen;
-                    }
-                    else
-                    {
-                        series.Points[series.Points.Count - 1].Color = Color.DarkRed;
-                        series.Points[series.Points.Count - 1].BorderColor = Color.DarkRed;
-                        series.Points[series.Points.Count - 1].BackSecondaryColor = Color.DarkRed;
-                    }
-
-                    string toolTip = "";
-
-                    toolTip = "OOS " + (i + 1) + "\n" +
-                         "start: " + outOfSampleReports[i].Faze.TimeStart.ToString(OsLocalization.ShortDateFormatString) + "\n" +
-                         "end: " + outOfSampleReports[i].Faze.TimeEnd.ToString(OsLocalization.ShortDateFormatString) + "\n" +
-                         "profit: " + profit[i].ToStringWithNoEndZero();
-
-                    series.Points[series.Points.Count - 1].ToolTip = toolTip;
-
-                    if (i + 1 == profitsSumm.Count)
-                    { // last point
-                        series.Points[series.Points.Count - 1].Label = Math.Round(profitsSumm[i], 4).ToStringWithNoEndZero();
-                        series.Points[series.Points.Count - 1].LabelForeColor = Color.AntiqueWhite;
-                    }
-
-                }
-
-                if(max != decimal.MinValue &&
-                    min != decimal.MaxValue)
-                {
-                    max = Math.Round(max + max * 0.2m, 4);
-                    min = Math.Round(min, 4);
-
-                    if(max > min)
-                    {
-                        _chartTotalProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartTotalProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                SendLogMessage(ex.ToString(), LogMessageType.Error);
-            }
-        }
-
-        private void UpdateTotalProfitChartCSC()
-        {
-            // todo: метод скопирован из верхнего (за исключением _sortBotNumberCSC), надо объединить логику, а потом зарефакторить
-            if (_chartTotalProfitCSC == null)
-            {
-                return;
-            }
-
-            if (_gridStepsOfOptimizationCSC.InvokeRequired)
-            {
-                _gridStepsOfOptimizationCSC.Invoke(new Action(UpdateTotalProfitChartCSC));
-                return;
-            }
-
-            if (_reports == null)
-            {
-                return;
-            }
-
-            if (_reports.Count <= 1)
-            {
-                return;
-            }
-
-            try
-            {
-
-                string profitType = _comboBoxTotalProfitEquityTypeCSC.SelectedItem.ToString();
-
-                List<decimal> profitsSumm = new List<decimal>();
-
-                List<decimal> profit = new List<decimal>();
-
-                OptimizerReport inSampleReport = null;
-
-                List<OptimazerFazeReport> outOfSampleReports = new List<OptimazerFazeReport>();
-
-                for (int i = 0; i < _reports.Count; i++)
-                {
-                    OptimazerFazeReport curReport = _reports[i];
-
-                    if (curReport == null ||
-                        curReport.Reports == null ||
-                        curReport.Reports.Count == 0)
-                    {
-                        continue;
-                    }
-
-                    if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
-                    {
-                        inSampleReport = curReport.Reports[_sortBotNumberCSC];
-                    }
-
-                    if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
-                    {
-
-
-                        string botName = inSampleReport.BotName.Replace(" InSample", "");
-                        // reportToPaint = curReport.Reports.Find(rep => rep.BotName.StartsWith(botName));
-
-                        for (int i2 = 0; i2 < curReport.Reports.Count; i2++)
-                        {
-                            if (curReport.Reports[i2].BotName.StartsWith(botName))
-                            {
-                                outOfSampleReports.Add(curReport);
-                                if (profitType == "Absolute")
-                                {
-                                    profit.Add(curReport.Reports[i2].TotalProfit);
-                                    if (profitsSumm.Count == 0)
-                                    {
-                                        profitsSumm.Add(curReport.Reports[i2].TotalProfit);
-                                    }
-                                    else
-                                    {
-                                        profitsSumm.Add(profitsSumm[profitsSumm.Count - 1] + curReport.Reports[i2].TotalProfit);
-                                    }
-                                }
-                                else if (profitType == "Persent")
-                                {
-                                    profit.Add(curReport.Reports[i2].TotalProfitPersent);
-                                    if (profitsSumm.Count == 0)
-                                    {
-                                        profitsSumm.Add(curReport.Reports[i2].TotalProfitPersent);
-                                    }
-                                    else
-                                    {
-                                        profitsSumm.Add(profitsSumm[profitsSumm.Count - 1] + curReport.Reports[i2].TotalProfitPersent);
-                                    }
-                                }
-
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                Series series = _chartTotalProfitCSC.Series[0];
+                Series series = chartTotalProfit.Series[0];
 
                 series.Points.ClearFast();
 
@@ -1554,8 +1210,8 @@ namespace OsEngine.OsOptimizer
 
                     if (max > min)
                     {
-                        _chartTotalProfitCSC.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartTotalProfitCSC.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
+                        chartTotalProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
+                        chartTotalProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
                     }
                 }
             }
@@ -1564,7 +1220,6 @@ namespace OsEngine.OsOptimizer
                 SendLogMessage(ex.ToString(), LogMessageType.Error);
             }
         }
-
 
         // average profit
 
@@ -1632,21 +1287,20 @@ namespace OsEngine.OsOptimizer
             return chartAverageProfit;
         }
 
-        private void UpdateAverageProfitChart()
+        private void UpdateAverageProfitChart(WindowsFormsHost hostAverageProfitChart, Chart chartAverageProfit, int sortBotNumber)
         {
             if (_reports == null ||
                 _reports.Count == 0)
             {
                 return;
             }
-            if (_hostAverageProfitChart == null)
+            if (hostAverageProfitChart == null)
             {
                 return;
             }
 
             try
             {
-
                 List<decimal> values = new List<decimal>();
                 decimal maxValue = 0;
 
@@ -1659,7 +1313,7 @@ namespace OsEngine.OsOptimizer
                     // берём из ИнСампле таблицу роботов
                     List<OptimizerReport> bots = _reports[i].Reports;
 
-                    OptimizerReport bestBot = _reports[i].Reports[_sortBotNumber];
+                    OptimizerReport bestBot = _reports[i].Reports[sortBotNumber];
 
                     // находим этого робота в аутОфСемпл
 
@@ -1703,9 +1357,9 @@ namespace OsEngine.OsOptimizer
 
                 // прорисовка
 
-                Series seriesOosValues = _chartAverageProfit.Series[0];
-                Series seriesAverageLine = _chartAverageProfit.Series[1];
-                Series seriesAveragePoint = _chartAverageProfit.Series[2];
+                Series seriesOosValues = chartAverageProfit.Series[0];
+                Series seriesAverageLine = chartAverageProfit.Series[1];
+                Series seriesAveragePoint = chartAverageProfit.Series[2];
 
                 seriesOosValues.Points.ClearFast();
                 seriesAverageLine.Points.ClearFast();
@@ -1783,184 +1437,15 @@ namespace OsEngine.OsOptimizer
 
                     if (max > min)
                     {
-                        _chartAverageProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartAverageProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
+                        chartAverageProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
+                        chartAverageProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
                     }
                 }
-
-            }
-            catch (Exception ex)
-            {
-                SendLogMessage(ex.ToString(),LogMessageType.Error);
-            }
-
-
-        }
-
-        private void UpdateAverageProfitChartCSC()
-        {
-            // todo: метод скопирован из верхнего (за исключением _sortBotNumberCSC), надо объединить логику, а потом зарефакторить
-            if (_reports == null ||
-                _reports.Count == 0)
-            {
-                return;
-            }
-            if (_hostAverageProfitChartCSC == null)
-            {
-                return;
-            }
-
-            try
-            {
-
-                List<decimal> values = new List<decimal>();
-                decimal maxValue = 0;
-
-                decimal averageProfitPercent = 0;
-
-                List<OptimazerFazeReport> outOfSampleReports = new List<OptimazerFazeReport>();
-
-                for (int i = 0; i < _reports.Count; i += 2)
-                {
-                    // берём из ИнСампле таблицу роботов
-                    List<OptimizerReport> bots = _reports[i].Reports;
-
-                    OptimizerReport bestBot = _reports[i].Reports[_sortBotNumberCSC];
-
-                    // находим этого робота в аутОфСемпл
-
-                    if (i + 1 == _reports.Count)
-                    {
-                        break;
-                    }
-
-                    OptimizerReport bestBotInOutOfSample
-                        = _reports[i + 1].Reports.Find(b => b.BotName.Replace(" OutOfSample", "") == bestBot.BotName.Replace(" InSample", ""));
-
-                    if (bestBotInOutOfSample == null)
-                    {
-                        continue;
-                    }
-
-                    outOfSampleReports.Add(_reports[i + 1]);
-
-                    decimal value = bestBotInOutOfSample.AverageProfitPercentOneContract;
-
-                    if (maxValue < value)
-                    {
-                        maxValue = value;
-                    }
-
-                    if (values.Count == 0)
-                    {
-                        values.Add(value);
-                    }
-                    else
-                    {
-                        values.Add(value);
-                    }
-
-                    averageProfitPercent += bestBotInOutOfSample.AverageProfitPercentOneContract;
-                }
-                if (values.Count != 0)
-                {
-                    averageProfitPercent = averageProfitPercent / values.Count;
-                }
-
-                // прорисовка
-
-                Series seriesOosValues = _chartAverageProfitCSC.Series[0];
-                Series seriesAverageLine = _chartAverageProfitCSC.Series[1];
-                Series seriesAveragePoint = _chartAverageProfitCSC.Series[2];
-
-                seriesOosValues.Points.ClearFast();
-                seriesAverageLine.Points.ClearFast();
-                seriesAveragePoint.Points.ClearFast();
-
-                if (values.Count == 0)
-                {
-                    return;
-                }
-
-                decimal max = decimal.MinValue;
-                decimal min = decimal.MaxValue;
-
-                for (int i = 0; i < values.Count; i++)
-                {
-                    seriesOosValues.Points.AddXY(i + 1, values[i]);
-
-                    if (values[i] > max)
-                    {
-                        max = values[i];
-                    }
-
-                    if (values[i] < min)
-                    {
-                        min = values[i];
-                    }
-
-                    if (values[i] > 0)
-                    {
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].Color = Color.DarkGreen;
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].BorderColor = Color.DarkGreen;
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].BackSecondaryColor = Color.DarkGreen;
-                    }
-                    else
-                    {
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].Color = Color.DarkRed;
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].BorderColor = Color.DarkRed;
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].BackSecondaryColor = Color.DarkRed;
-                    }
-
-                    string toolTip = "";
-
-                    toolTip = "OOS " + (i + 1) + "\n" +
-                        "start: " + outOfSampleReports[i].Faze.TimeStart.ToString(OsLocalization.ShortDateFormatString) + "\n" +
-                         "end: " + outOfSampleReports[i].Faze.TimeEnd.ToString(OsLocalization.ShortDateFormatString) + "\n" +
-                         "P/L % " + Math.Round(values[i], 4).ToStringWithNoEndZero();
-
-                    seriesOosValues.Points[seriesOosValues.Points.Count - 1].ToolTip = toolTip;
-                }
-
-                if (averageProfitPercent != 0)
-                {
-                    seriesAverageLine.Points.AddXY(1, averageProfitPercent);
-
-                    seriesAverageLine.Points.AddXY(values.Count, averageProfitPercent);
-
-                    for (int i = 0; i < seriesAverageLine.Points.Count; i++)
-                    {
-                        seriesAverageLine.Points[i].Color = Color.AntiqueWhite;
-                    }
-
-                    string label = "Average: " + Math.Round(averageProfitPercent, 4).ToStringWithNoEndZero();
-                    seriesAveragePoint.Points.AddXY(values.Count - 1, maxValue + maxValue * 0.05m);
-                    seriesAveragePoint.Points[0].Color = Color.AntiqueWhite;
-
-                    seriesAveragePoint.Points[0].Label = label;
-                    seriesAveragePoint.Points[0].LabelForeColor = Color.AntiqueWhite;
-                }
-
-                if (max != decimal.MinValue &&
-                    min != decimal.MaxValue)
-                {
-                    max = Math.Round(max + max * 0.2m, 4);
-                    min = Math.Round(min, 4);
-
-                    if (max > min)
-                    {
-                        _chartAverageProfitCSC.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartAverageProfitCSC.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
-                    }
-                }
-
             }
             catch (Exception ex)
             {
                 SendLogMessage(ex.ToString(), LogMessageType.Error);
             }
-
-
         }
 
         // profit factor
@@ -2032,21 +1517,20 @@ namespace OsEngine.OsOptimizer
             return result;
         }
 
-        private void UpdateProfitFactorChart()
+        private void UpdateProfitFactorChart(WindowsFormsHost hostProfitFactor, Chart chartProfitFactor)
         {
             if (_reports == null ||
                            _reports.Count == 0)
             {
                 return;
             }
-            if (_hostProfitFactor == null)
+            if (hostProfitFactor == null)
             {
                 return;
             }
 
             try
             {
-
                 List<decimal> values = new List<decimal>();
 
                 decimal maxValue = 0;
@@ -2104,173 +1588,9 @@ namespace OsEngine.OsOptimizer
 
                 // прорисовка
 
-                Series seriesOosValues = _chartProfitFactor.Series[0];
-                Series seriesAverageLine = _chartProfitFactor.Series[1];
-                Series seriesAveragePoint = _chartProfitFactor.Series[2];
-
-                seriesOosValues.Points.ClearFast();
-                seriesAverageLine.Points.ClearFast();
-                seriesAveragePoint.Points.ClearFast();
-
-                if (values.Count == 0)
-                {
-                    return;
-                }
-
-                decimal max = decimal.MinValue;
-                decimal min = decimal.MaxValue;
-
-                    for (int i = 0; i < values.Count; i++)
-                {
-                    seriesOosValues.Points.AddXY(i + 1, values[i]);
-
-                    if (values[i] > max)
-                    {
-                        max = values[i];
-                    }
-
-                    if (values[i] < min)
-                    {
-                        min = values[i];
-                    }
-
-                    if (values[i] > 0)
-                    {
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].Color = Color.DarkGreen;
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].BorderColor = Color.DarkGreen;
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].BackSecondaryColor = Color.DarkGreen;
-                    }
-                    else
-                    {
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].Color = Color.DarkRed;
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].BorderColor = Color.DarkRed;
-                        seriesOosValues.Points[seriesOosValues.Points.Count - 1].BackSecondaryColor = Color.DarkRed;
-                    }
-
-                    string toolTip = "";
-
-                    toolTip = "OOS " + (i + 1) + "\n" +
-                        "start: " + outOfSampleReports[i].Faze.TimeStart.ToString(OsLocalization.ShortDateFormatString) + "\n" +
-                         "end: " + outOfSampleReports[i].Faze.TimeEnd.ToString(OsLocalization.ShortDateFormatString) + "\n" +
-                         "Profit Factor: " + Math.Round(values[i], 4).ToStringWithNoEndZero();
-
-                    seriesOosValues.Points[seriesOosValues.Points.Count - 1].ToolTip = toolTip;
-                }
-
-                if (averageProfitFactor != 0)
-                {
-                    seriesAverageLine.Points.AddXY(1, averageProfitFactor);
-
-                    seriesAverageLine.Points.AddXY(values.Count, averageProfitFactor);
-
-                    for (int i = 0; i < seriesAverageLine.Points.Count; i++)
-                    {
-                        seriesAverageLine.Points[i].Color = Color.AntiqueWhite;
-                    }
-
-                    string label = "Average: " + Math.Round(averageProfitFactor, 4).ToStringWithNoEndZero();
-                    seriesAveragePoint.Points.AddXY(values.Count - 1, maxValue + maxValue * 0.05m);
-                    seriesAveragePoint.Points[0].Color = Color.AntiqueWhite;
-
-                    seriesAveragePoint.Points[0].Label = label;
-                    seriesAveragePoint.Points[0].LabelForeColor = Color.AntiqueWhite;
-                }
-
-                if (max != decimal.MinValue &&
-                    min != decimal.MaxValue)
-                {
-                    max = Math.Round(max + max * 0.2m, 4);
-                    min = Math.Round(min, 4);
-
-                    if (max > min)
-                    {
-                        _chartProfitFactor.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartProfitFactor.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                SendLogMessage(ex.ToString(), LogMessageType.Error);
-            }
-        }
-
-        private void UpdateProfitFactorChartCSC()
-        {
-            // todo: метод скопирован из верхнего (за исключением _sortBotNumberCSC), надо объединить логику, а потом зарефакторить
-            if (_reports == null ||
-                           _reports.Count == 0)
-            {
-                return;
-            }
-            if (_hostProfitFactorCSC == null)
-            {
-                return;
-            }
-
-            try
-            {
-
-                List<decimal> values = new List<decimal>();
-
-                decimal maxValue = 0;
-
-                decimal averageProfitFactor = 0;
-
-                List<OptimazerFazeReport> outOfSampleReports = new List<OptimazerFazeReport>();
-
-                for (int i = 0; i < _reports.Count; i += 2)
-                {
-                    // берём из ИнСампле таблицу роботов
-                    List<OptimizerReport> bots = _reports[i].Reports;
-
-                    OptimizerReport bestBot = _reports[i].Reports[0];
-
-                    // находим этого робота в аутОфСемпл
-
-                    if (i + 1 == _reports.Count)
-                    {
-                        break;
-                    }
-
-                    OptimizerReport bestBotInOutOfSample
-                        = _reports[i + 1].Reports.Find(b => b.BotName.Replace(" OutOfSample", "") == bestBot.BotName.Replace(" InSample", ""));
-
-                    if (bestBotInOutOfSample == null)
-                    {
-                        continue;
-                    }
-
-                    outOfSampleReports.Add(_reports[i + 1]);
-
-                    decimal value = bestBotInOutOfSample.ProfitFactor;
-
-                    if (maxValue < value)
-                    {
-                        maxValue = value;
-                    }
-
-                    if (values.Count == 0)
-                    {
-                        values.Add(value);
-                    }
-                    else
-                    {
-                        values.Add(value);
-                    }
-
-                    averageProfitFactor += bestBotInOutOfSample.ProfitFactor;
-                }
-                if (values.Count != 0)
-                {
-                    averageProfitFactor = averageProfitFactor / values.Count;
-                }
-
-                // прорисовка
-
-                Series seriesOosValues = _chartProfitFactorCSC.Series[0];
-                Series seriesAverageLine = _chartProfitFactorCSC.Series[1];
-                Series seriesAveragePoint = _chartProfitFactorCSC.Series[2];
+                Series seriesOosValues = chartProfitFactor.Series[0];
+                Series seriesAverageLine = chartProfitFactor.Series[1];
+                Series seriesAveragePoint = chartProfitFactor.Series[2];
 
                 seriesOosValues.Points.ClearFast();
                 seriesAverageLine.Points.ClearFast();
@@ -2348,8 +1668,8 @@ namespace OsEngine.OsOptimizer
 
                     if (max > min)
                     {
-                        _chartProfitFactorCSC.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartProfitFactorCSC.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
+                        chartProfitFactor.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
+                        chartProfitFactor.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
                     }
                 }
             }
