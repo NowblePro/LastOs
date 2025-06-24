@@ -114,7 +114,7 @@ namespace OsEngine.OsOptimizer
 
         System.Windows.Controls.Label _labelRobustnessMetricValue;
 
-        public event EventHandler<decimal> SCSCalculated;
+        public event EventHandler<decimal> CSCCalculated;
 
         private void _boxTypeSortBotNum_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
@@ -252,16 +252,29 @@ namespace OsEngine.OsOptimizer
 
         public void ReLoadCSC(List<OptimazerFazeReport> reports)
         {
-            if (reports == null) return;
-            SortCSCResults(reports);
-            GetBestBotNum(reports[0].Reports);
-            CalculateCSCResults(reports);
-            UpdGridStepsOfOptimizationCSC();
-            UpdateCSCTable();
-            UpdateAverageProfitChartCSC();
-            UpdateProfitFactorChartCSC();
-            UpdateTotalProfitChartCSC();
-            GetCSC();
+            try
+            {
+                _reports = reports;
+
+                if (_reports == null
+                    || _reports.Count <= 1)
+                {
+                    return;
+                }
+                SortCSCResults(reports);
+                GetBestBotNum(reports[0].Reports);
+                CalculateCSCResults(reports);
+                UpdGridStepsOfOptimizationCSC();
+                UpdateCSCTable();
+                UpdateAverageProfitChartCSC();
+                UpdateProfitFactorChartCSC();
+                UpdateTotalProfitChartCSC();
+                GetCSC();
+            }
+            catch (Exception e)
+            {
+                SendLogMessage(e.ToString(), LogMessageType.Error);
+            }
         }
 
         private void GetBestBotNum(List<OptimizerReport> reports)
@@ -754,7 +767,7 @@ namespace OsEngine.OsOptimizer
                 decimal csc = 0;
                 if (Math.Max(avgProfitIS, avgProfitOOS) != 0)
                 {
-                    csc = ((1 - Math.Abs(avgProfitIS - avgProfitOOS)) / Math.Max(avgProfitIS, avgProfitOOS)) * 100;
+                    csc = (1 - (Math.Abs(avgProfitIS - avgProfitOOS) / Math.Max(avgProfitIS, avgProfitOOS))) * 100;
                 }
 
                 int profitCountIS = allInSampleReports.Where(r => r.TotalProfit > 0).Count();
@@ -893,7 +906,7 @@ namespace OsEngine.OsOptimizer
             }
             try
             {
-                SCSCalculated?.Invoke(this, _reports[0].Reports[_sortBotNumber].CSC);
+                CSCCalculated?.Invoke(this, _reports[0].Reports[_sortBotNumber].CSC);
             }
             catch 
             { }

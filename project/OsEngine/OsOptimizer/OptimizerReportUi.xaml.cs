@@ -50,7 +50,7 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
-            _resultsCharting.SCSCalculated += _resultsCharting_SCSCalculated;
+            _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
 
             CreateTableFazes();
             CreateTableResults();
@@ -92,7 +92,7 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.ReLoadCSC(_reports);
         }
 
-        private void _resultsCharting_SCSCalculated(object sender, decimal e)
+        private void _resultsCharting_CSCCalculated(object sender, decimal e)
         {
             LabelCSCMetricValue.Content = e;
         }
