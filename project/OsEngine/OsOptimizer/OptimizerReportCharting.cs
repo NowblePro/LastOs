@@ -261,9 +261,9 @@ namespace OsEngine.OsOptimizer
                 {
                     return;
                 }
+                CalculateCSCResults(reports);
                 SortCSCResults(reports);
                 GetBestBotNum(reports[0].Reports);
-                CalculateCSCResults(reports);
                 UpdGridStepsOfOptimization(_gridStepsOfOptimizationCSC, _sortBotNumberCSC);
                 UpdateCSCTable();
                 UpdateAverageProfitChart(_hostAverageProfitChartCSC, _chartAverageProfitCSC, _sortBotNumberCSC);
@@ -358,7 +358,11 @@ namespace OsEngine.OsOptimizer
 
         private WindowsFormsHost _hostFRS;
         private DataGridView _gridFRS;
-        
+        private decimal _cscWeight = 0.25m;
+        private decimal _psrWeight = 0.25m;
+        private decimal _ddsWeight = 0.25m;
+        private decimal _srcWeight = 0.25m;
+
         internal void ActivateCSCChart(WindowsFormsHost hostFRS)
         {
             _hostFRS = hostFRS;
@@ -370,18 +374,62 @@ namespace OsEngine.OsOptimizer
                 _gridFRS.ScrollBars = ScrollBars.Vertical;
 
                 _gridFRS.Columns.Add(GetColumn(""));
-                _gridFRS.Columns.Add(GetColumn("PSR", 80));
-                _gridFRS.Columns.Add(GetColumn("DDS", 80));
-                _gridFRS.Columns.Add(GetColumn("SRC", 80));
-                _gridFRS.Columns.Add(GetColumn("FRS", 80));
+                _gridFRS.Columns.Add(GetColumn("CSC", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("PSR", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("DDS", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("SRC", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("FRS", 80, readOnly: false));
 
                 _gridFRS.Rows.Add(null, null);
+                _gridFRS.CellValueChanged += _gridFRS_CellValueChanged;
                 _hostFRS.Child = _gridFRS;
             }
             catch (Exception ex)
             {
 
             }
+        }
+
+        private void _gridFRS_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (_gridFRS == null || _gridFRS.Rows.Count < 2) return;
+            decimal cscWeight = GetWeightFromTable(_gridFRS, 1, 1);
+            decimal psrWeight = GetWeightFromTable(_gridFRS, 2, 1);
+            decimal ddsWeight = GetWeightFromTable(_gridFRS, 3, 1);
+            decimal srcWeight = GetWeightFromTable(_gridFRS, 4, 1);
+
+            if (_cscWeight != cscWeight ||
+                _psrWeight != psrWeight ||
+                _ddsWeight != ddsWeight ||
+                _srcWeight != srcWeight)
+            {
+                _cscWeight = cscWeight;
+                _psrWeight = psrWeight;
+                _ddsWeight = ddsWeight;
+                _srcWeight = srcWeight;
+            }
+        }
+
+        internal void Updateweights()
+        {
+
+            decimal sum = _cscWeight + _psrWeight + _ddsWeight + _srcWeight;
+            _cscWeight /= sum;
+            _psrWeight /= sum;
+            _ddsWeight /= sum;
+            _srcWeight /= sum;
+            ReLoadCSC(_reports);
+        }
+
+        private decimal GetWeightFromTable(DataGridView gridView, int column, int row)
+        {
+            decimal result = 0;
+            try
+            {
+                decimal.TryParse(gridView.Rows[row].Cells[column].Value?.ToString().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+            }
+            catch { }
+            return result;
         }
 
         private void UpdateCSCTable()
@@ -408,28 +456,44 @@ namespace OsEngine.OsOptimizer
                 row.Height = 30;
 
                 AddCell(row, "");
+                AddCell(row, bot.CSC);
                 AddCell(row, bot.PSR);
                 AddCell(row, bot.DDS);
                 AddCell(row, bot.SRC);
                 AddCell(row, bot.FRS);
 
                 _gridFRS.Rows.Add(row);
+
+                DataGridViewRow row2 = new DataGridViewRow();
+                row2.Height = 30;
+                row2.ReadOnly = false;
+
+                AddCell(row2, "FRS weights");
+                AddCell(row2, _cscWeight, false);
+                AddCell(row2, _psrWeight, false);
+                AddCell(row2, _ddsWeight, false);
+                AddCell(row2, _srcWeight, false);
+                AddCell(row2, "-");
+
+                _gridFRS.Rows.Add(row2);
             }
             catch { }
         }
 
-        private void AddCell(DataGridViewRow row, decimal value)
+        private void AddCell(DataGridViewRow row, decimal value, bool readOnly = true)
         {
-            DataGridViewTextBoxCell cell2 = new DataGridViewTextBoxCell();
-            cell2.Value = Math.Round(value, 3);
-            row.Cells.Add(cell2);
+            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
+            cell.Value = Math.Round(value, 3);
+            row.Cells.Add(cell);
+            cell.ReadOnly = readOnly;
         }
 
-        private void AddCell(DataGridViewRow row, object value)
+        private void AddCell(DataGridViewRow row, object value, bool readOnly = true)
         {
-            DataGridViewTextBoxCell cell2 = new DataGridViewTextBoxCell();
-            cell2.Value = value;
-            row.Cells.Add(cell2);
+            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
+            cell.Value = value;
+            row.Cells.Add(cell);
+            cell.ReadOnly = readOnly;
         }
 
         private DataGridViewColumn GetColumn(string name, int width = 0, bool readOnly = true)
@@ -656,7 +720,7 @@ namespace OsEngine.OsOptimizer
                     src = (decimal)chart.DataManipulator.Statistics.Correlation("1", "2");
                 }
 
-                decimal frs = 0.25m * csc + 0.25m * psr + 0.25m * dds + 0.25m * src;
+                decimal frs = _srcWeight * csc + _psrWeight * psr + _ddsWeight * dds + _srcWeight * src;
 
                 foreach (var r in group)
                 {
@@ -1701,6 +1765,7 @@ namespace OsEngine.OsOptimizer
                 LogMessageEvent(message, type);
             }
         }
+
 
         /// <summary>
         /// event: new message for log
