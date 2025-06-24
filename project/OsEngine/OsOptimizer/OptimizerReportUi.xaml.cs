@@ -635,62 +635,6 @@ namespace OsEngine.OsOptimizer
             _gridResults.CellMouseClick += _gridResults_CellMouseClick;
         }
 
-        private DataGridViewRow GetRowResult(OptimizerReportTab report)
-        {
-            DataGridViewRow row = new DataGridViewRow();
-
-            row.Cells.Add(new DataGridViewTextBoxCell());
-            row.Cells[0].Value = report.SecurityName;
-
-
-            DataGridViewTextBoxCell cell2 = new DataGridViewTextBoxCell();
-            row.Cells.Add(cell2);
-
-            DataGridViewTextBoxCell cell3 = new DataGridViewTextBoxCell();
-            cell3.Value = report.PositionsCount;
-            row.Cells.Add(cell3);
-
-            DataGridViewTextBoxCell cell4 = new DataGridViewTextBoxCell();
-            cell4.Value = report.TotalProfit.ToStringWithNoEndZero();
-            row.Cells.Add(cell4);
-
-            DataGridViewTextBoxCell cell5 = new DataGridViewTextBoxCell();
-            cell5.Value = report.MaxDrowDawn.ToStringWithNoEndZero();
-            row.Cells.Add(cell5);
-
-            DataGridViewTextBoxCell cell6 = new DataGridViewTextBoxCell();
-            cell6.Value = report.AverageProfit.ToStringWithNoEndZero();
-            row.Cells.Add(cell6);
-
-            DataGridViewTextBoxCell cell7 = new DataGridViewTextBoxCell();
-            cell7.Value = report.AverageProfitPercentOneContract.ToStringWithNoEndZero();
-            row.Cells.Add(cell7);
-
-            DataGridViewTextBoxCell cell8 = new DataGridViewTextBoxCell();
-            cell8.Value = report.ProfitFactor.ToStringWithNoEndZero();
-            row.Cells.Add(cell8);
-
-            DataGridViewTextBoxCell cell9 = new DataGridViewTextBoxCell();
-            cell9.Value = report.PayOffRatio.ToStringWithNoEndZero();
-            row.Cells.Add(cell9);
-
-            DataGridViewTextBoxCell cell10 = new DataGridViewTextBoxCell();
-            cell10.Value = report.Recovery.ToStringWithNoEndZero();
-            row.Cells.Add(cell10);
-
-            try
-            {
-                row.Cells.Add(null);
-            }
-            catch
-            {
-                // igonre
-            }
-
-            return row;
-
-        }
-
         /// <summary>
         /// user clicked a button in the result table
         /// пользователь нажал на кнопку в таблице результатов
@@ -1024,5 +968,9 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        private void ButtonUpdateCSC_Click(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.Updateweights();
+        }
     }
 }
