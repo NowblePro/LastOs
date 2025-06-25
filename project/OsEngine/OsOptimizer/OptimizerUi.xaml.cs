@@ -188,9 +188,13 @@ namespace OsEngine.OsOptimizer
             _resultsCharting = new OptimizerReportCharting(
                 HostStepsOfOptimizationTable,
                 HostRobustness,
+                HostStepsOfOptimizationTable1,
                 ComboBoxSortResultsType, 
                 LabelRobustnessMetricValue,
-                ComboBoxSortResultsBotNumPercent);
+                ComboBoxSortResultsBotNumPercent,
+                ComboBoxSortResultsType1,
+                ComboBoxSortResultsBotNumPercent1
+                );
 
             _resultsCharting.ActivateTotalProfitChart(WindowsFormsHostTotalProfit, ComboBoxTotalProfit);
 
@@ -3389,5 +3393,14 @@ namespace OsEngine.OsOptimizer
         SharpRatio,
 
         SmaDeviation
+    }
+
+    public enum CSCSortType
+    {
+        CSC,
+        PSR,
+        DDS,
+        SRC,
+        FRS
     }
 }

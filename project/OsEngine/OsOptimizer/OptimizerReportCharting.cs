@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -18,16 +19,23 @@ namespace OsEngine.OsOptimizer
 {
     public class OptimizerReportCharting
     {
+        private DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
+
         public OptimizerReportCharting(
             WindowsFormsHost hostStepsOfOptimization, 
             WindowsFormsHost hostRobustness,
-            System.Windows.Controls.ComboBox boxTypeSort, 
+            WindowsFormsHost hostStepsOfOptimizationCSC,
+            System.Windows.Controls.ComboBox boxTypeSort,
             System.Windows.Controls.Label labelRobustnessMetricValue,
-            System.Windows.Controls.ComboBox boxTypeSortBotNum)
+            System.Windows.Controls.ComboBox boxTypeSortBotNum,
+            System.Windows.Controls.ComboBox boxTypeSortCSC,
+            System.Windows.Controls.ComboBox boxTypeSortBotNumCSC
+            )
         {
             _sortBotsType = SortBotsType.TotalProfit;
             _currentCulture = OsLocalization.CurCulture;
             _hostStepsOfOptimization = hostStepsOfOptimization;
+            _hostStepsOfOptimizationCSC = hostStepsOfOptimizationCSC;
             _hostRobustness = hostRobustness;
             _labelRobustnessMetricValue = labelRobustnessMetricValue;
 
@@ -48,17 +56,51 @@ namespace OsEngine.OsOptimizer
             _boxTypeSort = boxTypeSort;
 
             _boxTypeSortBotNum = boxTypeSortBotNum;
+            _boxTypeSortBotNumCSC = boxTypeSortBotNumCSC;
 
-            for(int i = 0;i < 99;i++)
+            for (int i = 0;i < 99;i++)
             {
                 _boxTypeSortBotNum.Items.Add(i.ToString());
+                _boxTypeSortBotNumCSC.Items.Add(i.ToString());
             }
 
             _boxTypeSortBotNum.SelectedItem = "0";
             _boxTypeSortBotNum.SelectionChanged += _boxTypeSortBotNum_SelectionChanged;
 
+            _boxTypeSortBotNumCSC.SelectedItem = "0";
+            _boxTypeSortBotNumCSC.SelectionChanged += _boxTypeSortBotNumCSC_SelectionChanged; ;
+
+            _boxTypeSortCSC = boxTypeSortCSC;
+            boxTypeSortCSC.Items.Add(CSCSortType.CSC.ToString());
+            boxTypeSortCSC.Items.Add(CSCSortType.PSR.ToString());
+            boxTypeSortCSC.Items.Add(CSCSortType.DDS.ToString());
+            boxTypeSortCSC.Items.Add(CSCSortType.SRC.ToString());
+            boxTypeSortCSC.Items.Add(CSCSortType.FRS.ToString());
+            boxTypeSortCSC.SelectedItem = CSCSortType.CSC.ToString();
+            boxTypeSortCSC.SelectionChanged += BoxTypeSortCSC_SelectionChanged;
+
             CreateStepsOfOptimization();
             CreateRobustnessChart();
+        }
+
+        private void BoxTypeSortCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (Enum.TryParse(_boxTypeSortCSC.SelectedItem.ToString(), out CSCSortType sortType))
+                {
+                    _sortBotsTypeCSC = sortType;
+                }
+                
+                if (_reports != null)
+                {
+                    ReLoadCSC(_reports);
+                }
+            }
+            catch
+            {
+
+            }
         }
 
         private CultureInfo _currentCulture;
@@ -67,7 +109,12 @@ namespace OsEngine.OsOptimizer
 
         private System.Windows.Controls.ComboBox _boxTypeSortBotNum;
 
+        private System.Windows.Controls.ComboBox _boxTypeSortCSC;
+        private System.Windows.Controls.ComboBox _boxTypeSortBotNumCSC;
+
         System.Windows.Controls.Label _labelRobustnessMetricValue;
+
+        public event EventHandler<decimal> CSCCalculated;
 
         private void _boxTypeSortBotNum_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
@@ -78,6 +125,23 @@ namespace OsEngine.OsOptimizer
                 if (_reports != null)
                 {
                     ReLoad(_reports);
+                }
+            }
+            catch
+            {
+
+            }
+        }
+
+        private void _boxTypeSortBotNumCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            try
+            {
+                _sortBotPercentCSC = Convert.ToInt32(_boxTypeSortBotNumCSC.SelectedItem.ToString());
+
+                if (_reports != null)
+                {
+                    ReLoadCSC(_reports);
                 }
             }
             catch
@@ -166,11 +230,46 @@ namespace OsEngine.OsOptimizer
 
                 GetBestBotNum(reports[0].Reports);
 
-                UpdGridStepsOfOptimization();
+                UpdGridStepsOfOptimization(_gridStepsOfOptimization, _sortBotNumber);
                 UpdateRobustnessChart();
-                UpdateTotalProfitChart();
-                UpdateAverageProfitChart();
-                UpdateProfitFactorChart();
+                UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
+                UpdateAverageProfitChart(_hostAverageProfitChart, _chartAverageProfit, _sortBotNumber);
+                UpdateProfitFactorChart(_hostProfitFactor, _chartProfitFactor);
+            }
+            catch (Exception e)
+            {
+                SendLogMessage(e.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void SortCSCResults(List<OptimazerFazeReport> reports)
+        {
+            for (int i = 0; i < reports.Count; i++)
+            {
+                OptimazerFazeReport.SortResults(reports[i].Reports, _sortBotsTypeCSC);
+            }
+        }
+
+        public void ReLoadCSC(List<OptimazerFazeReport> reports)
+        {
+            try
+            {
+                _reports = reports;
+
+                if (_reports == null
+                    || _reports.Count <= 1)
+                {
+                    return;
+                }
+                CalculateCSCResults(reports);
+                SortCSCResults(reports);
+                GetBestBotNum(reports[0].Reports);
+                UpdGridStepsOfOptimization(_gridStepsOfOptimizationCSC, _sortBotNumberCSC);
+                UpdateCSCTable();
+                UpdateAverageProfitChart(_hostAverageProfitChartCSC, _chartAverageProfitCSC, _sortBotNumberCSC);
+                UpdateProfitFactorChart(_hostProfitFactorCSC, _chartProfitFactorCSC);
+                UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
+                GetCSC();
             }
             catch (Exception e)
             {
@@ -180,152 +279,274 @@ namespace OsEngine.OsOptimizer
 
         private void GetBestBotNum(List<OptimizerReport> reports)
         {
-            if(_sortBotPercent == 0)
-            {
-                _sortBotNumber = 0;
-                return;
-            }
-
             decimal countBotsPercent = reports.Count / 100m;
 
             decimal result = countBotsPercent * _sortBotPercent;
+            decimal resultCSC = countBotsPercent * _sortBotPercentCSC;
 
             _sortBotNumber = Convert.ToInt32(result);
-
-            if(_sortBotNumber > reports.Count)
+            _sortBotNumberCSC = Convert.ToInt32(resultCSC);
+            if (_sortBotNumber > reports.Count)
             {
                 _sortBotNumber = reports.Count - 1;
+            }
+
+            if (_sortBotNumberCSC > reports.Count)
+            {
+                _sortBotNumberCSC = reports.Count - 1;
             }
         }
 
         private SortBotsType _sortBotsType;
+        private CSCSortType _sortBotsTypeCSC = CSCSortType.CSC;
 
         private int _sortBotPercent = 0;
+        private int _sortBotPercentCSC = 0;
 
         private int _sortBotNumber = 0;
+        private int _sortBotNumberCSC = 0;
 
         private List<OptimazerFazeReport> _reports;
 
         // fazes in table
 
         private WindowsFormsHost _hostStepsOfOptimization;
+        private WindowsFormsHost _hostStepsOfOptimizationCSC;
         private DataGridView _gridStepsOfOptimization;
+        private DataGridView _gridStepsOfOptimizationCSC;
 
-        private void CreateStepsOfOptimization()
+        private DataGridView GetStepsOfOptimizationDGV()
         {
-            _gridStepsOfOptimization = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect, 
-                DataGridViewAutoSizeRowsMode.None,true);
+            DataGridView gridStepsOfOptimization = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
+                DataGridViewAutoSizeRowsMode.None, true);
 
-            _gridStepsOfOptimization.ScrollBars = ScrollBars.Vertical;
+            cell0.Style = gridStepsOfOptimization.DefaultCellStyle;
 
-            DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = _gridStepsOfOptimization.DefaultCellStyle;
+            gridStepsOfOptimization.ScrollBars = ScrollBars.Vertical;
 
-            DataGridViewColumn column0 = new DataGridViewColumn();
-            column0.CellTemplate = cell0;
-            column0.HeaderText = "Period";
-            column0.ReadOnly = true;
-            column0.Width = 80;
-
-            _gridStepsOfOptimization.Columns.Add(column0);
-
-            DataGridViewColumn column1 = new DataGridViewColumn();
-            column1.CellTemplate = cell0;
-            column1.HeaderText = "Start";
-            column1.ReadOnly = false;
-            column1.Width = 80;
-            _gridStepsOfOptimization.Columns.Add(column1);
-
-            DataGridViewColumn column21 = new DataGridViewColumn();
-            column21.CellTemplate = cell0;
-            column21.HeaderText = "End";
-            column21.ReadOnly = false;
-            column21.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column21);
-
-            DataGridViewColumn column2 = new DataGridViewColumn();
-            column2.CellTemplate = cell0;
-            column2.HeaderText = "Best bot number InSample";
-            column2.ReadOnly = false;
-            column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column2);
-
-            DataGridViewColumn column3 = new DataGridViewColumn();
-            column3.CellTemplate = cell0;
-            column3.HeaderText = "Best bot in period";
-            column3.ReadOnly = false;
-            column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column3);
-
-            DataGridViewColumn column4 = new DataGridViewColumn();
-            column4.CellTemplate = cell0;
-            column4.HeaderText = "Parameters";
-            column4.ReadOnly = false;
-            column4.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column4);
-
-            DataGridViewColumn column5 = new DataGridViewColumn();
-            column5.CellTemplate = cell0;
-            column5.HeaderText = "Bot results in OutOfSample";
-            column5.ReadOnly = false;
-            column5.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column5);
-
-            DataGridViewColumn column6 = new DataGridViewColumn();
-            column6.CellTemplate = cell0;
-            column6.HeaderText = "Profit";
-            column6.ReadOnly = false;
-            column6.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column6);
-
-            DataGridViewColumn column7 = new DataGridViewColumn();
-            column7.CellTemplate = cell0;
-            column7.HeaderText = "Average profit %";
-            column7.ReadOnly = false;
-            column7.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column7);
-
-            DataGridViewColumn column8 = new DataGridViewColumn();
-            column8.CellTemplate = cell0;
-            column8.HeaderText = "Position count";
-            column8.ReadOnly = false;
-            column8.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column8);
-
-            DataGridViewColumn column9 = new DataGridViewColumn();
-            column9.CellTemplate = cell0;
-            column9.HeaderText = "Sharp ratio";
-            column9.ReadOnly = false;
-            column9.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column9);
-
-            DataGridViewColumn column10 = new DataGridViewColumn();
-            column10.CellTemplate = cell0;
-            column10.HeaderText = "SMA(20) Deviation";
-            column10.ReadOnly = false;
-            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridStepsOfOptimization.Columns.Add(column10);
+            gridStepsOfOptimization.Columns.Add(GetColumn("Period", 80));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Start", 80, false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("End", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Best bot number InSample", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Best bot in period", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Parameters", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Bot results in OutOfSample", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Profit", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Average profit %", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Position count", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("SMA(20) Deviation", readOnly: false));
 
             DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
             column11.CellTemplate = new DataGridViewButtonCell();
             column11.ReadOnly = true;
             column11.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-            _gridStepsOfOptimization.Columns.Add(column11);
+            gridStepsOfOptimization.Columns.Add(column11);
 
-            _gridStepsOfOptimization.Rows.Add(null, null);
-
-            _hostStepsOfOptimization.Child = _gridStepsOfOptimization;
+            gridStepsOfOptimization.Rows.Add(null, null);
+            return gridStepsOfOptimization;
         }
 
-        private void UpdGridStepsOfOptimization()
+        private void CreateStepsOfOptimization()
         {
-            if (_gridStepsOfOptimization.InvokeRequired)
+            _gridStepsOfOptimization = GetStepsOfOptimizationDGV();
+            _gridStepsOfOptimizationCSC = GetStepsOfOptimizationDGV();
+
+            _hostStepsOfOptimization.Child = _gridStepsOfOptimization;
+            _hostStepsOfOptimizationCSC.Child = _gridStepsOfOptimizationCSC;
+        }
+
+        private WindowsFormsHost _hostFRS;
+        private DataGridView _gridFRS;
+        private decimal _cscWeight = 0.25m;
+        private decimal _psrWeight = 0.25m;
+        private decimal _ddsWeight = 0.25m;
+        private decimal _srcWeight = 0.25m;
+        public decimal CscWeight => _cscWeight;
+        public decimal PsrWeight => _psrWeight;
+        public decimal DdsWeight => _ddsWeight;
+        public decimal SrcWeight => _srcWeight;
+
+        internal void ActivateCSCChart(WindowsFormsHost hostFRS)
+        {
+            _hostFRS = hostFRS;
+            _gridFRS = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
+                DataGridViewAutoSizeRowsMode.None, true);
+
+            try
             {
-                _gridStepsOfOptimization.Invoke(new Action(UpdGridStepsOfOptimization));
+                _gridFRS.ScrollBars = ScrollBars.Vertical;
+
+                _gridFRS.Columns.Add(GetColumn(""));
+                _gridFRS.Columns.Add(GetColumn("CSC", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("PSR", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("DDS", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("SRC", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("FRS", 80, readOnly: false));
+
+                _gridFRS.Rows.Add(null, null);
+                _gridFRS.CellValueChanged += _gridFRS_CellValueChanged;
+                _hostFRS.Child = _gridFRS;
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
+
+        private void _gridFRS_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (_gridFRS == null || _gridFRS.Rows.Count < 2) return;
+            decimal cscWeight = GetWeightFromTable(_gridFRS, 1, 1);
+            decimal psrWeight = GetWeightFromTable(_gridFRS, 2, 1);
+            decimal ddsWeight = GetWeightFromTable(_gridFRS, 3, 1);
+            decimal srcWeight = GetWeightFromTable(_gridFRS, 4, 1);
+
+            if (_cscWeight != cscWeight ||
+                _psrWeight != psrWeight ||
+                _ddsWeight != ddsWeight ||
+                _srcWeight != srcWeight)
+            {
+                _cscWeight = cscWeight;
+                _psrWeight = psrWeight;
+                _ddsWeight = ddsWeight;
+                _srcWeight = srcWeight;
+            }
+        }
+
+        public void UpdateWeights(decimal csc, decimal psr, decimal dds, decimal src)
+        {
+            _cscWeight = csc;
+            _psrWeight = psr;
+            _ddsWeight = dds;
+            _srcWeight = src;
+            Updateweights();
+        }
+
+        public event EventHandler WeightsChanged;
+        internal void Updateweights()
+        {
+            decimal sum = _cscWeight + _psrWeight + _ddsWeight + _srcWeight;
+            try
+            {
+                _cscWeight /= sum;
+                _psrWeight /= sum;
+                _ddsWeight /= sum;
+                _srcWeight /= sum;
+            }
+            catch
+            {
+                _cscWeight = 0.25m;
+                _psrWeight = 0.25m;
+                _ddsWeight = 0.25m;
+                _srcWeight = 0.25m;
+            }
+            
+            WeightsChanged.Invoke(this, EventArgs.Empty);
+            ReLoadCSC(_reports);
+        }
+
+        private decimal GetWeightFromTable(DataGridView gridView, int column, int row)
+        {
+            decimal result = 0;
+            try
+            {
+                decimal.TryParse(gridView.Rows[row].Cells[column].Value?.ToString().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+            }
+            catch { }
+            return result;
+        }
+
+        private void UpdateCSCTable()
+        {
+            if (_gridFRS.InvokeRequired)
+            {
+                _gridFRS.Invoke(new Action(UpdateCSCTable));
                 return;
             }
 
-            _gridStepsOfOptimization.Rows.Clear();
+            _gridFRS.Rows.Clear();
+
+            if (_reports == null)
+            {
+                return;
+            }
+
+            try
+            {
+                OptimazerFazeReport curReport = _reports[0];
+                OptimizerReport bot = curReport.Reports[_sortBotNumberCSC];
+
+                DataGridViewRow row = new DataGridViewRow();
+                row.Height = 30;
+
+                AddCell(row, "");
+                AddCell(row, bot.CSC);
+                AddCell(row, bot.PSR);
+                AddCell(row, bot.DDS);
+                AddCell(row, bot.SRC);
+                AddCell(row, bot.FRS);
+
+                _gridFRS.Rows.Add(row);
+
+                DataGridViewRow row2 = new DataGridViewRow();
+                row2.Height = 30;
+                row2.ReadOnly = false;
+
+                AddCell(row2, "FRS weights");
+                AddCell(row2, _cscWeight, false);
+                AddCell(row2, _psrWeight, false);
+                AddCell(row2, _ddsWeight, false);
+                AddCell(row2, _srcWeight, false);
+                AddCell(row2, "-");
+
+                _gridFRS.Rows.Add(row2);
+            }
+            catch { }
+        }
+
+        private void AddCell(DataGridViewRow row, decimal value, bool readOnly = true)
+        {
+            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
+            cell.Value = Math.Round(value, 3);
+            row.Cells.Add(cell);
+            cell.ReadOnly = readOnly;
+        }
+
+        private void AddCell(DataGridViewRow row, object value, bool readOnly = true)
+        {
+            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
+            cell.Value = value;
+            row.Cells.Add(cell);
+            cell.ReadOnly = readOnly;
+        }
+
+        private DataGridViewColumn GetColumn(string name, int width = 0, bool readOnly = true)
+        {
+            DataGridViewColumn column = new DataGridViewColumn();
+            column.CellTemplate = cell0;
+            column.HeaderText = name;
+            column.ReadOnly = readOnly;
+            if (width > 0)
+            {
+                column.Width = width;
+            }
+            else
+            {
+                column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            }
+            return column;
+        }
+
+        private void UpdGridStepsOfOptimization(DataGridView gridStepsOfOptimization, int sortBotNumber)
+        {
+            if (gridStepsOfOptimization.InvokeRequired)
+            {
+                gridStepsOfOptimization.Invoke(new Action<DataGridView, int>(UpdGridStepsOfOptimization), gridStepsOfOptimization, sortBotNumber);
+                return;
+            }
+
+            gridStepsOfOptimization.Rows.Clear();
 
             if (_reports == null)
             {
@@ -345,8 +566,6 @@ namespace OsEngine.OsOptimizer
                     return;
                 }
 
-                int num = 0;
-
                 OptimizerReport inSampleReport = null;
 
                 for (int i = 0; i < _reports.Count; i++)
@@ -362,14 +581,14 @@ namespace OsEngine.OsOptimizer
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
                     {
-                        inSampleReport = curReport.Reports[_sortBotNumber];
+                        inSampleReport = curReport.Reports[sortBotNumber];
                     }
 
                     OptimizerReport reportToPaint;
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
                     {
-                        reportToPaint = curReport.Reports[_sortBotNumber];
+                        reportToPaint = curReport.Reports[sortBotNumber];
                     }
                     else // if(curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
                     {
@@ -405,7 +624,7 @@ namespace OsEngine.OsOptimizer
                     row.Cells.Add(cell4);
 
                     DataGridViewTextBoxCell cell5 = new DataGridViewTextBoxCell();
-                    cell5.Value = curReport.Reports[0].BotName.Replace(" InSample", "").Replace(" OutOfSample", "").Replace("OpT", "");       
+                    cell5.Value = curReport.Reports[0].BotName.Replace(" InSample", "").Replace(" OutOfSample", "").Replace("OpT", "");
                     row.Cells.Add(cell5);
 
                     DataGridViewTextBoxCell cell6 = new DataGridViewTextBoxCell();
@@ -456,16 +675,87 @@ namespace OsEngine.OsOptimizer
                     cell13.Value = OsLocalization.Optimizer.Message44;
                     row.Cells.Add(cell13);
 
-                    _gridStepsOfOptimization.Rows.Add(row);
+                    gridStepsOfOptimization.Rows.Add(row);
                 }
 
-                _gridStepsOfOptimization.CellMouseClick += _gridResults_CellMouseClick;
+                gridStepsOfOptimization.CellMouseClick += _gridResults_CellMouseClick;
 
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 SendLogMessage(ex.ToString(), LogMessageType.Error);
             }
+        }
+
+
+        private void CalculateCSCResults(List<OptimazerFazeReport> reports)
+        {
+            // Группировка ботов с одинаковыми параметрами из разных периодов
+            var bots = reports.SelectMany(r => r.Reports.Select(report => new { Report = report, FazeType = r.Faze.TypeFaze })).GroupBy(r => r.Report.GetParamsToDataTable());
+
+            Parallel.ForEach(bots, (group) =>
+            {
+                string key = group.Key;
+                IEnumerable<OptimizerReport> allInSampleReports = group.Where(r => r.FazeType == OptimizerFazeType.InSample).Select(r => r.Report);
+                IEnumerable<OptimizerReport> allOutSampleReports = group.Where(r => r.FazeType == OptimizerFazeType.OutOfSample).Select(r => r.Report);
+
+                decimal avgProfitIS = allInSampleReports.Sum(r => r.AverageProfit) / allInSampleReports.Count();
+                decimal avgProfitOOS = allOutSampleReports.Sum(r => r.AverageProfit) / allOutSampleReports.Count();
+                decimal csc = 0;
+                if (Math.Max(avgProfitIS, avgProfitOOS) != 0)
+                {
+                    csc = (1 - (Math.Abs(avgProfitIS - avgProfitOOS) / Math.Max(avgProfitIS, avgProfitOOS))) * 100;
+                }
+
+                int profitCountIS = allInSampleReports.Where(r => r.TotalProfit > 0).Count();
+                int profitCountOOS = allOutSampleReports.Where(r => r.TotalProfit > 0).Count();
+                decimal psr = 0;
+
+                if (profitCountIS > 0)
+                {
+                    psr = (decimal)profitCountOOS / (decimal)profitCountIS * 100;
+                }
+
+                decimal avgDDIS = allInSampleReports.Sum(r => r.MaxDrowDawn) / allInSampleReports.Count();
+                decimal avgDDOOS = allOutSampleReports.Sum(r => r.MaxDrowDawn) / allOutSampleReports.Count();
+                decimal dds = 0;
+                if (avgDDIS != 0)
+                {
+                    dds = (1 - ((avgDDOOS / avgDDIS) - 1)) * 100;
+                    dds = Math.Max(0, dds);
+                }
+
+                double[] sharpIS = allInSampleReports.Select(r => (double)r.SharpRatio).ToArray();
+                double[] sharpOOS = allOutSampleReports.Select(r => (double)r.SharpRatio).ToArray();
+                decimal src = 0;
+
+                // Ещё можно использовать CorrelationBuilder.Correlation(sharpIS, sharpOOS), даёт похожие результаты, но иногда возвращает NaN
+                using (Chart chart = new Chart())
+                using (Series ser1 = new Series("1"))
+                using (Series ser2 = new Series("2"))
+                {
+                    for (int i = 0; i < sharpOOS.Length; i++)
+                    {
+                        ser1.Points.AddXY(i, sharpIS[i]);
+                        ser2.Points.AddXY(i, sharpOOS[i]);
+                    }
+
+                    chart.Series.Add(ser1);
+                    chart.Series.Add(ser2);
+                    src = (decimal)chart.DataManipulator.Statistics.Correlation("1", "2");
+                }
+
+                decimal frs = _srcWeight * csc + _psrWeight * psr + _ddsWeight * dds + _srcWeight * src;
+
+                foreach (var r in group)
+                {
+                    r.Report.CSC = csc;
+                    r.Report.PSR = psr;
+                    r.Report.DDS = dds;
+                    r.Report.SRC = src;
+                    r.Report.FRS = frs;
+                }
+            });
         }
 
         // Bot Charting
@@ -549,6 +839,21 @@ namespace OsEngine.OsOptimizer
             _hostRobustness.Child = _chartRobustness;
 
             _chartRobustness.SuppressExceptions = true;
+        }
+
+        private void GetCSC()
+        {
+            if (_gridStepsOfOptimizationCSC.InvokeRequired)
+            {
+                _gridStepsOfOptimizationCSC.Invoke(new Action(GetCSC));
+                return;
+            }
+            try
+            {
+                CSCCalculated?.Invoke(this, _reports[0].Reports[_sortBotNumber].CSC);
+            }
+            catch 
+            { }
         }
 
         private void UpdateRobustnessChart()
@@ -748,37 +1053,65 @@ namespace OsEngine.OsOptimizer
             _comboBoxTotalProfitEquityType.Items.Add("Persent");
             _comboBoxTotalProfitEquityType.SelectedItem = "Absolute";
 
-            CreateTotalProfitChart();
-
-            UpdateTotalProfitChart();
+            _chartTotalProfit = GetTotalProfitChart();
+            _hostTotalProfit.Child = _chartTotalProfit;
+            UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
 
             _comboBoxTotalProfitEquityType.SelectionChanged += _comboBoxprofitType_SelectionChanged;
         }
 
-        private void _comboBoxprofitType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        System.Windows.Controls.ComboBox _comboBoxTotalProfitEquityTypeCSC;
+
+        private Chart _chartTotalProfitCSC;
+
+        private WindowsFormsHost _hostTotalProfitCSC;
+
+        public void ActivateTotalProfitChartCSC(WindowsFormsHost hostTotalProfit, System.Windows.Controls.ComboBox comboBoxProfitType)
         {
-            UpdateTotalProfitChart();
+            _hostTotalProfitCSC = hostTotalProfit;
+            _comboBoxTotalProfitEquityTypeCSC = comboBoxProfitType;
+
+            _comboBoxTotalProfitEquityTypeCSC.Items.Add("Absolute");
+            _comboBoxTotalProfitEquityTypeCSC.Items.Add("Persent");
+            _comboBoxTotalProfitEquityTypeCSC.SelectedItem = "Absolute";
+
+            _chartTotalProfitCSC = GetTotalProfitChart();
+            _hostTotalProfitCSC.Child = _chartTotalProfitCSC;
+            UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
+
+            _comboBoxTotalProfitEquityTypeCSC.SelectionChanged += _comboBoxTotalProfitEquityTypeCSC_SelectionChanged; ;
         }
 
-        private void CreateTotalProfitChart()
+
+        private void _comboBoxprofitType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            _chartTotalProfit = new Chart();
+            UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
+        }
+
+        private void _comboBoxTotalProfitEquityTypeCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
+        }
+
+        public Chart GetTotalProfitChart()
+        {
+            Chart result = new Chart();
 
             ChartArea area = new ChartArea("Prime");
 
-            _chartTotalProfit.ChartAreas.Clear();
-            _chartTotalProfit.ChartAreas.Add(area);
-            _chartTotalProfit.BackColor = Color.FromArgb(21, 26, 30);
-            _chartTotalProfit.ChartAreas[0].AxisX.TitleForeColor = Color.FromArgb(149, 159, 176);
+            result.ChartAreas.Clear();
+            result.ChartAreas.Add(area);
+            result.BackColor = Color.FromArgb(21, 26, 30);
+            result.ChartAreas[0].AxisX.TitleForeColor = Color.FromArgb(149, 159, 176);
 
-            for (int i = 0; _chartTotalProfit.ChartAreas != null && i < _chartTotalProfit.ChartAreas.Count; i++)
+            for (int i = 0; result.ChartAreas != null && i < result.ChartAreas.Count; i++)
             {
-                _chartTotalProfit.ChartAreas[i].BackColor = Color.FromArgb(21, 26, 30);
-                _chartTotalProfit.ChartAreas[i].BorderColor = Color.FromArgb(17, 18, 23);
-                _chartTotalProfit.ChartAreas[i].CursorY.LineColor = Color.FromArgb(149, 159, 176);
-                _chartTotalProfit.ChartAreas[i].CursorX.LineColor = Color.FromArgb(149, 159, 176);
+                result.ChartAreas[i].BackColor = Color.FromArgb(21, 26, 30);
+                result.ChartAreas[i].BorderColor = Color.FromArgb(17, 18, 23);
+                result.ChartAreas[i].CursorY.LineColor = Color.FromArgb(149, 159, 176);
+                result.ChartAreas[i].CursorX.LineColor = Color.FromArgb(149, 159, 176);
 
-                foreach (var axe in _chartTotalProfit.ChartAreas[i].Axes)
+                foreach (var axe in result.ChartAreas[i].Axes)
                 {
                     axe.LabelStyle.ForeColor = Color.FromArgb(149, 159, 176);
                 }
@@ -786,24 +1119,23 @@ namespace OsEngine.OsOptimizer
 
             Series series = new Series();
             series.ChartType = SeriesChartType.Candlestick;
-            _chartTotalProfit.Series.Clear();
-            _chartTotalProfit.Series.Add(series);
+            result.Series.Clear();
+            result.Series.Add(series);
 
-            _hostTotalProfit.Child = _chartTotalProfit;
-
-            _chartTotalProfit.SuppressExceptions = true;
+            result.SuppressExceptions = true;
+            return result;
         }
 
-        private void UpdateTotalProfitChart()
+        private void UpdateTotalProfitChart(DataGridView gridStepsOfOptimization, Chart chartTotalProfit, System.Windows.Controls.ComboBox comboBoxTotalProfitEquityType, int sortBotNumber)
         {
-            if(_chartTotalProfit == null)
+            if (chartTotalProfit == null)
             {
                 return;
             }
 
-            if (_gridStepsOfOptimization.InvokeRequired)
+            if (gridStepsOfOptimization.InvokeRequired)
             {
-                _gridStepsOfOptimization.Invoke(new Action(UpdateTotalProfitChart));
+                gridStepsOfOptimization.Invoke(new Action<DataGridView, Chart, System.Windows.Controls.ComboBox, int>(UpdateTotalProfitChart), gridStepsOfOptimization, chartTotalProfit, comboBoxTotalProfitEquityType, sortBotNumber);
                 return;
             }
 
@@ -820,7 +1152,7 @@ namespace OsEngine.OsOptimizer
             try
             {
 
-                string profitType = _comboBoxTotalProfitEquityType.SelectedItem.ToString();
+                string profitType = comboBoxTotalProfitEquityType.SelectedItem.ToString();
 
                 List<decimal> profitsSumm = new List<decimal>();
 
@@ -843,7 +1175,7 @@ namespace OsEngine.OsOptimizer
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
                     {
-                        inSampleReport = curReport.Reports[_sortBotNumber];
+                        inSampleReport = curReport.Reports[sortBotNumber];
                     }
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
@@ -889,7 +1221,7 @@ namespace OsEngine.OsOptimizer
                     }
                 }
 
-                Series series = _chartTotalProfit.Series[0];
+                Series series = chartTotalProfit.Series[0];
 
                 series.Points.ClearFast();
 
@@ -914,11 +1246,11 @@ namespace OsEngine.OsOptimizer
                     }
                     close = profitsSumm[i];
 
-                    if(close > max)
+                    if (close > max)
                     {
                         max = close;
                     }
-                    if(close < min)
+                    if (close < min)
                     {
                         min = close;
                     }
@@ -966,16 +1298,16 @@ namespace OsEngine.OsOptimizer
 
                 }
 
-                if(max != decimal.MinValue &&
+                if (max != decimal.MinValue &&
                     min != decimal.MaxValue)
                 {
                     max = Math.Round(max + max * 0.2m, 4);
                     min = Math.Round(min, 4);
 
-                    if(max > min)
+                    if (max > min)
                     {
-                        _chartTotalProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartTotalProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
+                        chartTotalProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
+                        chartTotalProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
                     }
                 }
             }
@@ -994,31 +1326,43 @@ namespace OsEngine.OsOptimizer
         public void ActivateAverageProfitChart(WindowsFormsHost hostAverageProfit)
         {
             _hostAverageProfitChart = hostAverageProfit;
-            
-            CreateAverageProfitChart();
-             
+            _chartAverageProfit = GetAverageProfitChart();
+            _hostAverageProfitChart.Child = _chartAverageProfit;
+            _chartAverageProfit.SuppressExceptions = true;
             ReLoad(_reports);
         }
 
-        private void CreateAverageProfitChart()
+        private WindowsFormsHost _hostAverageProfitChartCSC;
+        private Chart _chartAverageProfitCSC;
+
+        public void ActivateAverageProfitChartCSC(WindowsFormsHost hostAverageProfitCSC)
         {
-            _chartAverageProfit = new Chart();
+            _hostAverageProfitChartCSC = hostAverageProfitCSC;
+            _chartAverageProfitCSC = GetAverageProfitChart();
+            _hostAverageProfitChartCSC.Child = _chartAverageProfitCSC;
+            _chartAverageProfitCSC.SuppressExceptions = true;
+            ReLoadCSC(_reports);
+        }
+
+        private Chart GetAverageProfitChart()
+        {
+            Chart chartAverageProfit = new Chart();
 
             ChartArea area = new ChartArea("Prime");
 
-            _chartAverageProfit.ChartAreas.Clear();
-            _chartAverageProfit.ChartAreas.Add(area);
-            _chartAverageProfit.BackColor = Color.FromArgb(21, 26, 30);
-            _chartAverageProfit.ChartAreas[0].AxisX.TitleForeColor = Color.FromArgb(149, 159, 176);
+            chartAverageProfit.ChartAreas.Clear();
+            chartAverageProfit.ChartAreas.Add(area);
+            chartAverageProfit.BackColor = Color.FromArgb(21, 26, 30);
+            chartAverageProfit.ChartAreas[0].AxisX.TitleForeColor = Color.FromArgb(149, 159, 176);
 
-            for (int i = 0; _chartAverageProfit.ChartAreas != null && i < _chartAverageProfit.ChartAreas.Count; i++)
+            for (int i = 0; chartAverageProfit.ChartAreas != null && i < chartAverageProfit.ChartAreas.Count; i++)
             {
-                _chartAverageProfit.ChartAreas[i].BackColor = Color.FromArgb(21, 26, 30);
-                _chartAverageProfit.ChartAreas[i].BorderColor = Color.FromArgb(17, 18, 23);
-                _chartAverageProfit.ChartAreas[i].CursorY.LineColor = Color.FromArgb(149, 159, 176);
-                _chartAverageProfit.ChartAreas[i].CursorX.LineColor = Color.FromArgb(149, 159, 176);
+                chartAverageProfit.ChartAreas[i].BackColor = Color.FromArgb(21, 26, 30);
+                chartAverageProfit.ChartAreas[i].BorderColor = Color.FromArgb(17, 18, 23);
+                chartAverageProfit.ChartAreas[i].CursorY.LineColor = Color.FromArgb(149, 159, 176);
+                chartAverageProfit.ChartAreas[i].CursorX.LineColor = Color.FromArgb(149, 159, 176);
 
-                foreach (var axe in _chartAverageProfit.ChartAreas[i].Axes)
+                foreach (var axe in chartAverageProfit.ChartAreas[i].Axes)
                 {
                     axe.LabelStyle.ForeColor = Color.FromArgb(149, 159, 176);
                 }
@@ -1026,38 +1370,33 @@ namespace OsEngine.OsOptimizer
 
             Series series = new Series();
             series.ChartType = SeriesChartType.Column;
-            _chartAverageProfit.Series.Clear();
-            _chartAverageProfit.Series.Add(series);
+            chartAverageProfit.Series.Clear();
+            chartAverageProfit.Series.Add(series);
 
             Series series2 = new Series();
             series2.ChartType = SeriesChartType.Line;
-            _chartAverageProfit.Series.Add(series2);
+            chartAverageProfit.Series.Add(series2);
 
             Series series3 = new Series();
             series3.ChartType = SeriesChartType.Point;
-            _chartAverageProfit.Series.Add(series3);
-
-
-            _hostAverageProfitChart.Child = _chartAverageProfit;
-
-            _chartAverageProfit.SuppressExceptions = true;
+            chartAverageProfit.Series.Add(series3);
+            return chartAverageProfit;
         }
 
-        private void UpdateAverageProfitChart()
+        private void UpdateAverageProfitChart(WindowsFormsHost hostAverageProfitChart, Chart chartAverageProfit, int sortBotNumber)
         {
             if (_reports == null ||
                 _reports.Count == 0)
             {
                 return;
             }
-            if (_hostAverageProfitChart == null)
+            if (hostAverageProfitChart == null)
             {
                 return;
             }
 
             try
             {
-
                 List<decimal> values = new List<decimal>();
                 decimal maxValue = 0;
 
@@ -1070,7 +1409,7 @@ namespace OsEngine.OsOptimizer
                     // берём из ИнСампле таблицу роботов
                     List<OptimizerReport> bots = _reports[i].Reports;
 
-                    OptimizerReport bestBot = _reports[i].Reports[_sortBotNumber];
+                    OptimizerReport bestBot = _reports[i].Reports[sortBotNumber];
 
                     // находим этого робота в аутОфСемпл
 
@@ -1114,9 +1453,9 @@ namespace OsEngine.OsOptimizer
 
                 // прорисовка
 
-                Series seriesOosValues = _chartAverageProfit.Series[0];
-                Series seriesAverageLine = _chartAverageProfit.Series[1];
-                Series seriesAveragePoint = _chartAverageProfit.Series[2];
+                Series seriesOosValues = chartAverageProfit.Series[0];
+                Series seriesAverageLine = chartAverageProfit.Series[1];
+                Series seriesAveragePoint = chartAverageProfit.Series[2];
 
                 seriesOosValues.Points.ClearFast();
                 seriesAverageLine.Points.ClearFast();
@@ -1194,18 +1533,15 @@ namespace OsEngine.OsOptimizer
 
                     if (max > min)
                     {
-                        _chartAverageProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartAverageProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
+                        chartAverageProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
+                        chartAverageProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
                     }
                 }
-
             }
             catch (Exception ex)
             {
-                SendLogMessage(ex.ToString(),LogMessageType.Error);
+                SendLogMessage(ex.ToString(), LogMessageType.Error);
             }
-
-
         }
 
         // profit factor
@@ -1217,30 +1553,46 @@ namespace OsEngine.OsOptimizer
         public void ActivateProfitFactorChart(WindowsFormsHost hostProfitFactor)
         {
             _hostProfitFactor = hostProfitFactor;
-            CreateProfitFactorChart();
+            _chartProfitFactor = GetProfitFactorChart();
+            _hostProfitFactor.Child = _chartProfitFactor;
+            _chartProfitFactor.SuppressExceptions = true;
 
             ReLoad(_reports);
         }
 
-        private void CreateProfitFactorChart()
+
+        private WindowsFormsHost _hostProfitFactorCSC;
+
+        private Chart _chartProfitFactorCSC;
+
+        public void ActivateProfitFactorChartCSC(WindowsFormsHost hostProfitFactor)
         {
-            _chartProfitFactor = new Chart();
+            _hostProfitFactorCSC = hostProfitFactor;
+            _chartProfitFactorCSC = GetProfitFactorChart();
+            _hostProfitFactorCSC.Child = _chartProfitFactorCSC;
+            _chartProfitFactorCSC.SuppressExceptions = true;
+            ReLoadCSC(_reports);
+        }
+
+        private Chart GetProfitFactorChart()
+        {
+            Chart result = new Chart();
 
             ChartArea area = new ChartArea("Prime");
 
-            _chartProfitFactor.ChartAreas.Clear();
-            _chartProfitFactor.ChartAreas.Add(area);
-            _chartProfitFactor.BackColor = Color.FromArgb(21, 26, 30);
-            _chartProfitFactor.ChartAreas[0].AxisX.TitleForeColor = Color.FromArgb(149, 159, 176);
+            result.ChartAreas.Clear();
+            result.ChartAreas.Add(area);
+            result.BackColor = Color.FromArgb(21, 26, 30);
+            result.ChartAreas[0].AxisX.TitleForeColor = Color.FromArgb(149, 159, 176);
 
-            for (int i = 0; _chartProfitFactor.ChartAreas != null && i < _chartProfitFactor.ChartAreas.Count; i++)
+            for (int i = 0; result.ChartAreas != null && i < result.ChartAreas.Count; i++)
             {
-                _chartProfitFactor.ChartAreas[i].BackColor = Color.FromArgb(21, 26, 30);
-                _chartProfitFactor.ChartAreas[i].BorderColor = Color.FromArgb(17, 18, 23);
-                _chartProfitFactor.ChartAreas[i].CursorY.LineColor = Color.FromArgb(149, 159, 176);
-                _chartProfitFactor.ChartAreas[i].CursorX.LineColor = Color.FromArgb(149, 159, 176);
+                result.ChartAreas[i].BackColor = Color.FromArgb(21, 26, 30);
+                result.ChartAreas[i].BorderColor = Color.FromArgb(17, 18, 23);
+                result.ChartAreas[i].CursorY.LineColor = Color.FromArgb(149, 159, 176);
+                result.ChartAreas[i].CursorX.LineColor = Color.FromArgb(149, 159, 176);
 
-                foreach (var axe in _chartProfitFactor.ChartAreas[i].Axes)
+                foreach (var axe in result.ChartAreas[i].Axes)
                 {
                     axe.LabelStyle.ForeColor = Color.FromArgb(149, 159, 176);
                 }
@@ -1248,38 +1600,33 @@ namespace OsEngine.OsOptimizer
 
             Series series = new Series();
             series.ChartType = SeriesChartType.Column;
-            _chartProfitFactor.Series.Clear();
-            _chartProfitFactor.Series.Add(series);
+            result.Series.Clear();
+            result.Series.Add(series);
 
             Series series2 = new Series();
             series2.ChartType = SeriesChartType.Line;
-            _chartProfitFactor.Series.Add(series2);
+            result.Series.Add(series2);
 
             Series series3 = new Series();
             series3.ChartType = SeriesChartType.Point;
-            _chartProfitFactor.Series.Add(series3);
-
-
-            _hostProfitFactor.Child = _chartProfitFactor;
-
-            _chartProfitFactor.SuppressExceptions = true;
+            result.Series.Add(series3);
+            return result;
         }
 
-        private void UpdateProfitFactorChart()
+        private void UpdateProfitFactorChart(WindowsFormsHost hostProfitFactor, Chart chartProfitFactor)
         {
             if (_reports == null ||
                            _reports.Count == 0)
             {
                 return;
             }
-            if (_hostProfitFactor == null)
+            if (hostProfitFactor == null)
             {
                 return;
             }
 
             try
             {
-
                 List<decimal> values = new List<decimal>();
 
                 decimal maxValue = 0;
@@ -1337,9 +1684,9 @@ namespace OsEngine.OsOptimizer
 
                 // прорисовка
 
-                Series seriesOosValues = _chartProfitFactor.Series[0];
-                Series seriesAverageLine = _chartProfitFactor.Series[1];
-                Series seriesAveragePoint = _chartProfitFactor.Series[2];
+                Series seriesOosValues = chartProfitFactor.Series[0];
+                Series seriesAverageLine = chartProfitFactor.Series[1];
+                Series seriesAveragePoint = chartProfitFactor.Series[2];
 
                 seriesOosValues.Points.ClearFast();
                 seriesAverageLine.Points.ClearFast();
@@ -1353,7 +1700,7 @@ namespace OsEngine.OsOptimizer
                 decimal max = decimal.MinValue;
                 decimal min = decimal.MaxValue;
 
-                    for (int i = 0; i < values.Count; i++)
+                for (int i = 0; i < values.Count; i++)
                 {
                     seriesOosValues.Points.AddXY(i + 1, values[i]);
 
@@ -1417,8 +1764,8 @@ namespace OsEngine.OsOptimizer
 
                     if (max > min)
                     {
-                        _chartProfitFactor.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        _chartProfitFactor.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
+                        chartProfitFactor.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
+                        chartProfitFactor.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
                     }
                 }
             }
@@ -1443,6 +1790,7 @@ namespace OsEngine.OsOptimizer
                 LogMessageEvent(message, type);
             }
         }
+
 
         /// <summary>
         /// event: new message for log

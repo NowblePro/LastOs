@@ -32,21 +32,29 @@ namespace OsEngine.OsOptimizer
             _resultsCharting = new OptimizerReportCharting(
             HostStepsOfOptimizationTable,
             HostRobustness,
+            HostStepsOfOptimizationTable1,
             ComboBoxSortResultsType,
             LabelRobustnessMetricValue,
-            ComboBoxSortResultsBotNumPercent);
+            ComboBoxSortResultsBotNumPercent,
+            ComboBoxSortResultsType1,
+            ComboBoxSortResultsBotNumPercent1
+            );
 
             _resultsCharting.ActivateTotalProfitChart(HostTotalProfit, ComboBoxTotalProfit);
-
+            _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
             _resultsCharting.ActivateAverageProfitChart(HostAverageProfit);
+            _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
             _resultsCharting.ActivateProfitFactorChart(HostProfitFactor);
-
+            _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
+            _resultsCharting.ActivateCSCChart(HostFRS);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
 
             CheckBoxDataCapture.IsChecked = _captureData;
             CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
+            _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
 
             CreateTableFazes();
             CreateTableResults();
@@ -71,8 +79,28 @@ namespace OsEngine.OsOptimizer
                 Title += "  " + master.TabsSimpleNamesAndTimeFrames[0].NameSecurity + "  " + master.TabsSimpleNamesAndTimeFrames[0].TimeFrame;
             }
 
+            TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
+            TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
+            _resultsCharting.WeightsChanged += _master.UpdateWeights;
+            _resultsCharting.UpdateWeights(_master.CscWeight, _master.PsrWeight, _master.DdsWeight, _master.SrcWeight);
+
             this.Activate();
             this.Focus();
+        }
+
+        private void TabControlResultsOutOfSampleResults_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.ReLoad(_reports);
+        }
+
+        private void TabControlResultsOutOfSampleResults1_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.ReLoadCSC(_reports);
+        }
+
+        private void _resultsCharting_CSCCalculated(object sender, decimal e)
+        {
+            LabelCSCMetricValue.Content = e;
         }
 
         public void Paint(List<OptimazerFazeReport> reports)
@@ -109,8 +137,16 @@ namespace OsEngine.OsOptimizer
 
                 PaintTableFazes();
                 PaintTableResults();
-
-                _resultsCharting.ReLoad(_reports);
+                if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
+                {
+                    _resultsCharting.ReLoadCSC(_reports);
+                    _resultsCharting.ReLoad(_reports);
+                }
+                else
+                {
+                    _resultsCharting.ReLoad(_reports);
+                    _resultsCharting.ReLoadCSC(_reports);
+                }
             }
             catch (Exception error)
             {
@@ -605,62 +641,6 @@ namespace OsEngine.OsOptimizer
             _gridResults.CellMouseClick += _gridResults_CellMouseClick;
         }
 
-        private DataGridViewRow GetRowResult(OptimizerReportTab report)
-        {
-            DataGridViewRow row = new DataGridViewRow();
-
-            row.Cells.Add(new DataGridViewTextBoxCell());
-            row.Cells[0].Value = report.SecurityName;
-
-
-            DataGridViewTextBoxCell cell2 = new DataGridViewTextBoxCell();
-            row.Cells.Add(cell2);
-
-            DataGridViewTextBoxCell cell3 = new DataGridViewTextBoxCell();
-            cell3.Value = report.PositionsCount;
-            row.Cells.Add(cell3);
-
-            DataGridViewTextBoxCell cell4 = new DataGridViewTextBoxCell();
-            cell4.Value = report.TotalProfit.ToStringWithNoEndZero();
-            row.Cells.Add(cell4);
-
-            DataGridViewTextBoxCell cell5 = new DataGridViewTextBoxCell();
-            cell5.Value = report.MaxDrowDawn.ToStringWithNoEndZero();
-            row.Cells.Add(cell5);
-
-            DataGridViewTextBoxCell cell6 = new DataGridViewTextBoxCell();
-            cell6.Value = report.AverageProfit.ToStringWithNoEndZero();
-            row.Cells.Add(cell6);
-
-            DataGridViewTextBoxCell cell7 = new DataGridViewTextBoxCell();
-            cell7.Value = report.AverageProfitPercentOneContract.ToStringWithNoEndZero();
-            row.Cells.Add(cell7);
-
-            DataGridViewTextBoxCell cell8 = new DataGridViewTextBoxCell();
-            cell8.Value = report.ProfitFactor.ToStringWithNoEndZero();
-            row.Cells.Add(cell8);
-
-            DataGridViewTextBoxCell cell9 = new DataGridViewTextBoxCell();
-            cell9.Value = report.PayOffRatio.ToStringWithNoEndZero();
-            row.Cells.Add(cell9);
-
-            DataGridViewTextBoxCell cell10 = new DataGridViewTextBoxCell();
-            cell10.Value = report.Recovery.ToStringWithNoEndZero();
-            row.Cells.Add(cell10);
-
-            try
-            {
-                row.Cells.Add(null);
-            }
-            catch
-            {
-                // igonre
-            }
-
-            return row;
-
-        }
-
         /// <summary>
         /// user clicked a button in the result table
         /// пользователь нажал на кнопку в таблице результатов
@@ -998,8 +978,12 @@ namespace OsEngine.OsOptimizer
         {
             _captureData = CheckBoxDataCapture.IsChecked.Value;
         }
-
         private bool _captureData = false;
+
+        private void ButtonUpdateCSC_Click(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.Updateweights();
+        }
 
     }
 }
