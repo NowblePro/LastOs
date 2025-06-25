@@ -70,6 +70,11 @@ namespace OsEngine.OsOptimizer
             LabelAverageProfitFactor.Content = OsLocalization.Optimizer.Label55;
             LabelAverageProfitPersent.Content = OsLocalization.Optimizer.Label56;
 
+            LabelSortBy1.Content = OsLocalization.Optimizer.Label39;
+            LabelTotalProfit1.Content = OsLocalization.Optimizer.Label54;
+            LabelAverageProfitFactor1.Content = OsLocalization.Optimizer.Label55;
+            LabelAverageProfitPersent1.Content = OsLocalization.Optimizer.Label56;
+
             Title += "   " + master.StrategyName;
             
             if(master.TabsSimpleNamesAndTimeFrames != null &&

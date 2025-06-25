@@ -190,6 +190,11 @@ namespace OsEngine.OsOptimizer
             LabelRobustnessMetric.Content = OsLocalization.Optimizer.Label53;
             ButtonSetStandartParams.Content = OsLocalization.Optimizer.Label57;
 
+            LabelSortBy1.Content = OsLocalization.Optimizer.Label39;
+            LabelTotalProfit1.Content = OsLocalization.Optimizer.Label54;
+            LabelAverageProfitFactor1.Content = OsLocalization.Optimizer.Label55;
+            LabelAverageProfitPersent1.Content = OsLocalization.Optimizer.Label56;
+
             _resultsCharting = new OptimizerReportCharting(
                 HostStepsOfOptimizationTable,
                 HostRobustness,
