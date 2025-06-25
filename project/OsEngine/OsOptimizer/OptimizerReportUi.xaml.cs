@@ -54,7 +54,6 @@ namespace OsEngine.OsOptimizer
 
             CheckBoxDataCapture.IsChecked = _captureData;
             CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
-            _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
 
             CreateTableFazes();
             CreateTableResults();
