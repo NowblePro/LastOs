@@ -200,6 +200,11 @@ namespace OsEngine.OsTrader.Panels.Tab
 
         private void writeCandleData(Candle candle)
         {
+            if (PositionsOpenAll.Count < 1)
+            {
+                return;
+            }
+
             if (_jsonData == null)
             {
                 _jsonData = new JsonRunData();
