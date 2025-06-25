@@ -362,6 +362,10 @@ namespace OsEngine.OsOptimizer
         private decimal _psrWeight = 0.25m;
         private decimal _ddsWeight = 0.25m;
         private decimal _srcWeight = 0.25m;
+        public decimal CscWeight => _cscWeight;
+        public decimal PsrWeight => _psrWeight;
+        public decimal DdsWeight => _ddsWeight;
+        public decimal SrcWeight => _srcWeight;
 
         internal void ActivateCSCChart(WindowsFormsHost hostFRS)
         {
@@ -410,14 +414,35 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        public void UpdateWeights(decimal csc, decimal psr, decimal dds, decimal src)
+        {
+            _cscWeight = csc;
+            _psrWeight = psr;
+            _ddsWeight = dds;
+            _srcWeight = src;
+            Updateweights();
+        }
+
+        public event EventHandler WeightsChanged;
         internal void Updateweights()
         {
-
             decimal sum = _cscWeight + _psrWeight + _ddsWeight + _srcWeight;
-            _cscWeight /= sum;
-            _psrWeight /= sum;
-            _ddsWeight /= sum;
-            _srcWeight /= sum;
+            try
+            {
+                _cscWeight /= sum;
+                _psrWeight /= sum;
+                _ddsWeight /= sum;
+                _srcWeight /= sum;
+            }
+            catch
+            {
+                _cscWeight = 0.25m;
+                _psrWeight = 0.25m;
+                _ddsWeight = 0.25m;
+                _srcWeight = 0.25m;
+            }
+            
+            WeightsChanged.Invoke(this, EventArgs.Empty);
             ReLoadCSC(_reports);
         }
 
@@ -709,7 +734,7 @@ namespace OsEngine.OsOptimizer
                 using (Series ser1 = new Series("1"))
                 using (Series ser2 = new Series("2"))
                 {
-                    for (int i = 0; i < sharpIS.Length; i++)
+                    for (int i = 0; i < sharpOOS.Length; i++)
                     {
                         ser1.Points.AddXY(i, sharpIS[i]);
                         ser2.Points.AddXY(i, sharpOOS[i]);
