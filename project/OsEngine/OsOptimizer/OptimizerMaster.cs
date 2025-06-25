@@ -27,6 +27,14 @@ namespace OsEngine.OsOptimizer
     /// </summary>
     public class OptimizerMaster
     {
+        private decimal _cscWeight = 0.25m;
+        private decimal _psrWeight = 0.25m;
+        private decimal _ddsWeight = 0.25m;
+        private decimal _srcWeight = 0.25m;
+        public decimal CscWeight => _cscWeight;
+        public decimal PsrWeight => _psrWeight;
+        public decimal DdsWeight => _ddsWeight;
+        public decimal SrcWeight => _srcWeight;
         public OptimizerMaster()
         {
             _log = new Log("OptimizerLog", StartProgram.IsTester);
@@ -117,7 +125,7 @@ namespace OsEngine.OsOptimizer
                     writer.WriteLine(_commissionType);
                     writer.WriteLine(_commissionValue);
                     writer.WriteLine(_lastInSample);
-
+                    writer.WriteLine(GetStringFromWeights());
                     writer.Close();
                 }
             }
@@ -165,7 +173,11 @@ namespace OsEngine.OsOptimizer
                         reader.ReadLine() ?? ComissionType.None.ToString());
                     _commissionValue = reader.ReadLine().ToDecimal();
                     _lastInSample = Convert.ToBoolean(reader.ReadLine());
-
+                    string weights = reader.ReadLine();
+                    if (!string.IsNullOrEmpty(weights))
+                    {
+                        SetWeightsFromString(weights);
+                    }
                     reader.Close();
                 }
             }
@@ -174,6 +186,21 @@ namespace OsEngine.OsOptimizer
                 //SendLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
+
+        private void SetWeightsFromString(string str)
+        {
+            try
+            {
+                string[] strings = str.Split(';');
+                _cscWeight = Convert.ToDecimal(strings[0], CultureInfo.InvariantCulture);
+                _psrWeight = Convert.ToDecimal(strings[1], CultureInfo.InvariantCulture);
+                _ddsWeight = Convert.ToDecimal(strings[2], CultureInfo.InvariantCulture);
+                _srcWeight = Convert.ToDecimal(strings[3], CultureInfo.InvariantCulture);
+            }
+            catch { }
+        }
+
+        private string GetStringFromWeights() => $"{_cscWeight.ToString(CultureInfo.InvariantCulture)};{_psrWeight.ToString(CultureInfo.InvariantCulture)};{_ddsWeight.ToString(CultureInfo.InvariantCulture)};{_srcWeight.ToString(CultureInfo.InvariantCulture)}";
 
         // work with the progress of the optimization process/работа с прогрессом процесса оптимизации
 
@@ -1429,6 +1456,18 @@ namespace OsEngine.OsOptimizer
             if (LogMessageEvent != null)
             {
                 LogMessageEvent(message, type);
+            }
+        }
+
+        internal void UpdateWeights(object o, EventArgs e)
+        {
+            if (o is OptimizerReportCharting resultsCharting)
+            {
+                _cscWeight = resultsCharting.CscWeight;
+                _psrWeight = resultsCharting.PsrWeight;
+                _ddsWeight = resultsCharting.DdsWeight;
+                _srcWeight = resultsCharting.SrcWeight;
+                Save();
             }
         }
 
