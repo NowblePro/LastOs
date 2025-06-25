@@ -546,6 +546,7 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
+            gridStepsOfOptimization.CellMouseClick -= _gridResults_CellMouseClick;
             gridStepsOfOptimization.Rows.Clear();
 
             if (_reports == null)

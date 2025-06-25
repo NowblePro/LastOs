@@ -54,7 +54,6 @@ namespace OsEngine.OsOptimizer
 
             CheckBoxDataCapture.IsChecked = _captureData;
             CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
-            _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
 
             CreateTableFazes();
             CreateTableResults();
@@ -70,6 +69,11 @@ namespace OsEngine.OsOptimizer
             LabelTotalProfit.Content = OsLocalization.Optimizer.Label54;
             LabelAverageProfitFactor.Content = OsLocalization.Optimizer.Label55;
             LabelAverageProfitPersent.Content = OsLocalization.Optimizer.Label56;
+
+            LabelSortBy1.Content = OsLocalization.Optimizer.Label39;
+            LabelTotalProfit1.Content = OsLocalization.Optimizer.Label54;
+            LabelAverageProfitFactor1.Content = OsLocalization.Optimizer.Label55;
+            LabelAverageProfitPersent1.Content = OsLocalization.Optimizer.Label56;
 
             Title += "   " + master.StrategyName;
             

@@ -78,6 +78,11 @@ namespace OsEngine.OsOptimizer
             CheckBoxDataCapture.IsChecked = _captureData;
             CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
 
+            CheckBoxSaveJson.IsChecked = _master.SaveJson;
+            CheckBoxSaveJson.Click += CheckBoxSaveJson_Click;
+            SaveJsonPath.Text = _master.SaveJsonPath;
+            SaveJsonPath.TextChanged += SaveJsonPath_TextChanged;
+
             // filters/фильтры
             CheckBoxFilterProfitIsOn.IsChecked = _master.FilterProfitIsOn;
             CheckBoxFilterMaxDrowDownIsOn.IsChecked = _master.FilterMaxDrowDownIsOn;
@@ -185,6 +190,11 @@ namespace OsEngine.OsOptimizer
             LabelRobustnessMetric.Content = OsLocalization.Optimizer.Label53;
             ButtonSetStandartParams.Content = OsLocalization.Optimizer.Label57;
 
+            LabelSortBy1.Content = OsLocalization.Optimizer.Label39;
+            LabelTotalProfit1.Content = OsLocalization.Optimizer.Label54;
+            LabelAverageProfitFactor1.Content = OsLocalization.Optimizer.Label55;
+            LabelAverageProfitPersent1.Content = OsLocalization.Optimizer.Label56;
+
             _resultsCharting = new OptimizerReportCharting(
                 HostStepsOfOptimizationTable,
                 HostRobustness,
@@ -197,11 +207,19 @@ namespace OsEngine.OsOptimizer
                 );
 
             _resultsCharting.ActivateTotalProfitChart(WindowsFormsHostTotalProfit, ComboBoxTotalProfit);
-
+            _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
+            _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
+            _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
+            _resultsCharting.ActivateCSCChart(HostFRS);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
-
+            _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
-
+            _resultsCharting.WeightsChanged += _master.UpdateWeights;
+            _resultsCharting.UpdateWeights(_master.CscWeight, _master.PsrWeight, _master.DdsWeight, _master.SrcWeight);
+            TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
+            TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
+            _resultsCharting.WeightsChanged += _master.UpdateWeights;
+            _resultsCharting.UpdateWeights(_master.CscWeight, _master.PsrWeight, _master.DdsWeight, _master.SrcWeight);
             this.Closing += Ui_Closing;
             this.Activate();
             this.Focus();
@@ -209,6 +227,21 @@ namespace OsEngine.OsOptimizer
             GlobalGUILayout.Listen(this, "optimizerUi");
 
             Task.Run(new Action(StrategyLoader));
+        }
+
+        private void TabControlResultsOutOfSampleResults_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.ReLoad(_reports);
+        }
+
+        private void TabControlResultsOutOfSampleResults1_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.ReLoadCSC(_reports);
+        }
+
+        private void _resultsCharting_CSCCalculated(object sender, decimal e)
+        {
+            LabelCSCMetricValue.Content = e;
         }
 
         private CultureInfo _currentCulture;
@@ -353,7 +386,16 @@ namespace OsEngine.OsOptimizer
 
                 StartUserActivity();
 
-                _resultsCharting.ReLoad(_reports);
+                if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
+                {
+                    _resultsCharting.ReLoadCSC(_reports);
+                    _resultsCharting.ReLoad(_reports);
+                }
+                else
+                {
+                    _resultsCharting.ReLoad(_reports);
+                    _resultsCharting.ReLoadCSC(_reports);
+                }
             }
             catch (Exception error)
             {
@@ -569,6 +611,10 @@ namespace OsEngine.OsOptimizer
             if (move == NeadToMoveUiTo.Fazes)
             {
                 TabControlPrime.SelectedItem = TabControlPrime.Items[2];
+            }
+            if (move == NeadToMoveUiTo.JsonPath)
+            {
+                TabControlPrime.SelectedItem = TabControlPrime.Items[0];
             }
             if (move == NeadToMoveUiTo.Filters)
             {
@@ -863,6 +909,16 @@ namespace OsEngine.OsOptimizer
         }
 
         private bool _captureData = false;
+
+        private void CheckBoxSaveJson_Click(object sender, RoutedEventArgs e)
+        {
+            _master.SaveJson = CheckBoxSaveJson.IsChecked.Value;
+        }
+
+        private void SaveJsonPath_TextChanged(object sender, RoutedEventArgs e)
+        {
+            _master.SaveJsonPath = SaveJsonPath.Text;
+        }
 
         private void CheckBoxLastInSample_Click(object sender, RoutedEventArgs e)
         {
