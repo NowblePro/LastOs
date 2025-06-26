@@ -3420,6 +3420,11 @@ namespace OsEngine.OsOptimizer
         {
             _master.ShowManualControlDialog();
         }
+
+        private void ButtonUpdateCSC_Click(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.Updateweights();
+        }
     }
 
     /// <summary>
