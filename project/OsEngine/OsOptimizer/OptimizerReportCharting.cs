@@ -396,11 +396,11 @@ namespace OsEngine.OsOptimizer
 
         private void _gridFRS_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            if (_gridFRS == null || _gridFRS.Rows.Count < 2) return;
-            decimal cscWeight = GetWeightFromTable(_gridFRS, 1, 1);
-            decimal psrWeight = GetWeightFromTable(_gridFRS, 2, 1);
-            decimal ddsWeight = GetWeightFromTable(_gridFRS, 3, 1);
-            decimal srcWeight = GetWeightFromTable(_gridFRS, 4, 1);
+            if (_gridFRS == null || _gridFRS.Rows.Count < 3) return;
+            decimal cscWeight = GetWeightFromTable(_gridFRS, 1, 2);
+            decimal psrWeight = GetWeightFromTable(_gridFRS, 2, 2);
+            decimal ddsWeight = GetWeightFromTable(_gridFRS, 3, 2);
+            decimal srcWeight = GetWeightFromTable(_gridFRS, 4, 2);
 
             if (_cscWeight != cscWeight ||
                 _psrWeight != psrWeight ||
