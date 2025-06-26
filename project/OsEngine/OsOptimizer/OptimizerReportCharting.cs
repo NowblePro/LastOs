@@ -796,10 +796,10 @@ namespace OsEngine.OsOptimizer
 
                     chart.Series.Add(ser1);
                     chart.Series.Add(ser2);
-                    src = (decimal)chart.DataManipulator.Statistics.Correlation("1", "2");
+                    src = (decimal)((chart.DataManipulator.Statistics.Correlation("1", "2") + 1) / 2) * 100;
                 }
 
-                frs = _srcWeight * csc + _psrWeight * psr + _ddsWeight * dds + _srcWeight * src;
+                frs = _cscWeight * csc + _psrWeight * psr + _ddsWeight * dds + _srcWeight * src;
             }
         }
 
