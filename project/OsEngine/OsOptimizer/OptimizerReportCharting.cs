@@ -477,17 +477,29 @@ namespace OsEngine.OsOptimizer
                 OptimazerFazeReport curReport = _reports[0];
                 OptimizerReport bot = curReport.Reports[_sortBotNumberCSC];
 
-                DataGridViewRow row = new DataGridViewRow();
-                row.Height = 30;
+                DataGridViewRow row0 = new DataGridViewRow();
+                row0.Height = 30;
 
-                AddCell(row, "");
-                AddCell(row, bot.CSC);
-                AddCell(row, bot.PSR);
-                AddCell(row, bot.DDS);
-                AddCell(row, bot.SRC);
-                AddCell(row, bot.FRS);
+                AddCell(row0, "Robot");
+                AddCell(row0, bot.CSC);
+                AddCell(row0, bot.PSR);
+                AddCell(row0, bot.DDS);
+                AddCell(row0, bot.SRC);
+                AddCell(row0, bot.FRS);
 
-                _gridFRS.Rows.Add(row);
+                _gridFRS.Rows.Add(row0);
+
+                DataGridViewRow row1 = new DataGridViewRow();
+                row1.Height = 30;
+
+                AddCell(row1, "Strategy");
+                AddCell(row1, _strategyCSC);
+                AddCell(row1, _strategyPSR);
+                AddCell(row1, _strategyDDS);
+                AddCell(row1, _strategySRC);
+                AddCell(row1, _strategyFRS);
+
+                _gridFRS.Rows.Add(row1);
 
                 DataGridViewRow row2 = new DataGridViewRow();
                 row2.Height = 30;
@@ -689,20 +701,64 @@ namespace OsEngine.OsOptimizer
         }
 
 
+        private decimal _strategyCSC;
+
+        private decimal _strategyPSR;
+
+        private decimal _strategyDDS;
+
+        private decimal _strategySRC;
+
+        private decimal _strategyFRS;
+
         private void CalculateCSCResults(List<OptimazerFazeReport> reports)
         {
-            // Группировка ботов с одинаковыми параметрами из разных периодов
-            var bots = reports.SelectMany(r => r.Reports.Select(report => new { Report = report, FazeType = r.Faze.TypeFaze })).GroupBy(r => r.Report.GetParamsToDataTable());
-
-            Parallel.ForEach(bots, (group) =>
+            Parallel.Invoke(() => 
             {
-                string key = group.Key;
-                IEnumerable<OptimizerReport> allInSampleReports = group.Where(r => r.FazeType == OptimizerFazeType.InSample).Select(r => r.Report);
-                IEnumerable<OptimizerReport> allOutSampleReports = group.Where(r => r.FazeType == OptimizerFazeType.OutOfSample).Select(r => r.Report);
+                // Группировка ботов с одинаковыми параметрами из разных периодов
+                var bots = reports.SelectMany(r => r.Reports.Select(report => new { Report = report, FazeType = r.Faze.TypeFaze })).GroupBy(r => r.Report.GetParamsToDataTable());
+                Parallel.ForEach(bots, (group) =>
+                {
+                    string key = group.Key;
+                    IEnumerable<OptimizerReport> allInSampleReports = group.Where(r => r.FazeType == OptimizerFazeType.InSample).Select(r => r.Report);
+                    IEnumerable<OptimizerReport> allOutSampleReports = group.Where(r => r.FazeType == OptimizerFazeType.OutOfSample).Select(r => r.Report);
+                    UpdateBots(allInSampleReports, allOutSampleReports, out decimal csc, out decimal psr, out decimal dds, out decimal src, out decimal frs);
 
+                    foreach (var r in allInSampleReports.Union(allOutSampleReports))
+                    {
+                        r.CSC = csc;
+                        r.PSR = psr;
+                        r.DDS = dds;
+                        r.SRC = src;
+                        r.FRS = frs;
+                    }
+                });
+            }, ()=> 
+            {
+                IEnumerable<OptimizerReport> allInSampleReports = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample).SelectMany(r => r.Reports);
+                IEnumerable<OptimizerReport> allOutSampleReports = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.OutOfSample).SelectMany(r => r.Reports);
+                UpdateBots(allInSampleReports, allOutSampleReports, out decimal csc, out decimal psr, out decimal dds, out decimal src, out decimal frs);
+                _strategyCSC = csc;
+                _strategyPSR = psr;
+                _strategyDDS = dds;
+                _strategySRC = src;
+                _strategyFRS = frs;
+            });
+
+            void UpdateBots(IEnumerable<OptimizerReport> allInSampleReports,
+                            IEnumerable<OptimizerReport> allOutSampleReports,
+                            out decimal csc,
+                            out decimal psr,
+                            out decimal dds,
+                            out decimal src,
+                            out decimal frs)
+            {
                 decimal avgProfitIS = allInSampleReports.Sum(r => r.AverageProfit) / allInSampleReports.Count();
                 decimal avgProfitOOS = allOutSampleReports.Sum(r => r.AverageProfit) / allOutSampleReports.Count();
-                decimal csc = 0;
+                csc = 0;
+                psr = 0;
+                dds = 0;
+                src = 0;
                 if (Math.Max(avgProfitIS, avgProfitOOS) != 0)
                 {
                     csc = (1 - (Math.Abs(avgProfitIS - avgProfitOOS) / Math.Max(avgProfitIS, avgProfitOOS))) * 100;
@@ -710,7 +766,6 @@ namespace OsEngine.OsOptimizer
 
                 int profitCountIS = allInSampleReports.Where(r => r.TotalProfit > 0).Count();
                 int profitCountOOS = allOutSampleReports.Where(r => r.TotalProfit > 0).Count();
-                decimal psr = 0;
 
                 if (profitCountIS > 0)
                 {
@@ -719,7 +774,6 @@ namespace OsEngine.OsOptimizer
 
                 decimal avgDDIS = allInSampleReports.Sum(r => r.MaxDrowDawn) / allInSampleReports.Count();
                 decimal avgDDOOS = allOutSampleReports.Sum(r => r.MaxDrowDawn) / allOutSampleReports.Count();
-                decimal dds = 0;
                 if (avgDDIS != 0)
                 {
                     dds = (1 - ((avgDDOOS / avgDDIS) - 1)) * 100;
@@ -728,7 +782,6 @@ namespace OsEngine.OsOptimizer
 
                 double[] sharpIS = allInSampleReports.Select(r => (double)r.SharpRatio).ToArray();
                 double[] sharpOOS = allOutSampleReports.Select(r => (double)r.SharpRatio).ToArray();
-                decimal src = 0;
 
                 // Ещё можно использовать CorrelationBuilder.Correlation(sharpIS, sharpOOS), даёт похожие результаты, но иногда возвращает NaN
                 using (Chart chart = new Chart())
@@ -746,17 +799,8 @@ namespace OsEngine.OsOptimizer
                     src = (decimal)chart.DataManipulator.Statistics.Correlation("1", "2");
                 }
 
-                decimal frs = _srcWeight * csc + _psrWeight * psr + _ddsWeight * dds + _srcWeight * src;
-
-                foreach (var r in group)
-                {
-                    r.Report.CSC = csc;
-                    r.Report.PSR = psr;
-                    r.Report.DDS = dds;
-                    r.Report.SRC = src;
-                    r.Report.FRS = frs;
-                }
-            });
+                frs = _srcWeight * csc + _psrWeight * psr + _ddsWeight * dds + _srcWeight * src;
+            }
         }
 
         // Bot Charting
