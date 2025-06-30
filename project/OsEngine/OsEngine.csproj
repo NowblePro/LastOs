@@ -1211,6 +1211,7 @@
     <Compile Include="Robots\Classes\TrailingStop.cs" />
     <Compile Include="Robots\CounterTrend\ClusterCountertrend.cs" />
     <Compile Include="Robots\Engines\NewsEngine.cs" />
+    <Compile Include="Robots\OrdersLogger\OrdersLogger.cs" />
     <Compile Include="Robots\PositionsMicromanagement\AlligatorTrendAverage.cs" />
     <Compile Include="Robots\PositionsMicromanagement\CandlesTurnaroundPattern.cs" />
     <Compile Include="Robots\PositionsMicromanagement\CustomIcebergSample.cs" />
