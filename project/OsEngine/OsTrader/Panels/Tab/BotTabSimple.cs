@@ -196,16 +196,11 @@ namespace OsEngine.OsTrader.Panels.Tab
             _jsonData.data_parameters.strategy_type = name;
         }
 
-        //JsonCandlePosition _candlePosition;
-        //int _prevPosCount = 0;
+        private int _prevOpenPosCount = 0;
+        private int _prevClosePosCount = 0;
 
         private void writeCandleData(Candle candle)
         {
-            //if (PositionsOpenAll.Count < 1)
-            //{
-            //    return;
-            //}
-
             if (_jsonData == null)
             {
                 _jsonData = new JsonRunData();
@@ -214,18 +209,6 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 _jsonData.run_results = new List<JsonCandleResult>();
             }
-
-            //if (_candlePosition == null)
-            //{
-            //    _candlePosition = new JsonCandlePosition
-            //    {
-            //        opened = false,
-            //        closed = false,
-            //        open_side = "no_side",
-            //        close_side = "no_side",
-            //        open_volume = 0.0m
-            //    };
-            //}
 
             if (_jsonData.data_parameters == null)
             {
@@ -238,7 +221,67 @@ namespace OsEngine.OsTrader.Panels.Tab
                 };
             }
 
-            //List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(PositionsCloseAll);
+            int open_pos_count = PositionsOpenAll.Count - _prevOpenPosCount;
+            int close_pos_count = PositionsCloseAll.Count - _prevClosePosCount;
+
+            // cut non trade candles
+            if (StartProgram == StartProgram.IsOsOptimizer
+                && PositionsOpenAll.Count < 1
+                && close_pos_count < 1
+                && PositionOpenerToStop.Count < 1)
+            {
+                _prevOpenPosCount = PositionsOpenAll.Count;
+                _prevClosePosCount = PositionsCloseAll.Count;
+                return;
+            }
+
+            List<JsonStop> stops = new List<JsonStop>();
+            for (int i = 0; i < PositionOpenerToStop.Count; ++i)
+            {
+                JsonStop stop = new JsonStop
+                {
+                    number = PositionOpenerToStop[i].Number,
+                    side = PositionOpenerToStop[i].Side.ToString(),
+                    open_date_time = PositionOpenerToStop[i].TimeCreate.ToString(),
+                    volume = PositionOpenerToStop[i].Volume,
+                    activation_price = PositionOpenerToStop[i].PriceOrder,
+                    stop_level = PositionOpenerToStop[i].PriceRedLine
+                };
+                stops.Add(stop);
+            }
+
+            List<JsonCandlePosition> open_poses = new List<JsonCandlePosition>();
+            for (int i = 0; i < open_pos_count; ++i)
+            {
+                int index = PositionsOpenAll.Count - i - 1;
+                JsonCandlePosition pos = new JsonCandlePosition
+                {
+                    number = PositionsOpenAll[index].Number,
+                    side = PositionsOpenAll[index].Direction.ToString(),
+                    time = PositionsOpenAll[index].TimeOpen.ToString(),
+                    open_volume = PositionsOpenAll[index].OpenVolume,
+                    close_volume = 0.0m
+                };
+                open_poses.Add(pos);
+            }
+
+            List<JsonCandlePosition> close_poses = new List<JsonCandlePosition>();
+            for (int i = 0; i < close_pos_count; ++i)
+            {
+                int index = PositionsCloseAll.Count - i - 1;
+                JsonCandlePosition pos = new JsonCandlePosition
+                {
+                    number = PositionsCloseAll[index].Number,
+                    side = PositionsCloseAll[index].Direction.ToString(),
+                    time = PositionsCloseAll[index].TimeClose.ToString(),
+                    open_volume = PositionsCloseAll[index].OpenVolume,
+                    close_volume = PositionsCloseAll[index].MaxVolume
+                };
+                close_poses.Add(pos);
+            }
+
+            _prevOpenPosCount = PositionsOpenAll.Count;
+            _prevClosePosCount = PositionsCloseAll.Count;
 
             string date = (candle.TimeStart + TimeFrame).ToString();
 
@@ -293,65 +336,40 @@ namespace OsEngine.OsTrader.Panels.Tab
                 total_short_PL = stp
             };
 
-            //JsonCandleStatistics candle_statistics = new JsonCandleStatistics
-            //{
-            //    sharp_ratio = 0.0m,
-            //    max_sma_deviation = 0.0m,
-            //    profit_factor = 0.0m,
-            //    recovery = 0.0m,
-            //    max_drow_down = 0.0m
-            //};
+            /*
+            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(PositionsCloseAll);
 
-            //if (positionsAllState != null)
-            //{
-            //    candle_statistics.sharp_ratio = positionsAllState[4].ToDecimal();
-            //    candle_statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
-            //    candle_statistics.profit_factor = positionsAllState[6].ToDecimal();
-            //    candle_statistics.recovery = positionsAllState[7].ToDecimal();
-            //    candle_statistics.max_drow_down = positionsAllState[30].ToDecimal();
-            //}
-
-            List<JsonStop> stops = new List<JsonStop>();
-            for (int i = 0; i < PositionOpenerToStop.Count; ++i)
+            JsonCandleStatistics candle_statistics = new JsonCandleStatistics
             {
-                JsonStop stop = new JsonStop
-                {
-                    number = PositionOpenerToStop[i].Number,
-                    side = PositionOpenerToStop[i].Side.ToString(),
-                    open_date_time = PositionOpenerToStop[i].TimeCreate.ToString(),
-                    volume = PositionOpenerToStop[i].Volume,
-                    activation_price = PositionOpenerToStop[i].PriceOrder,
-                    stop_level = PositionOpenerToStop[i].PriceRedLine
-                };
-                stops.Add(stop);
-            }
+                sharp_ratio = 0.0m,
+                max_sma_deviation = 0.0m,
+                profit_factor = 0.0m,
+                recovery = 0.0m,
+                max_drow_down = 0.0m
+            };
 
-            //JsonCandlePosition position = new JsonCandlePosition
-            //{
-            //    opened = _candlePosition.opened,
-            //    closed = _candlePosition.closed,
-            //    open_side = _candlePosition.open_side,
-            //    close_side = _candlePosition.close_side,
-            //    open_volume = _candlePosition.open_volume
-            //};
+            if (positionsAllState != null)
+            {
+                candle_statistics.sharp_ratio = positionsAllState[4].ToDecimal();
+                candle_statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
+                candle_statistics.profit_factor = positionsAllState[6].ToDecimal();
+                candle_statistics.recovery = positionsAllState[7].ToDecimal();
+                candle_statistics.max_drow_down = positionsAllState[30].ToDecimal();
+            }
+            */
 
             JsonCandleResult candle_res = new JsonCandleResult
             {
                 time_close = date,
                 candle_data = j_candle,
                 stops = stops,
-                //position = position,
+                opened_positions = open_poses,
+                closed_positions = close_poses,
                 equity = j_equity,
                 statistics = { }//candle_statistics
             };
 
             _jsonData.run_results.Add(candle_res);
-
-            //_candlePosition.opened = false;
-            //_candlePosition.closed = false;
-            //_candlePosition.open_side = "no_side";
-            //_candlePosition.close_side = "no_side";
-            //_candlePosition.open_volume = 0.0m;
         }
 
         #endregion
