@@ -50,18 +50,30 @@ namespace OsEngine.OsTrader.Panels.JsonData
 
     public class JsonCandlePosition
     {
-        public bool opened { get; set; }
-        public bool closed { get; set; }
-        public string open_side { get; set; }
-        public string close_side { get; set; }
+        public int number { get; set; }
+        public string side { get; set; }
+        public string time { get; set; }
         public decimal open_volume { get; set; }
+        public decimal close_volume { get; set; }
+    }
+
+    public class JsonStop
+    {
+        public int number { get; set; }
+        public string side { get; set; }
+        public string open_date_time { get; set; }
+        public decimal volume { get; set; }
+        public decimal activation_price { get; set; }
+        public decimal stop_level { get; set; }
     }
 
     public class JsonCandleResult
     {
         public string time_close { get; set; }
         public JsonCandle candle_data { get; set; }
-        public JsonCandlePosition position {  get; set; }
+        public List<JsonStop> stops { get; set; }
+        public List<JsonCandlePosition> opened_positions {  get; set; }
+        public List<JsonCandlePosition> closed_positions { get; set; }
         public JsonEquity equity { get; set; }
         public JsonCandleStatistics statistics { get; set; }
     }

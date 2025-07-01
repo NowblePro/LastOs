@@ -80,6 +80,8 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
 
         public TrailingImpulseHmaRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
+            //_o_logger = new OrdersLogger(name);
+
             TabCreate(BotTabType.Simple);
             _tab = TabsSimple[0];
 
