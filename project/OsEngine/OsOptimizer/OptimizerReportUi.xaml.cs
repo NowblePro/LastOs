@@ -86,7 +86,13 @@ namespace OsEngine.OsOptimizer
             TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
             TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
             _resultsCharting.WeightsChanged += _master.UpdateWeights;
-            _resultsCharting.UpdateWeights(_master.CscWeight, _master.PsrWeight, _master.DdsWeight, _master.SrcWeight);
+            _resultsCharting.UpdateWeights( _master.CscWeight,
+                                            _master.PsrWeight,
+                                            _master.DdsWeight,
+                                            _master.SrcWeight,
+                                            _master.RatioWeight,
+                                            _master.TotalReturnWeight,
+                                            _master.TotalDrowDownWeight);
 
             this.Activate();
             this.Focus();

@@ -430,13 +430,35 @@ namespace OsEngine.OsOptimizer
 
         public decimal CSC;
 
+        public int CSCRank;
+
         public decimal PSR;
+
+        public int PSRRank;
 
         public decimal DDS;
 
+        public int DDSRank;
+
         public decimal SRC;
 
+        public int SRCRank;
+
         public decimal FRS;
+
+        public int FRSRank;
+
+        public decimal Ratio;
+
+        public int RatioRank;
+
+        public decimal TotalReturn;
+
+        public int TotalReturnRank;
+
+        public decimal TotalDrawDown;
+
+        public int TotalDrawDownRank;
 
         public string GetSaveString()
         {

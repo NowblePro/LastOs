@@ -214,12 +214,16 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
             _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
-            _resultsCharting.WeightsChanged += _master.UpdateWeights;
-            _resultsCharting.UpdateWeights(_master.CscWeight, _master.PsrWeight, _master.DdsWeight, _master.SrcWeight);
             TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
             TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
             _resultsCharting.WeightsChanged += _master.UpdateWeights;
-            _resultsCharting.UpdateWeights(_master.CscWeight, _master.PsrWeight, _master.DdsWeight, _master.SrcWeight);
+            _resultsCharting.UpdateWeights( _master.CscWeight,
+                                            _master.PsrWeight,
+                                            _master.DdsWeight,
+                                            _master.SrcWeight,
+                                            _master.RatioWeight,
+                                            _master.TotalReturnWeight,
+                                            _master.TotalDrowDownWeight);
             this.Closing += Ui_Closing;
             this.Activate();
             this.Focus();

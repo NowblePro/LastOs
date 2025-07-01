@@ -31,10 +31,16 @@ namespace OsEngine.OsOptimizer
         private decimal _psrWeight = 0.25m;
         private decimal _ddsWeight = 0.25m;
         private decimal _srcWeight = 0.25m;
+        private decimal _ratioWeight = 0.25m;
+        private decimal _totalReturnWeight = 0.25m;
+        private decimal _totalDrowDownWeight = 0.25m;
         public decimal CscWeight => _cscWeight;
         public decimal PsrWeight => _psrWeight;
         public decimal DdsWeight => _ddsWeight;
         public decimal SrcWeight => _srcWeight;
+        public decimal RatioWeight => _ratioWeight;
+        public decimal TotalReturnWeight => _totalReturnWeight;
+        public decimal TotalDrowDownWeight => _totalDrowDownWeight;
         public OptimizerMaster()
         {
             _log = new Log("OptimizerLog", StartProgram.IsTester);
@@ -204,6 +210,9 @@ namespace OsEngine.OsOptimizer
                 _psrWeight = Convert.ToDecimal(strings[1], CultureInfo.InvariantCulture);
                 _ddsWeight = Convert.ToDecimal(strings[2], CultureInfo.InvariantCulture);
                 _srcWeight = Convert.ToDecimal(strings[3], CultureInfo.InvariantCulture);
+                _ratioWeight = Convert.ToDecimal(strings[4], CultureInfo.InvariantCulture);
+                _totalReturnWeight = Convert.ToDecimal(strings[5], CultureInfo.InvariantCulture);
+                _totalDrowDownWeight = Convert.ToDecimal(strings[6], CultureInfo.InvariantCulture);
             }
             catch { }
         }
@@ -1515,6 +1524,9 @@ namespace OsEngine.OsOptimizer
                 _psrWeight = resultsCharting.PsrWeight;
                 _ddsWeight = resultsCharting.DdsWeight;
                 _srcWeight = resultsCharting.SrcWeight;
+                _ratioWeight = resultsCharting.RatioWeight;
+                _totalReturnWeight = resultsCharting.TotalReturnWeight;
+                _totalDrowDownWeight = resultsCharting.TotalDrowDownWeight;
                 Save();
             }
         }

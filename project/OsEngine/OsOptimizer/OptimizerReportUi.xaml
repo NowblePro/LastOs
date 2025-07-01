@@ -61,8 +61,8 @@
                                 <Grid Name="PrimeGrid1">
                                     <Grid Name="BottomGrid1" Height="218" VerticalAlignment="Bottom" Margin="0,0,284,0" >
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="47*"/>
                                             <ColumnDefinition Width="63*"/>
+                                            <ColumnDefinition Width="37*"/>
                                         </Grid.ColumnDefinitions>
                                         <WindowsFormsHost x:Name="HostTotalProfit1"  Foreground="Black" Height="190" Margin="1,28,0,0" VerticalAlignment="Top" Grid.Column="1"/>
                                         <WindowsFormsHost x:Name="HostFRS"  Foreground="Black" Height="141" VerticalAlignment="Top" Margin="0,28,0,0"/>
