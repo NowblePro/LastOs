@@ -13,8 +13,6 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
     [Bot("TrailingImpulseHmaRsi")]
     public class TrailingImpulseHmaRsi : BotPanel
     {
-        //OrdersLogger _o_logger = null;
-
         BotTabSimple _tab;
 
         public StrategyParameterString Regime;
@@ -376,16 +374,6 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
                     {
                         _slippage = Slippage.ValueDecimal * (_lastHma + _lastAtr * _multiplerAtr.ValueDecimal) / 100;
                         _tab.BuyAtStop(GetVolume(), (_lastHma + _lastAtr * _multiplerAtr.ValueDecimal) + _slippage, _lastHma + _lastAtr * _multiplerAtr.ValueDecimal, StopActivateType.HigherOrEqual, 1);
-                        //OrderLog o_log = new OrderLog {
-                        //    position_number = _tab.PositionOpenerToStop[_tab.PositionOpenerToStop.Count - 1].Number,
-                        //    order_type = "Stop",
-                        //    side = "Buy",
-                        //    open_date_time = candles[candles.Count - 1].TimeStart.ToString(),
-                        //    volume = GetVolume(),
-                        //    activation_price = (_lastHma + _lastAtr * _multiplerAtr.ValueDecimal) + _slippage,
-                        //    stop_level = _lastHma + _lastAtr * _multiplerAtr.ValueDecimal
-                        //};
-                        //_o_logger.AppendOrder(o_log);
                     }
                     if (!SellSignalIsFiltered(candles))
                     {
@@ -448,17 +436,6 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
                         stop_level = _lastHma < _lastHma2 ? _lastHma - _lastAtr * _multiplerAtr.ValueDecimal : _lastHma2 > _lastSma ? _lastHma2 - _lastAtr * _multiplerAtr.ValueDecimal : _lastSma;
                         _slippage = Slippage.ValueDecimal * stop_level / 100;
                         _tab.CloseAtTrailingStop(positions[i], stop_level, stop_level - _slippage);
-                        //OrderLog o_log = new OrderLog
-                        //{
-                        //    position_number = positions[i].Number,
-                        //    order_type = "Trailing",
-                        //    side = "Sell",
-                        //    open_date_time = candles[candles.Count - 1].TimeStart.ToString(),
-                        //    volume = positions[i].OpenVolume,
-                        //    activation_price = stop_level,
-                        //    stop_level = stop_level - _slippage
-                        //};
-                        //_o_logger.AppendOrder(o_log);
                     }
                     else if (positions[i].Direction == Side.Sell)
                     {//logic to close short position
