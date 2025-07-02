@@ -406,13 +406,13 @@ namespace OsEngine.OsOptimizer
         private void _gridFRS_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
             if (_gridFRS == null || _gridFRS.Rows.Count < 3) return;
-            decimal cscWeight = GetWeightFromTable(_gridFRS, 2, 1);
-            decimal psrWeight = GetWeightFromTable(_gridFRS, 3, 1);
-            decimal ddsWeight = GetWeightFromTable(_gridFRS, 4, 1);
-            decimal srcWeight = GetWeightFromTable(_gridFRS, 5, 1);
-            decimal ratioWeight = GetWeightFromTable(_gridFRS, 6, 1);
-            decimal totalReturnWeight = GetWeightFromTable(_gridFRS, 7, 1);
-            decimal totalDrawDownWeight = GetWeightFromTable(_gridFRS, 8, 1);
+            decimal cscWeight = GetWeightFromTable(_gridFRS, 2, 2);
+            decimal psrWeight = GetWeightFromTable(_gridFRS, 3, 2);
+            decimal ddsWeight = GetWeightFromTable(_gridFRS, 4, 2);
+            decimal srcWeight = GetWeightFromTable(_gridFRS, 5, 2);
+            decimal ratioWeight = GetWeightFromTable(_gridFRS, 6, 2);
+            decimal totalReturnWeight = GetWeightFromTable(_gridFRS, 7, 2);
+            decimal totalDrawDownWeight = GetWeightFromTable(_gridFRS, 8, 2);
 
             if (_cscWeight != cscWeight ||
                 _psrWeight != psrWeight ||
@@ -447,7 +447,7 @@ namespace OsEngine.OsOptimizer
         public event EventHandler WeightsChanged;
         internal void Updateweights()
         {
-            decimal sum = _cscWeight + _psrWeight + _ddsWeight + _srcWeight;
+            decimal sum = _cscWeight + _psrWeight + _ddsWeight + _srcWeight + _ratioWeight + _totalReturnWeight + _totalDrowDownWeight;
             try
             {
                 _cscWeight /= sum;
@@ -751,7 +751,6 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-
         private decimal _strategyCSC;
 
         private decimal _strategyPSR;
@@ -769,32 +768,55 @@ namespace OsEngine.OsOptimizer
 
         private void CalculateCSCResults(List<OptimazerFazeReport> reports)
         {
-            Parallel.Invoke(() =>
-            {
-                // Группировка ботов с одинаковыми параметрами из разных периодов
-                var bots = reports.SelectMany(r => r.Reports.Select(report => new { Report = report, FazeType = r.Faze.TypeFaze, Start = r.Faze.TimeStart, End = r.Faze.TimeEnd })).GroupBy(r => r.Report.GetParamsToDataTable());
-                Parallel.ForEach(bots, (group) =>
-                {
-                    Dictionary<OptimizerReport, OptimizerReport> dic = new Dictionary<OptimizerReport, OptimizerReport>();
-                    {
-                        // Формируется словарь, в котором для каждого in sample хранится свой out of sample (последний in sample без out of sample отбрасывается)
-                        var IS = group.Where(r => r.FazeType == OptimizerFazeType.InSample);
+            var insamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample);
 
-                        foreach (var i in IS)
+            timer.Start();
+            // Формируется словарь, в котором для каждого in sample хранится свой out of sample (последний in sample без out of sample отбрасывается)
+            Dictionary<OptimazerFazeReport, OptimazerFazeReport> pairs = new Dictionary<OptimazerFazeReport, OptimazerFazeReport>();
+            foreach (OptimazerFazeReport @is in insamples)
+            {
+                OptimazerFazeReport oos = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.OutOfSample && (r.Faze.TimeStart - @is.Faze.TimeEnd) <= TimeSpan.FromDays(2) && (r.Faze.TimeStart - @is.Faze.TimeEnd) > TimeSpan.FromDays(0)).SingleOrDefault();
+                if (oos != null)
+                {
+                    pairs.Add(@is, oos);
+                }
+            }
+
+            // Для каждого бота, который отличается по строковому ключу, генерирующегося из его параметров, составляется словарь из переиодов insample и соответствующим им out of sample
+            Dictionary<string, Dictionary<OptimizerReport, OptimizerReport>> allReports = new Dictionary<string, Dictionary<OptimizerReport, OptimizerReport>>();
+            Parallel.ForEach(pairs, pair =>
+            {
+                var inSample = pair.Key.Reports.Select(r => new { Insample = r, Key = r.GetParamsToDataTable() });
+                var outSample = pair.Value.Reports.Select(r => new { OutOfsample = r, Key = r.GetParamsToDataTable() });
+                Parallel.ForEach(inSample, i => 
+                {
+                    var oos = outSample.Where(o => i.Key == o.Key).SingleOrDefault();
+                    if (oos!= null)
+                    {
+                        KeyValuePair<string, KeyValuePair<OptimizerReport, OptimizerReport>> pair = new KeyValuePair<string, KeyValuePair<OptimizerReport, OptimizerReport>>(i.Key, new KeyValuePair<OptimizerReport, OptimizerReport>(i.Insample, oos.OutOfsample));
+                        lock (allReports)
                         {
-                            OptimizerReport oos = group.Where(r => r.FazeType == OptimizerFazeType.OutOfSample && (r.Start - i.End) <= TimeSpan.FromDays(2) && (r.Start - i.End) > TimeSpan.FromDays(0)).SingleOrDefault().Report;
-                            if (oos != null)
+                            if (!allReports.ContainsKey(i.Key))
                             {
-                                dic.Add(i.Report, oos);
+                                allReports.Add(i.Key, new Dictionary<OptimizerReport, OptimizerReport>() { { i.Insample, oos.OutOfsample } });
+                            }
+                            else
+                            {
+                                allReports[i.Key].Add(i.Insample, oos.OutOfsample);
                             }
                         }
                     }
+                });
+            });
 
-                    IEnumerable<OptimizerReport> allInSampleReports = dic.Keys.Select(r => r);
-                    IEnumerable<OptimizerReport> allOutSampleReports = dic.Values.Select(r => r);
+            Parallel.Invoke(() =>
+            {
+                Parallel.ForEach(allReports, (group) =>
+                {
+                    IEnumerable<OptimizerReport> allInSampleReports = group.Value.Keys.Select(r => r);
+                    IEnumerable<OptimizerReport> allOutSampleReports = group.Value.Values.Select(r => r);
 
-                    UpdateBots( allInSampleReports,
-                                allOutSampleReports,
+                    UpdateBots( group.Value,
                                 out decimal csc,
                                 out decimal psr,
                                 out decimal dds,
@@ -817,7 +839,7 @@ namespace OsEngine.OsOptimizer
                     }
                 });
 
-                var results = bots.Select(g => g.Take(1).SingleOrDefault().Report);
+                var results = allReports.Values.Select(p => p.Keys.FirstOrDefault());
                 List<IGrouping<decimal, OptimizerReport>> cscRankGroup = results.GroupBy(r => r.CSC).ToList();
                 cscRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().CSC.CompareTo(r1.First().CSC)));
                 List<IGrouping<decimal, OptimizerReport>> psrRankGroup = results.GroupBy(r => r.PSR).ToList();
@@ -907,9 +929,8 @@ namespace OsEngine.OsOptimizer
 
             }, () =>
             {
-                IEnumerable<OptimizerReport> allInSampleReports = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample).SelectMany(r => r.Reports);
-                IEnumerable<OptimizerReport> allOutSampleReports = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.OutOfSample).SelectMany(r => r.Reports);
-                UpdateBots(allInSampleReports, allOutSampleReports, out decimal csc, out decimal psr, out decimal dds, out decimal src, out decimal frs, out _, out _, out _);
+                var stratDictionary = allReports.Values.Aggregate((x1, x2) => { return x1.Concat(x2).ToDictionary(x => x.Key, x => x.Value); });
+                UpdateBots(stratDictionary, out decimal csc, out decimal psr, out decimal dds, out decimal src, out decimal frs, out _, out _, out _);
                 _strategyCSC = csc;
                 _strategyPSR = psr;
                 _strategyDDS = dds;
@@ -917,8 +938,7 @@ namespace OsEngine.OsOptimizer
                 _strategyFRS = frs;
             });
 
-            void UpdateBots(IEnumerable<OptimizerReport> allInSampleReports,
-                            IEnumerable<OptimizerReport> allOutSampleReports,
+            void UpdateBots(Dictionary<OptimizerReport, OptimizerReport> dicReports,
                             out decimal csc,
                             out decimal psr,
                             out decimal dds,
@@ -928,6 +948,8 @@ namespace OsEngine.OsOptimizer
                             out decimal totalReturn,
                             out decimal totalDrawDown)
             {
+                IEnumerable<OptimizerReport> allInSampleReports = dicReports.Keys.Select(r => r);
+                IEnumerable<OptimizerReport> allOutSampleReports = dicReports.Values.Select(r => r);
                 decimal avgProfitIS = allInSampleReports.Sum(r => r.AverageProfit) / allInSampleReports.Count();
                 decimal avgProfitOOS = allOutSampleReports.Sum(r => r.AverageProfit) / allOutSampleReports.Count();
                 csc = 0;
@@ -939,13 +961,14 @@ namespace OsEngine.OsOptimizer
                     csc = (1 - (Math.Abs(avgProfitIS - avgProfitOOS) / Math.Max(avgProfitIS, avgProfitOOS))) * 100;
                 }
 
-                int profitCountIS = allInSampleReports.Where(r => r.TotalProfit > 0).Count();
-                int profitCountOOS = allOutSampleReports.Where(r => r.TotalProfit > 0).Count();
 
-                if (profitCountIS > 0)
+                int psrCounter = 0;
+                foreach (var pair in dicReports)
                 {
-                    psr = (decimal)profitCountOOS / (decimal)profitCountIS * 100;
+                    psrCounter += Math.Sign(pair.Key.TotalProfit) == Math.Sign(pair.Value.TotalProfit) ? 1 : 0;
                 }
+
+                psr = ((decimal)psrCounter / dicReports.Count) * 100;
 
                 decimal avgDDIS = allInSampleReports.Sum(r => r.MaxDrowDawn) / allInSampleReports.Count();
                 decimal avgDDOOS = allOutSampleReports.Sum(r => r.MaxDrowDawn) / allOutSampleReports.Count();

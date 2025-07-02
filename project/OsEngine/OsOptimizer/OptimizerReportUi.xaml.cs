@@ -15,6 +15,7 @@ using MessageBox = System.Windows.MessageBox;
 using OsEngine.OsOptimizer.OptEntity;
 using System.IO;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace OsEngine.OsOptimizer
 {
@@ -82,9 +83,7 @@ namespace OsEngine.OsOptimizer
             {
                 Title += "  " + master.TabsSimpleNamesAndTimeFrames[0].NameSecurity + "  " + master.TabsSimpleNamesAndTimeFrames[0].TimeFrame;
             }
-
-            TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
-            TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
+            TabControlResults.SelectionChanged += TabControlResults_SelectionChanged;
             _resultsCharting.WeightsChanged += _master.UpdateWeights;
             _resultsCharting.UpdateWeights( _master.CscWeight,
                                             _master.PsrWeight,
@@ -98,14 +97,16 @@ namespace OsEngine.OsOptimizer
             this.Focus();
         }
 
-        private void TabControlResultsOutOfSampleResults_GotFocus(object sender, RoutedEventArgs e)
+        private void TabControlResults_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            _resultsCharting.ReLoad(_reports);
-        }
-
-        private void TabControlResultsOutOfSampleResults1_GotFocus(object sender, RoutedEventArgs e)
-        {
-            _resultsCharting.ReLoadCSC(_reports);
+            if (e.AddedItems.Contains(TabControlResultsOutOfSampleResults1))
+            {
+                _resultsCharting.ReLoadCSC(_reports);
+            }
+            else
+            {
+                _resultsCharting.ReLoad(_reports);
+            }
         }
 
         private void _resultsCharting_CSCCalculated(object sender, decimal e)
