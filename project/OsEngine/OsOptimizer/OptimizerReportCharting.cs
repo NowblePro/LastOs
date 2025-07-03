@@ -72,11 +72,13 @@ namespace OsEngine.OsOptimizer
             _boxTypeSortBotNumCSC.SelectionChanged += _boxTypeSortBotNumCSC_SelectionChanged; ;
 
             _boxTypeSortCSC = boxTypeSortCSC;
-            boxTypeSortCSC.Items.Add(CSCSortType.CSC.ToString());
-            boxTypeSortCSC.Items.Add(CSCSortType.PSR.ToString());
-            boxTypeSortCSC.Items.Add(CSCSortType.DDS.ToString());
-            boxTypeSortCSC.Items.Add(CSCSortType.SRC.ToString());
-            boxTypeSortCSC.Items.Add(CSCSortType.FRS.ToString());
+
+            string[] cscSortTypes = Enum.GetNames(typeof(CSCSortType));
+            foreach (string sortType in cscSortTypes)
+            {
+                boxTypeSortCSC.Items.Add(sortType);
+            }
+
             boxTypeSortCSC.SelectedItem = CSCSortType.CSC.ToString();
             boxTypeSortCSC.SelectionChanged += BoxTypeSortCSC_SelectionChanged;
 
@@ -1006,11 +1008,10 @@ namespace OsEngine.OsOptimizer
                 psr = 0;
                 dds = 0;
                 src = 0;
-                if (Math.Max(avgProfitIS, avgProfitOOS) != 0)
+                if (avgProfitIS > 0 && avgProfitOOS > 0)
                 {
                     csc = (1 - (Math.Abs(avgProfitIS - avgProfitOOS) / Math.Max(avgProfitIS, avgProfitOOS))) * 100;
                 }
-
 
                 int psrCounter = 0;
                 foreach (var pair in dicReports)

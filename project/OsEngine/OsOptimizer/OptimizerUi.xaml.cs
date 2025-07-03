@@ -3466,6 +3466,9 @@ namespace OsEngine.OsOptimizer
         PSR,
         DDS,
         SRC,
-        FRS
+        FRS,
+        Ratio,
+        TotalReturn,
+        TotalDrawDown
     }
 }

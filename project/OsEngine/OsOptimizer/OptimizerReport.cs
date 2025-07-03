@@ -169,6 +169,15 @@ namespace OsEngine.OsOptimizer
                 case CSCSortType.FRS:
                     func = (rep1, rep2) => rep2.FRS.CompareTo(rep1.FRS);
                     break;
+                case CSCSortType.Ratio:
+                    func = (rep1, rep2) => rep2.Ratio.CompareTo(rep1.Ratio);
+                    break;
+                case CSCSortType.TotalReturn:
+                    func = (rep1, rep2) => rep2.TotalReturn.CompareTo(rep1.TotalReturn);
+                    break;
+                case CSCSortType.TotalDrawDown:
+                    func = (rep1, rep2) => rep2.TotalDrawDown.CompareTo(rep1.TotalDrawDown);
+                    break;
             }
 
             if (func != null)
