@@ -150,13 +150,13 @@ namespace OsEngine.OsOptimizer
                 PaintTableResults();
                 if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
                 {
-                    _resultsCharting.ReLoadCSC(_reports);
+                    _resultsCharting.ReLoadCSC(_reports, true);
                     _resultsCharting.ReLoad(_reports);
                 }
                 else
                 {
                     _resultsCharting.ReLoad(_reports);
-                    _resultsCharting.ReLoadCSC(_reports);
+                    _resultsCharting.ReLoadCSC(_reports, true);
                 }
             }
             catch (Exception error)

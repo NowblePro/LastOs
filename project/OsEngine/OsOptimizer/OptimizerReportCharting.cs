@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
@@ -250,7 +251,7 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        public void ReLoadCSC(List<OptimazerFazeReport> reports)
+        private void ReLoadCSCTask(List<OptimazerFazeReport> reports, bool calculate)
         {
             try
             {
@@ -261,7 +262,10 @@ namespace OsEngine.OsOptimizer
                 {
                     return;
                 }
-                CalculateCSCResults(reports);
+                if (calculate)
+                {
+                    CalculateCSCResults(reports);
+                }
                 SortCSCResults(reports);
                 GetBestBotNum(reports[0].Reports);
                 UpdGridStepsOfOptimization(_gridStepsOfOptimizationCSC, _sortBotNumberCSC);
@@ -270,6 +274,43 @@ namespace OsEngine.OsOptimizer
                 UpdateProfitFactorChart(_hostProfitFactorCSC, _chartProfitFactorCSC);
                 UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
                 GetCSC();
+            }
+            catch (Exception e)
+            {
+                SendLogMessage(e.ToString(), LogMessageType.Error);
+            }
+            finally
+            {
+                if (calculate)
+                {
+                    _awaitUiBotsInfoLoading?.Dispose();
+                }
+            }
+        }
+
+        private AwaitObject _awaitUiBotsInfoLoading;
+        public void ReLoadCSC(List<OptimazerFazeReport> reports, bool calculate = false)
+        {
+            try
+            {
+                if (calculate)
+                {
+                    _awaitUiBotsInfoLoading = new AwaitObject("Рассчёт", 100, 0, true);
+                    AwaitUi ui = new AwaitUi(_awaitUiBotsInfoLoading);
+
+                    Task.Factory.StartNew(() =>
+                    {
+                        Thread.CurrentThread.IsBackground = true;
+                        ReLoadCSCTask(reports, calculate);
+                    });
+
+                    ui.ShowDialog();
+                }
+                else
+                {
+                    ReLoadCSCTask(reports, calculate);
+                }
+                    
             }
             catch (Exception e)
             {
@@ -470,7 +511,7 @@ namespace OsEngine.OsOptimizer
             }
 
             WeightsChanged.Invoke(this, EventArgs.Empty);
-            ReLoadCSC(_reports);
+            ReLoadCSC(_reports, true);
         }
 
         private decimal GetWeightFromTable(DataGridView gridView, int column, int row)
@@ -770,7 +811,6 @@ namespace OsEngine.OsOptimizer
         {
             var insamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample);
 
-            timer.Start();
             // Формируется словарь, в котором для каждого in sample хранится свой out of sample (последний in sample без out of sample отбрасывается)
             Dictionary<OptimazerFazeReport, OptimazerFazeReport> pairs = new Dictionary<OptimazerFazeReport, OptimazerFazeReport>();
             foreach (OptimazerFazeReport @is in insamples)
@@ -816,7 +856,7 @@ namespace OsEngine.OsOptimizer
                     IEnumerable<OptimizerReport> allInSampleReports = group.Value.Keys.Select(r => r);
                     IEnumerable<OptimizerReport> allOutSampleReports = group.Value.Values.Select(r => r);
 
-                    UpdateBots( group.Value,
+                    CalculateBots( group.Value,
                                 out decimal csc,
                                 out decimal psr,
                                 out decimal dds,
@@ -840,86 +880,96 @@ namespace OsEngine.OsOptimizer
                 });
 
                 var results = allReports.Values.Select(p => p.Keys.FirstOrDefault());
-                List<IGrouping<decimal, OptimizerReport>> cscRankGroup = results.GroupBy(r => r.CSC).ToList();
-                cscRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().CSC.CompareTo(r1.First().CSC)));
-                List<IGrouping<decimal, OptimizerReport>> psrRankGroup = results.GroupBy(r => r.PSR).ToList();
-                psrRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().PSR.CompareTo(r1.First().PSR)));
-                List<IGrouping<decimal, OptimizerReport>> ddsRankGroup = results.GroupBy(r => r.DDS).ToList();
-                ddsRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().DDS.CompareTo(r1.First().DDS)));
-                List<IGrouping<decimal, OptimizerReport>> srcRankGroup = results.GroupBy(r => r.SRC).ToList();
-                srcRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().SRC.CompareTo(r1.First().SRC)));
-                List<IGrouping<decimal, OptimizerReport>> frsRankGroup = results.GroupBy(r => r.FRS).ToList();
-                frsRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().FRS.CompareTo(r1.First().FRS)));
-                List<IGrouping<decimal, OptimizerReport>> ratioRankGroup = results.GroupBy(r => r.Ratio).ToList();
-                ratioRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().Ratio.CompareTo(r1.First().Ratio)));
-                List<IGrouping<decimal, OptimizerReport>> totalReturnRankGroup = results.GroupBy(r => r.TotalReturn).ToList();
-                totalReturnRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalReturn.CompareTo(r1.First().TotalReturn)));
-                List<IGrouping<decimal, OptimizerReport>> totalDrawDownRankGroup = results.GroupBy(r => r.TotalDrawDown).ToList();
-                totalDrawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalDrawDown.CompareTo(r1.First().TotalDrawDown)));
 
-                for (int i = 0; i < cscRankGroup.Count; i++)
+                Parallel.Invoke(() => 
                 {
-                    foreach (OptimizerReport report in cscRankGroup[i])
+                    List<IGrouping<decimal, OptimizerReport>> cscRankGroup = results.GroupBy(r => r.CSC).ToList();
+                    cscRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().CSC.CompareTo(r1.First().CSC)));
+                    for (int i = 0; i < cscRankGroup.Count; i++)
                     {
-                        report.CSCRank = i + 1;
+                        foreach (OptimizerReport report in cscRankGroup[i])
+                        {
+                            report.CSCRank = i + 1;
+                        }
                     }
-                }
-
-                for (int i = 0; i < psrRankGroup.Count; i++)
+                }, ()=> 
                 {
-                    foreach (OptimizerReport report in psrRankGroup[i])
+                    List<IGrouping<decimal, OptimizerReport>> psrRankGroup = results.GroupBy(r => r.PSR).ToList();
+                    psrRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().PSR.CompareTo(r1.First().PSR)));
+                    for (int i = 0; i < psrRankGroup.Count; i++)
                     {
-                        report.PSRRank = i + 1;
+                        foreach (OptimizerReport report in psrRankGroup[i])
+                        {
+                            report.PSRRank = i + 1;
+                        }
                     }
-                }
-
-                for (int i = 0; i < ddsRankGroup.Count; i++)
+                }, () =>
                 {
-                    foreach (OptimizerReport report in ddsRankGroup[i])
+                    List<IGrouping<decimal, OptimizerReport>> ddsRankGroup = results.GroupBy(r => r.DDS).ToList();
+                    ddsRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().DDS.CompareTo(r1.First().DDS)));
+                    for (int i = 0; i < ddsRankGroup.Count; i++)
                     {
-                        report.DDSRank = i + 1;
+                        foreach (OptimizerReport report in ddsRankGroup[i])
+                        {
+                            report.DDSRank = i + 1;
+                        }
                     }
-                }
-
-                for (int i = 0; i < srcRankGroup.Count; i++)
+                }, () =>
                 {
-                    foreach (OptimizerReport report in srcRankGroup[i])
+                    List<IGrouping<decimal, OptimizerReport>> srcRankGroup = results.GroupBy(r => r.SRC).ToList();
+                    srcRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().SRC.CompareTo(r1.First().SRC)));
+                    for (int i = 0; i < srcRankGroup.Count; i++)
                     {
-                        report.SRCRank = i + 1;
+                        foreach (OptimizerReport report in srcRankGroup[i])
+                        {
+                            report.SRCRank = i + 1;
+                        }
                     }
-                }
-
-                for (int i = 0; i < frsRankGroup.Count; i++)
+                }, () =>
                 {
-                    foreach (OptimizerReport report in frsRankGroup[i])
+                    List<IGrouping<decimal, OptimizerReport>> frsRankGroup = results.GroupBy(r => r.FRS).ToList();
+                    frsRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().FRS.CompareTo(r1.First().FRS)));
+                    for (int i = 0; i < frsRankGroup.Count; i++)
                     {
-                        report.FRSRank = i + 1;
+                        foreach (OptimizerReport report in frsRankGroup[i])
+                        {
+                            report.FRSRank = i + 1;
+                        }
                     }
-                }
-
-                for (int i = 0; i < ratioRankGroup.Count; i++)
+                }, () =>
                 {
-                    foreach (OptimizerReport report in ratioRankGroup[i])
+                    List<IGrouping<decimal, OptimizerReport>> ratioRankGroup = results.GroupBy(r => r.Ratio).ToList();
+                    ratioRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().Ratio.CompareTo(r1.First().Ratio)));
+                    for (int i = 0; i < ratioRankGroup.Count; i++)
                     {
-                        report.RatioRank = i + 1;
+                        foreach (OptimizerReport report in ratioRankGroup[i])
+                        {
+                            report.RatioRank = i + 1;
+                        }
                     }
-                }
-
-                for (int i = 0; i < totalReturnRankGroup.Count; i++)
+                }, () =>
                 {
-                    foreach (OptimizerReport report in totalReturnRankGroup[i])
+                    List<IGrouping<decimal, OptimizerReport>> totalReturnRankGroup = results.GroupBy(r => r.TotalReturn).ToList();
+                    totalReturnRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalReturn.CompareTo(r1.First().TotalReturn)));
+                    for (int i = 0; i < totalReturnRankGroup.Count; i++)
                     {
-                        report.TotalReturnRank = i + 1;
+                        foreach (OptimizerReport report in totalReturnRankGroup[i])
+                        {
+                            report.TotalReturnRank = i + 1;
+                        }
                     }
-                }
-
-                for (int i = 0; i < totalDrawDownRankGroup.Count; i++)
+                }, () =>
                 {
-                    foreach (OptimizerReport report in totalDrawDownRankGroup[i])
+                    List<IGrouping<decimal, OptimizerReport>> totalDrawDownRankGroup = results.GroupBy(r => r.TotalDrawDown).ToList();
+                    totalDrawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalDrawDown.CompareTo(r1.First().TotalDrawDown)));
+                    for (int i = 0; i < totalDrawDownRankGroup.Count; i++)
                     {
-                        report.TotalDrawDownRank = i + 1;
+                        foreach (OptimizerReport report in totalDrawDownRankGroup[i])
+                        {
+                            report.TotalDrawDownRank = i + 1;
+                        }
                     }
-                }
+                });
 
                 reportsForCSCTable.Clear();
                 foreach (OptimizerReport report in results)
@@ -930,7 +980,7 @@ namespace OsEngine.OsOptimizer
             }, () =>
             {
                 var stratDictionary = allReports.Values.Aggregate((x1, x2) => { return x1.Concat(x2).ToDictionary(x => x.Key, x => x.Value); });
-                UpdateBots(stratDictionary, out decimal csc, out decimal psr, out decimal dds, out decimal src, out decimal frs, out _, out _, out _);
+                CalculateBots(stratDictionary, out decimal csc, out decimal psr, out decimal dds, out decimal src, out decimal frs, out _, out _, out _);
                 _strategyCSC = csc;
                 _strategyPSR = psr;
                 _strategyDDS = dds;
@@ -938,7 +988,7 @@ namespace OsEngine.OsOptimizer
                 _strategyFRS = frs;
             });
 
-            void UpdateBots(Dictionary<OptimizerReport, OptimizerReport> dicReports,
+            void CalculateBots(Dictionary<OptimizerReport, OptimizerReport> dicReports,
                             out decimal csc,
                             out decimal psr,
                             out decimal dds,
@@ -1404,8 +1454,8 @@ namespace OsEngine.OsOptimizer
 
             try
             {
-
-                string profitType = comboBoxTotalProfitEquityType.SelectedItem.ToString();
+                string profitType = "";
+                comboBoxTotalProfitEquityType.Dispatcher.Invoke(() => { profitType = comboBoxTotalProfitEquityType.SelectedItem.ToString(); });
 
                 List<decimal> profitsSumm = new List<decimal>();
 
@@ -1594,7 +1644,7 @@ namespace OsEngine.OsOptimizer
             _chartAverageProfitCSC = GetAverageProfitChart();
             _hostAverageProfitChartCSC.Child = _chartAverageProfitCSC;
             _chartAverageProfitCSC.SuppressExceptions = true;
-            ReLoadCSC(_reports);
+            ReLoadCSC(_reports, true);
         }
 
         private Chart GetAverageProfitChart()
@@ -1645,6 +1695,12 @@ namespace OsEngine.OsOptimizer
             }
             if (hostAverageProfitChart == null)
             {
+                return;
+            }
+
+            if (chartAverageProfit.InvokeRequired)
+            {
+                chartAverageProfit.Invoke(new Action<WindowsFormsHost, Chart, int>(UpdateAverageProfitChart), hostAverageProfitChart, chartAverageProfit, sortBotNumber);
                 return;
             }
 
@@ -1824,7 +1880,7 @@ namespace OsEngine.OsOptimizer
             _chartProfitFactorCSC = GetProfitFactorChart();
             _hostProfitFactorCSC.Child = _chartProfitFactorCSC;
             _chartProfitFactorCSC.SuppressExceptions = true;
-            ReLoadCSC(_reports);
+            ReLoadCSC(_reports, true);
         }
 
         private Chart GetProfitFactorChart()
@@ -1875,6 +1931,12 @@ namespace OsEngine.OsOptimizer
             }
             if (hostProfitFactor == null)
             {
+                return;
+            }
+
+            if (chartProfitFactor.InvokeRequired)
+            {
+                chartProfitFactor.Invoke(new Action<WindowsFormsHost, Chart>(UpdateProfitFactorChart), hostProfitFactor, chartProfitFactor);
                 return;
             }
 

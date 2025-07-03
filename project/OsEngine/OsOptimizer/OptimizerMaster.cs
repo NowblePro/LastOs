@@ -217,7 +217,7 @@ namespace OsEngine.OsOptimizer
             catch { }
         }
 
-        private string GetStringFromWeights() => $"{_cscWeight.ToString(CultureInfo.InvariantCulture)};{_psrWeight.ToString(CultureInfo.InvariantCulture)};{_ddsWeight.ToString(CultureInfo.InvariantCulture)};{_srcWeight.ToString(CultureInfo.InvariantCulture)}";
+        private string GetStringFromWeights() => $"{_cscWeight.ToString(CultureInfo.InvariantCulture)};{_psrWeight.ToString(CultureInfo.InvariantCulture)};{_ddsWeight.ToString(CultureInfo.InvariantCulture)};{_srcWeight.ToString(CultureInfo.InvariantCulture)};{_ratioWeight.ToString(CultureInfo.InvariantCulture)};{_totalReturnWeight.ToString(CultureInfo.InvariantCulture)};{_totalDrowDownWeight.ToString(CultureInfo.InvariantCulture)}";
 
         // work with the progress of the optimization process/работа с прогрессом процесса оптимизации
 
