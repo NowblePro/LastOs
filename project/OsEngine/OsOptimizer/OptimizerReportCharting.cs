@@ -253,7 +253,7 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private void ReLoadCSCTask(List<OptimazerFazeReport> reports, bool calculate)
+        private void ReLoadCSCTask(List<OptimazerFazeReport> reports, bool calculate = false, bool calculateFRS = false)
         {
             try
             {
@@ -264,9 +264,9 @@ namespace OsEngine.OsOptimizer
                 {
                     return;
                 }
-                if (calculate)
+                if (calculate || calculateFRS)
                 {
-                    CalculateCSCResults(reports);
+                    CalculateCSCResults(reports, !calculate);
                 }
                 SortCSCResults(reports);
                 GetBestBotNum(reports[0].Reports);
@@ -291,7 +291,7 @@ namespace OsEngine.OsOptimizer
         }
 
         private AwaitObject _awaitUiBotsInfoLoading;
-        public void ReLoadCSC(List<OptimazerFazeReport> reports, bool calculate = false)
+        public void ReLoadCSC(List<OptimazerFazeReport> reports, bool calculate = false, bool calculateFRS = false)
         {
             try
             {
@@ -307,6 +307,10 @@ namespace OsEngine.OsOptimizer
                     });
 
                     ui.ShowDialog();
+                }
+                else if (calculateFRS)
+                {
+                    ReLoadCSCTask(reports, calculate, calculateFRS);
                 }
                 else
                 {
@@ -513,7 +517,7 @@ namespace OsEngine.OsOptimizer
             }
 
             WeightsChanged.Invoke(this, EventArgs.Empty);
-            ReLoadCSC(_reports, true);
+            ReLoadCSC(_reports, calculateFRS: true);
         }
 
         private decimal GetWeightFromTable(DataGridView gridView, int column, int row)
@@ -809,8 +813,33 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         private Dictionary<string, OptimizerReport> reportsForCSCTable = new Dictionary<string, OptimizerReport>();
 
-        private void CalculateCSCResults(List<OptimazerFazeReport> reports)
+        private void CalculateCSCResults(List<OptimazerFazeReport> reports, bool calculateFRSOnly = false)
         {
+            if (calculateFRSOnly)
+            {
+                foreach (var r in reports.SelectMany(r => r.Reports))
+                {
+                    r.FRS =     r.CSC * _cscWeight +
+                                r.PSR * _psrWeight +
+                                r.DDS * _ddsWeight +
+                                r.SRC * _srcWeight +
+                                r.Ratio * _ratioWeight +
+                                r.TotalReturn * _totalReturnWeight +
+                                r.TotalDrawDown * _totalDrowDownWeight;
+                }
+
+                List<IGrouping<decimal, OptimizerReport>> frsRankGroup = reportsForCSCTable.Values.GroupBy(r => r.FRS).ToList();
+                frsRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().FRS.CompareTo(r1.First().FRS)));
+                for (int i = 0; i < frsRankGroup.Count; i++)
+                {
+                    foreach (OptimizerReport report in frsRankGroup[i])
+                    {
+                        report.FRSRank = i + 1;
+                    }
+                }
+                return;
+            }
+
             var insamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample);
 
             // Формируется словарь, в котором для каждого in sample хранится свой out of sample (последний in sample без out of sample отбрасывается)
