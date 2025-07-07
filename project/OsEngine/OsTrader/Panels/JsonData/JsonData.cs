@@ -54,7 +54,7 @@ namespace OsEngine.OsTrader.Panels.JsonData
         public string side { get; set; }
         public string time { get; set; }
         public decimal open_volume { get; set; }
-        public decimal close_volume { get; set; }
+        public decimal profit { get; set; }
     }
 
     public class JsonStop
