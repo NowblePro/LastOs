@@ -150,6 +150,21 @@ namespace OsEngine.OsTrader.Panels.Tab
         public void setSaveData(bool saveData)
         {
             _saveData = saveData;
+
+            if (_jsonData != null)
+            {
+                _jsonData = null;
+            }
+            if (_dataParameters != null)
+            {
+                _dataParameters = null;
+            }
+
+            _prevClosePosCount = PositionsCloseAll.Count;
+
+            _total_pnl = 0.0m;
+            _long_total_pnl = 0.0m;
+            _short_total_pnl = 0.0m;
         }
 
         public JsonRunData JsonData
@@ -162,6 +177,8 @@ namespace OsEngine.OsTrader.Panels.Tab
         private JsonRunData _jsonData;
 
         JsonDataParameters _dataParameters;
+
+        private JsonStatistics _jsonStatistics;
 
         public void setJsonBotParameters(List<IIStrategyParameter> parameters)
         {
@@ -196,8 +213,54 @@ namespace OsEngine.OsTrader.Panels.Tab
             _jsonData.data_parameters.strategy_type = name;
         }
 
-        private int _prevOpenPosCount = 0;
+        public void calcJsonStatistics()
+        {
+            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllPositions);
+            List<string> positionsLongState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllLongPositions);
+            List<string> positionsShortState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllShortPositions);
+
+            JsonStatistics statistics = new JsonStatistics
+            {
+                total_profit = 0.0m,
+                sharp_ratio = 0.0m,
+                max_sma_deviation = 0.0m,
+                profit_factor = 0.0m,
+                recovery = 0.0m,
+                max_drow_down = 0.0m
+            };
+
+            if (positionsAllState != null)
+            {
+                statistics.total_profit = positionsAllState[0].ToDecimal();
+                statistics.long_total_profit = positionsLongState[0].ToDecimal();
+                statistics.short_total_profit = positionsShortState[0].ToDecimal();
+                statistics.total_profit_percent = positionsAllState[1].ToDecimal();
+                statistics.long_total_profit_percent = positionsLongState[1].ToDecimal();
+                statistics.short_total_profit_percent = positionsShortState[1].ToDecimal();
+                statistics.position_count = ((int)positionsAllState[2].ToDecimal());
+                statistics.long_position_count = ((int)positionsLongState[2].ToDecimal());
+                statistics.short_position_count = ((int)positionsShortState[2].ToDecimal());
+                statistics.sharp_ratio = positionsAllState[4].ToDecimal();
+                statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
+                statistics.profit_factor = positionsAllState[6].ToDecimal();
+                statistics.recovery = positionsAllState[7].ToDecimal();
+                statistics.max_drow_down = positionsAllState[30].ToDecimal();
+                statistics.profit_positions = ((int)positionsAllState[14].ToDecimal());
+                statistics.long_profit_positions = ((int)positionsLongState[14].ToDecimal());
+                statistics.short_profit_positions = ((int)positionsShortState[14].ToDecimal());
+                statistics.loss_positions = ((int)positionsAllState[22].ToDecimal());
+                statistics.long_loss_positions = ((int)positionsLongState[22].ToDecimal());
+                statistics.short_loss_positions = ((int)positionsShortState[22].ToDecimal());
+            }
+
+            _jsonData.statistics = statistics;
+        }
+
         private int _prevClosePosCount = 0;
+
+        decimal _total_pnl = 0.0m;
+        decimal _long_total_pnl = 0.0m;
+        decimal _short_total_pnl = 0.0m;
 
         private void writeCandleData(Candle candle)
         {
@@ -205,6 +268,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 _jsonData = new JsonRunData();
             }
+
             if (_jsonData.run_results == null)
             {
                 _jsonData.run_results = new List<JsonCandleResult>();
@@ -221,46 +285,51 @@ namespace OsEngine.OsTrader.Panels.Tab
                 };
             }
 
-            int open_pos_count = PositionsOpenAll.Count - _prevOpenPosCount;
+            if (_jsonData.statistics == null)
+            {
+                _jsonData.statistics = new JsonStatistics();
+            }
+
             int close_pos_count = PositionsCloseAll.Count - _prevClosePosCount;
 
             // cut non trade candles
             if (StartProgram == StartProgram.IsOsOptimizer
                 && PositionsOpenAll.Count < 1
-                && close_pos_count < 1
-                && PositionOpenerToStop.Count < 1)
+                && close_pos_count < 1)
             {
-                _prevOpenPosCount = PositionsOpenAll.Count;
                 _prevClosePosCount = PositionsCloseAll.Count;
                 return;
             }
 
-            List<JsonStop> stops = new List<JsonStop>();
-            for (int i = 0; i < PositionOpenerToStop.Count; ++i)
+            List<JsonStop> stops = null;
+            if (StartProgram != StartProgram.IsOsOptimizer)
             {
-                JsonStop stop = new JsonStop
+                stops = new List<JsonStop>();
+                for (int i = 0; i < PositionOpenerToStop.Count; ++i)
                 {
-                    number = PositionOpenerToStop[i].Number,
-                    side = PositionOpenerToStop[i].Side.ToString(),
-                    open_date_time = PositionOpenerToStop[i].TimeCreate.ToString(),
-                    volume = PositionOpenerToStop[i].Volume,
-                    activation_price = PositionOpenerToStop[i].PriceOrder,
-                    stop_level = PositionOpenerToStop[i].PriceRedLine
-                };
-                stops.Add(stop);
+                    JsonStop stop = new JsonStop
+                    {
+                        number = PositionOpenerToStop[i].Number,
+                        side = PositionOpenerToStop[i].Side.ToString(),
+                        open_date_time = PositionOpenerToStop[i].TimeCreate.ToString(),
+                        volume = PositionOpenerToStop[i].Volume,
+                        activation_price = PositionOpenerToStop[i].PriceOrder,
+                        stop_level = PositionOpenerToStop[i].PriceRedLine
+                    };
+                    stops.Add(stop);
+                }
             }
 
             List<JsonCandlePosition> open_poses = new List<JsonCandlePosition>();
-            for (int i = 0; i < open_pos_count; ++i)
+            foreach (Position position in PositionsOpenAll)
             {
-                int index = PositionsOpenAll.Count - i - 1;
                 JsonCandlePosition pos = new JsonCandlePosition
                 {
-                    number = PositionsOpenAll[index].Number,
-                    side = PositionsOpenAll[index].Direction.ToString(),
-                    time = PositionsOpenAll[index].TimeOpen.ToString(),
-                    open_volume = PositionsOpenAll[index].OpenVolume,
-                    close_volume = 0.0m
+                    number = position.Number,
+                    side = position.Direction.ToString(),
+                    time = position.TimeOpen.ToString(),
+                    open_volume = position.OpenVolume,
+                    profit = position.ProfitPortfolioPunkt
                 };
                 open_poses.Add(pos);
             }
@@ -275,12 +344,11 @@ namespace OsEngine.OsTrader.Panels.Tab
                     side = PositionsCloseAll[index].Direction.ToString(),
                     time = PositionsCloseAll[index].TimeClose.ToString(),
                     open_volume = PositionsCloseAll[index].OpenVolume,
-                    close_volume = PositionsCloseAll[index].MaxVolume
+                    profit = PositionsCloseAll[index].ProfitPortfolioPunkt
                 };
                 close_poses.Add(pos);
             }
 
-            _prevOpenPosCount = PositionsOpenAll.Count;
             _prevClosePosCount = PositionsCloseAll.Count;
 
             string date = (candle.TimeStart + TimeFrame).ToString();
@@ -296,9 +364,6 @@ namespace OsEngine.OsTrader.Panels.Tab
             decimal up = 0.0m;
             decimal lup = 0.0m;
             decimal sup = 0.0m;
-            decimal tp = 0.0m;
-            decimal ltp = 0.0m;
-            decimal stp = 0.0m;
 
             foreach (Position pos in PositionsOpenAll)
             {
@@ -313,50 +378,32 @@ namespace OsEngine.OsTrader.Panels.Tab
                 }
             }
 
-            foreach (Position pos in PositionsCloseAll)
+            if (close_pos_count > 0)
             {
-                tp += pos.ProfitPortfolioPunkt;
-                if (pos.Direction == Side.Buy)
+                for (int i = 0; i < close_pos_count; ++i)
                 {
-                    ltp += pos.ProfitPortfolioPunkt;
-                }
-                else if (pos.Direction == Side.Sell)
-                {
-                    stp += pos.ProfitPortfolioPunkt;
+                    Position pos = PositionsCloseAll[PositionsCloseAll.Count - i - 1];
+                    _total_pnl += pos.ProfitPortfolioPunkt;
+                    if (pos.Direction == Side.Buy)
+                    {
+                        _long_total_pnl += pos.ProfitPortfolioPunkt;
+                    }
+                    else if (pos.Direction == Side.Sell)
+                    {
+                        _short_total_pnl += pos.ProfitPortfolioPunkt;
+                    }
                 }
             }
 
             JsonEquity j_equity = new JsonEquity
             {
                 unrealized_candle_PL = up,
-                total_PL = tp,
+                total_PL = _total_pnl,
                 unrealized_long_PL = lup,
-                total_long_PL = ltp,
+                total_long_PL = _long_total_pnl,
                 unrealized_short_PL = sup,
-                total_short_PL = stp
+                total_short_PL = _short_total_pnl
             };
-
-            /*
-            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(PositionsCloseAll);
-
-            JsonCandleStatistics candle_statistics = new JsonCandleStatistics
-            {
-                sharp_ratio = 0.0m,
-                max_sma_deviation = 0.0m,
-                profit_factor = 0.0m,
-                recovery = 0.0m,
-                max_drow_down = 0.0m
-            };
-
-            if (positionsAllState != null)
-            {
-                candle_statistics.sharp_ratio = positionsAllState[4].ToDecimal();
-                candle_statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
-                candle_statistics.profit_factor = positionsAllState[6].ToDecimal();
-                candle_statistics.recovery = positionsAllState[7].ToDecimal();
-                candle_statistics.max_drow_down = positionsAllState[30].ToDecimal();
-            }
-            */
 
             JsonCandleResult candle_res = new JsonCandleResult
             {
@@ -365,8 +412,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 stops = stops,
                 opened_positions = open_poses,
                 closed_positions = close_poses,
-                equity = j_equity,
-                statistics = { }//candle_statistics
+                equity = j_equity
             };
 
             _jsonData.run_results.Add(candle_res);
@@ -4800,30 +4846,9 @@ namespace OsEngine.OsTrader.Panels.Tab
                     _connector.OrderExecute(closeOrder);
                 }
 
-                if (_saveData)
-                {
-                    //if (_candlePosition == null)
-                    //{
-                    //    _candlePosition = new JsonCandlePosition
-                    //    {
-                    //        opened = false,
-                    //        closed = false,
-                    //        open_side = "no_side",
-                    //        close_side = "no_side",
-                    //        open_volume = 0.0m
-                    //    };
-                    //}
-
-                    //if (position.Direction == Side.Buy)
-                    //{
-                    //    _candlePosition.close_side = "buy";
-                    //}
-                    //else if (position.Direction == Side.Sell)
-                    //{
-                    //    _candlePosition.close_side = "sell";
-                    //}
-                    //_candlePosition.closed = true;
-                }
+                //if (_saveData)
+                //{
+                //}
             }
             catch (Exception error)
             {

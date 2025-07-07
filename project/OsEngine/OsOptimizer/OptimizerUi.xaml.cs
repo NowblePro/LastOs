@@ -80,6 +80,8 @@ namespace OsEngine.OsOptimizer
 
             CheckBoxSaveJson.IsChecked = _master.SaveJson;
             CheckBoxSaveJson.Click += CheckBoxSaveJson_Click;
+            CheckBoxSaveCandles.IsChecked = _master.SaveJsonCandles;
+            CheckBoxSaveCandles.Click += CheckBoxSaveCandles_Click;
             SaveJsonPath.Text = _master.SaveJsonPath;
             SaveJsonPath.TextChanged += SaveJsonPath_TextChanged;
 
@@ -907,6 +909,11 @@ namespace OsEngine.OsOptimizer
         private void CheckBoxSaveJson_Click(object sender, RoutedEventArgs e)
         {
             _master.SaveJson = CheckBoxSaveJson.IsChecked.Value;
+        }
+
+        private void CheckBoxSaveCandles_Click(object sender, RoutedEventArgs e)
+        {
+            _master.SaveJsonCandles = CheckBoxSaveCandles.IsChecked.Value;
         }
 
         private void SaveJsonPath_TextChanged(object sender, RoutedEventArgs e)

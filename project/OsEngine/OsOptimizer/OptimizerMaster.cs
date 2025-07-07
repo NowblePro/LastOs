@@ -126,6 +126,7 @@ namespace OsEngine.OsOptimizer
                     writer.WriteLine(_lastInSample);
 
                     writer.WriteLine(_saveJson);
+                    writer.WriteLine(_saveJsonCandles);
                     writer.WriteLine(_saveJsonPath);
 
                     writer.WriteLine(GetStringFromWeights());
@@ -178,6 +179,7 @@ namespace OsEngine.OsOptimizer
                     _lastInSample = Convert.ToBoolean(reader.ReadLine());
 
                     _saveJson = Convert.ToBoolean(reader.ReadLine());
+                    _saveJsonCandles = Convert.ToBoolean(reader.ReadLine());
                     _saveJsonPath = reader.ReadLine();
 
                     string weights = reader.ReadLine();
@@ -388,6 +390,20 @@ namespace OsEngine.OsOptimizer
             }
         }
         private bool _saveJson = false;
+
+        public bool SaveJsonCandles
+        {
+            get
+            {
+                return _saveJsonCandles;
+            }
+            set
+            {
+                _saveJsonCandles = value;
+                Save();
+            }
+        }
+        private bool _saveJsonCandles = false;
 
         public string SaveJsonPath
         {

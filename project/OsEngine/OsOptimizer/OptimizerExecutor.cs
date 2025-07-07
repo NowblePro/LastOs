@@ -517,7 +517,7 @@ namespace OsEngine.OsOptimizer
 
                 //SendLogMessage("BotInSample" ,LogMessageType.System);
                 // (startServerIndex + i) + " OpT " + faze;
-                StartNewBot(_parameters, optimizeParamCurrent, report, " OpT InSample", _master.SaveJson);
+                StartNewBot(_parameters, optimizeParamCurrent, report, " OpT InSample", _master.SaveJsonCandles);
             }
 
             while (true)
@@ -569,7 +569,7 @@ namespace OsEngine.OsOptimizer
                 }
                 // SendLogMessage("Bot Out of Sample", LogMessageType.System);
                 StartNewBot(reportInSample.Reports[i].GetParameters(), null, report,
-                    reportInSample.Reports[i].BotName.Replace(" InSample", "") + " OutOfSample", _master.SaveJson);
+                    reportInSample.Reports[i].BotName.Replace(" InSample", "") + " OutOfSample", _master.SaveJsonCandles);
             }
 
             while (true)
@@ -1285,20 +1285,19 @@ namespace OsEngine.OsOptimizer
             string fileName = bot.NameStrategyUniq + ".json";
             string fullPath = Path.Combine(initialPath, fileName);
 
-            //List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(_journalUi.AllPositions);
-
             if (bot.TabsSimple.Count < 1)
-            {
-                return;
-            }
-
-            if (bot.TabsSimple[0].JsonData == null)
             {
                 return;
             }
 
             bot.TabsSimple[0].setJsonBotParameters(bot.Parameters);
             bot.TabsSimple[0].setJsonDataParameters(bot.GetNameStrategyType());
+            bot.TabsSimple[0].calcJsonStatistics();
+
+            if (bot.TabsSimple[0].JsonData == null)
+            {
+                return;
+            }
 
             string json = JsonConvert.SerializeObject(bot.TabsSimple[0].JsonData, Formatting.Indented);
 
