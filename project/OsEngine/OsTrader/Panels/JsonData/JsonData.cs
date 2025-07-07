@@ -7,6 +7,7 @@ namespace OsEngine.OsTrader.Panels.JsonData
     {
         public JsonDataParameters data_parameters;
         public Dictionary<string, string> robot_parameters;
+        public JsonStatistics statistics;
         public List<JsonCandleResult> run_results;
     }
 
@@ -39,13 +40,28 @@ namespace OsEngine.OsTrader.Panels.JsonData
         public decimal total_short_PL { get; set; }
     }
 
-    public class JsonCandleStatistics
+    public class JsonStatistics
     {
+        public decimal total_profit { get; set; }
+        public decimal long_total_profit { get; set; }
+        public decimal short_total_profit { get; set; }
+        public decimal total_profit_percent { get; set; }
+        public decimal long_total_profit_percent { get; set; }
+        public decimal short_total_profit_percent { get; set; }
+        public int position_count { get; set; }
+        public int long_position_count { get; set; }
+        public int short_position_count { get; set; }
         public decimal sharp_ratio { get; set; }
         public decimal max_sma_deviation { get; set; }
         public decimal profit_factor { get; set; }
         public decimal recovery { get; set; }
         public decimal max_drow_down { get; set; }
+        public int profit_positions { get; set; }
+        public int long_profit_positions { get; set; }
+        public int short_profit_positions { get; set; }
+        public int loss_positions { get; set; }
+        public int long_loss_positions { get; set; }
+        public int short_loss_positions { get; set; }
     }
 
     public class JsonCandlePosition
@@ -75,6 +91,5 @@ namespace OsEngine.OsTrader.Panels.JsonData
         public List<JsonCandlePosition> opened_positions {  get; set; }
         public List<JsonCandlePosition> closed_positions { get; set; }
         public JsonEquity equity { get; set; }
-        public JsonCandleStatistics statistics { get; set; }
     }
 }
