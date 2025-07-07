@@ -41,7 +41,8 @@
                         <TextBox Name="TextBoxStrategyName" HorizontalAlignment="Left" IsReadOnly="True" Margin="24,71,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" Height="25"/>
                         <Button x:Name="ButtonStrategyReload" Content="Reload" HorizontalAlignment="Left" Margin="156,81,0,0" VerticalAlignment="Top" Width="60" Click="ButtonStrategyReload_Click"/>
                         <Button x:Name="ButtonPositionSupport" Content="Position support"  HorizontalAlignment="Left" Margin="231,190,0,0" VerticalAlignment="Top" Width="195" Click="ButtonPositionSupport_Click" />
-                        <CheckBox Name="CheckBoxSaveJson" Content="Save run results to json" HorizontalAlignment="Left" Margin="450,190,0,0" VerticalAlignment="Top"/>
+                        <CheckBox Name="CheckBoxSaveJson" Content="Save run results to json" HorizontalAlignment="Left" Margin="445,164,0,0" VerticalAlignment="Top"/>
+                        <CheckBox Name="CheckBoxSaveCandles" Content="Save candles" HorizontalAlignment="Left" Margin="445,190,0,0" VerticalAlignment="Top"/>
                         <Label Name="SaveJsonPathLabel" Content="Json Save Path" HorizontalAlignment="Left" Margin="648,164,0,0" VerticalAlignment="Top"/>
                         <TextBox Name="SaveJsonPath" Margin="648,190,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Width="250" Height="28"/>
                     </Grid>

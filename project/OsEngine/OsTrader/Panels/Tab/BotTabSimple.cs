@@ -178,6 +178,8 @@ namespace OsEngine.OsTrader.Panels.Tab
 
         JsonDataParameters _dataParameters;
 
+        private JsonStatistics _jsonStatistics;
+
         public void setJsonBotParameters(List<IIStrategyParameter> parameters)
         {
             if (_jsonData == null)
@@ -211,6 +213,49 @@ namespace OsEngine.OsTrader.Panels.Tab
             _jsonData.data_parameters.strategy_type = name;
         }
 
+        public void calcJsonStatistics()
+        {
+            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllPositions);
+            List<string> positionsLongState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllLongPositions);
+            List<string> positionsShortState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllShortPositions);
+
+            JsonStatistics statistics = new JsonStatistics
+            {
+                total_profit = 0.0m,
+                sharp_ratio = 0.0m,
+                max_sma_deviation = 0.0m,
+                profit_factor = 0.0m,
+                recovery = 0.0m,
+                max_drow_down = 0.0m
+            };
+
+            if (positionsAllState != null)
+            {
+                statistics.total_profit = positionsAllState[0].ToDecimal();
+                statistics.long_total_profit = positionsLongState[0].ToDecimal();
+                statistics.short_total_profit = positionsShortState[0].ToDecimal();
+                statistics.total_profit_percent = positionsAllState[1].ToDecimal();
+                statistics.long_total_profit_percent = positionsLongState[1].ToDecimal();
+                statistics.short_total_profit_percent = positionsShortState[1].ToDecimal();
+                statistics.position_count = ((int)positionsAllState[2].ToDecimal());
+                statistics.long_position_count = ((int)positionsLongState[2].ToDecimal());
+                statistics.short_position_count = ((int)positionsShortState[2].ToDecimal());
+                statistics.sharp_ratio = positionsAllState[4].ToDecimal();
+                statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
+                statistics.profit_factor = positionsAllState[6].ToDecimal();
+                statistics.recovery = positionsAllState[7].ToDecimal();
+                statistics.max_drow_down = positionsAllState[30].ToDecimal();
+                statistics.profit_positions = ((int)positionsAllState[14].ToDecimal());
+                statistics.long_profit_positions = ((int)positionsLongState[14].ToDecimal());
+                statistics.short_profit_positions = ((int)positionsShortState[14].ToDecimal());
+                statistics.loss_positions = ((int)positionsAllState[22].ToDecimal());
+                statistics.long_loss_positions = ((int)positionsLongState[22].ToDecimal());
+                statistics.short_loss_positions = ((int)positionsShortState[22].ToDecimal());
+            }
+
+            _jsonData.statistics = statistics;
+        }
+
         private int _prevClosePosCount = 0;
 
         decimal _total_pnl = 0.0m;
@@ -223,6 +268,7 @@ namespace OsEngine.OsTrader.Panels.Tab
             {
                 _jsonData = new JsonRunData();
             }
+
             if (_jsonData.run_results == null)
             {
                 _jsonData.run_results = new List<JsonCandleResult>();
@@ -238,6 +284,12 @@ namespace OsEngine.OsTrader.Panels.Tab
                     strategy_type = "unknown"
                 };
             }
+
+            if (_jsonData.statistics == null)
+            {
+                _jsonData.statistics = new JsonStatistics();
+            }
+
             int close_pos_count = PositionsCloseAll.Count - _prevClosePosCount;
 
             // cut non trade candles
@@ -353,28 +405,6 @@ namespace OsEngine.OsTrader.Panels.Tab
                 total_short_PL = _short_total_pnl
             };
 
-            /*
-            List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(PositionsCloseAll);
-
-            JsonCandleStatistics candle_statistics = new JsonCandleStatistics
-            {
-                sharp_ratio = 0.0m,
-                max_sma_deviation = 0.0m,
-                profit_factor = 0.0m,
-                recovery = 0.0m,
-                max_drow_down = 0.0m
-            };
-
-            if (positionsAllState != null)
-            {
-                candle_statistics.sharp_ratio = positionsAllState[4].ToDecimal();
-                candle_statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
-                candle_statistics.profit_factor = positionsAllState[6].ToDecimal();
-                candle_statistics.recovery = positionsAllState[7].ToDecimal();
-                candle_statistics.max_drow_down = positionsAllState[30].ToDecimal();
-            }
-            */
-
             JsonCandleResult candle_res = new JsonCandleResult
             {
                 time_close = date,
@@ -382,8 +412,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                 stops = stops,
                 opened_positions = open_poses,
                 closed_positions = close_poses,
-                equity = j_equity,
-                statistics = { }//candle_statistics
+                equity = j_equity
             };
 
             _jsonData.run_results.Add(candle_res);
