@@ -212,18 +212,13 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
             _resultsCharting.ActivateCSCChart(HostFRS);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
-            _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
             TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
             TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
             _resultsCharting.WeightsChanged += _master.UpdateWeights;
-            _resultsCharting.UpdateWeights( _master.CscWeight,
-                                            _master.PsrWeight,
-                                            _master.DdsWeight,
-                                            _master.SrcWeight,
-                                            _master.RatioWeight,
-                                            _master.TotalReturnWeight,
-                                            _master.TotalDrowDownWeight);
+            _resultsCharting.UpdateWeights( _master.PPRWeight,
+                                            _master.TRWeight,
+                                            _master.GPRWeight);
             this.Closing += Ui_Closing;
             this.Activate();
             this.Focus();
@@ -241,11 +236,6 @@ namespace OsEngine.OsOptimizer
         private void TabControlResultsOutOfSampleResults1_GotFocus(object sender, RoutedEventArgs e)
         {
             _resultsCharting.ReLoadCSC(_reports);
-        }
-
-        private void _resultsCharting_CSCCalculated(object sender, decimal e)
-        {
-            LabelCSCMetricValue.Content = e;
         }
 
         private CultureInfo _currentCulture;
@@ -3462,13 +3452,9 @@ namespace OsEngine.OsOptimizer
 
     public enum CSCSortType
     {
-        CSC,
-        PSR,
-        DDS,
-        SRC,
         FRS,
-        Ratio,
-        TotalReturn,
-        TotalDrawDown
+        PPR,
+        TR,
+        GPR
     }
 }

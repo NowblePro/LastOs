@@ -79,7 +79,7 @@ namespace OsEngine.OsOptimizer
                 boxTypeSortCSC.Items.Add(sortType);
             }
 
-            boxTypeSortCSC.SelectedItem = CSCSortType.CSC.ToString();
+            boxTypeSortCSC.SelectedItem = CSCSortType.FRS.ToString();
             boxTypeSortCSC.SelectionChanged += BoxTypeSortCSC_SelectionChanged;
 
             CreateStepsOfOptimization();
@@ -117,7 +117,6 @@ namespace OsEngine.OsOptimizer
 
         System.Windows.Controls.Label _labelRobustnessMetricValue;
 
-        public event EventHandler<decimal> CSCCalculated;
 
         private void _boxTypeSortBotNum_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
@@ -275,7 +274,6 @@ namespace OsEngine.OsOptimizer
                 UpdateAverageProfitChart(_hostAverageProfitChartCSC, _chartAverageProfitCSC, _sortBotNumberCSC);
                 UpdateProfitFactorChart(_hostProfitFactorCSC, _chartProfitFactorCSC);
                 UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
-                GetCSC();
             }
             catch (Exception e)
             {
@@ -345,7 +343,7 @@ namespace OsEngine.OsOptimizer
         }
 
         private SortBotsType _sortBotsType;
-        private CSCSortType _sortBotsTypeCSC = CSCSortType.CSC;
+        private CSCSortType _sortBotsTypeCSC = CSCSortType.FRS;
 
         private int _sortBotPercent = 0;
         private int _sortBotPercentCSC = 0;
@@ -405,20 +403,13 @@ namespace OsEngine.OsOptimizer
 
         private WindowsFormsHost _hostFRS;
         private DataGridView _gridFRS;
-        private decimal _cscWeight = 0.25m;
-        private decimal _psrWeight = 0.25m;
-        private decimal _ddsWeight = 0.25m;
-        private decimal _srcWeight = 0.25m;
-        private decimal _ratioWeight = 0.25m;
-        private decimal _totalReturnWeight = 0.25m;
-        private decimal _totalDrowDownWeight = 0.25m;
-        public decimal CscWeight => _cscWeight;
-        public decimal PsrWeight => _psrWeight;
-        public decimal DdsWeight => _ddsWeight;
-        public decimal SrcWeight => _srcWeight;
-        public decimal RatioWeight => _ratioWeight;
-        public decimal TotalReturnWeight => _totalReturnWeight;
-        public decimal TotalDrowDownWeight => _totalDrowDownWeight;
+
+        private decimal _pprWeight = 0.25m;
+        private decimal _trWeight = 0.25m;
+        private decimal _gprWeight = 0.25m;
+        public decimal PPRWeight => _pprWeight;
+        public decimal TRWeight => _trWeight;
+        public decimal GPRWeight => _gprWeight;
 
         internal void ActivateCSCChart(WindowsFormsHost hostFRS)
         {
@@ -432,13 +423,9 @@ namespace OsEngine.OsOptimizer
 
                 _gridFRS.Columns.Add(GetColumn(""));
                 _gridFRS.Columns.Add(GetColumn("FRS", 80, readOnly: false));
-                _gridFRS.Columns.Add(GetColumn("CSC", 80, readOnly: false));
-                _gridFRS.Columns.Add(GetColumn("PSR", 80, readOnly: false));
-                _gridFRS.Columns.Add(GetColumn("DDS", 80, readOnly: false));
-                _gridFRS.Columns.Add(GetColumn("SRC", 80, readOnly: false));
-                _gridFRS.Columns.Add(GetColumn("Ratio", 80, readOnly: false));
-                _gridFRS.Columns.Add(GetColumn("TotalReturn", 80, readOnly: false));
-                _gridFRS.Columns.Add(GetColumn("TotalDrowDown", 110, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("PPR", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("TR", 80, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("GPR", 110, readOnly: false));
 
                 _gridFRS.Rows.Add(null, null);
                 _gridFRS.CellValueChanged += _gridFRS_CellValueChanged;
@@ -453,67 +440,43 @@ namespace OsEngine.OsOptimizer
         private void _gridFRS_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
             if (_gridFRS == null || _gridFRS.Rows.Count < 3) return;
-            decimal cscWeight = GetWeightFromTable(_gridFRS, 2, 2);
-            decimal psrWeight = GetWeightFromTable(_gridFRS, 3, 2);
-            decimal ddsWeight = GetWeightFromTable(_gridFRS, 4, 2);
-            decimal srcWeight = GetWeightFromTable(_gridFRS, 5, 2);
-            decimal ratioWeight = GetWeightFromTable(_gridFRS, 6, 2);
-            decimal totalReturnWeight = GetWeightFromTable(_gridFRS, 7, 2);
-            decimal totalDrawDownWeight = GetWeightFromTable(_gridFRS, 8, 2);
+            decimal pprWeight = GetWeightFromTable(_gridFRS, 2, 2);
+            decimal trWeight = GetWeightFromTable(_gridFRS, 3, 2);
+            decimal gprWeight = GetWeightFromTable(_gridFRS, 4, 2);
 
-            if (_cscWeight != cscWeight ||
-                _psrWeight != psrWeight ||
-                _ddsWeight != ddsWeight ||
-                _srcWeight != srcWeight ||
-                _ratioWeight != ratioWeight ||
-                _totalReturnWeight != totalReturnWeight ||
-                _totalDrowDownWeight != totalDrawDownWeight)
+            if (_pprWeight != pprWeight ||
+                _trWeight != trWeight ||
+                _gprWeight != gprWeight)
             {
-                _cscWeight = cscWeight;
-                _psrWeight = psrWeight;
-                _ddsWeight = ddsWeight;
-                _srcWeight = srcWeight;
-                _ratioWeight = ratioWeight;
-                _totalReturnWeight = totalReturnWeight;
-                _totalDrowDownWeight = totalDrawDownWeight;
+                _pprWeight = pprWeight;
+                _trWeight = trWeight;
+                _gprWeight = gprWeight;
             }
         }
 
-        public void UpdateWeights(decimal csc, decimal psr, decimal dds, decimal src, decimal ratio, decimal totalReturn, decimal totalDrawDown)
+        public void UpdateWeights(decimal ppr, decimal tr, decimal gpr)
         {
-            _cscWeight = csc;
-            _psrWeight = psr;
-            _ddsWeight = dds;
-            _srcWeight = src;
-            _ratioWeight = ratio;
-            _totalReturnWeight = totalReturn;
-            _totalDrowDownWeight = totalDrawDown;
+            _pprWeight = ppr;
+            _trWeight = tr;
+            _gprWeight = gpr;
             Updateweights();
         }
 
         public event EventHandler WeightsChanged;
         internal void Updateweights()
         {
-            decimal sum = _cscWeight + _psrWeight + _ddsWeight + _srcWeight + _ratioWeight + _totalReturnWeight + _totalDrowDownWeight;
+            decimal sum = _pprWeight + _trWeight + _gprWeight;
             try
             {
-                _cscWeight /= sum;
-                _psrWeight /= sum;
-                _ddsWeight /= sum;
-                _srcWeight /= sum;
-                _ratioWeight /= sum;
-                _totalReturnWeight /= sum;
-                _totalDrowDownWeight /= sum;
+                _pprWeight /= sum;
+                _trWeight /= sum;
+                _gprWeight /= sum;
             }
             catch
             {
-                _cscWeight = 1m;
-                _psrWeight = 1m;
-                _ddsWeight = 1m;
-                _srcWeight = 1m;
-                _ratioWeight = 1m;
-                _totalReturnWeight = 1m;
-                _totalDrowDownWeight = 1m;
+                _pprWeight = 1m;
+                _trWeight = 1m;
+                _gprWeight = 1m;
             }
 
             WeightsChanged.Invoke(this, EventArgs.Empty);
@@ -556,13 +519,9 @@ namespace OsEngine.OsOptimizer
 
                 AddCell(row0, "Robot");
                 AddCell(row0, bot.FRS);
-                AddCell(row0, bot.CSC);
-                AddCell(row0, bot.PSR);
-                AddCell(row0, bot.DDS);
-                AddCell(row0, bot.SRC);
-                AddCell(row0, bot.Ratio);
-                AddCell(row0, bot.TotalReturn);
-                AddCell(row0, bot.TotalDrawDown);
+                AddCell(row0, bot.PPR);
+                AddCell(row0, bot.TR);
+                AddCell(row0, bot.GPR);
 
                 _gridFRS.Rows.Add(row0);
 
@@ -570,14 +529,10 @@ namespace OsEngine.OsOptimizer
                 row1.Height = 30;
 
                 AddCell(row1, "Strategy");
-                AddCell(row1, _strategyCSC);
-                AddCell(row1, _strategyPSR);
-                AddCell(row1, _strategyDDS);
-                AddCell(row1, _strategySRC);
                 AddCell(row1, _strategyFRS);
-                AddCell(row1, "");
-                AddCell(row1, "");
-                AddCell(row1, "");
+                AddCell(row1, _strategyPPR);
+                AddCell(row1, _strategyTR);
+                AddCell(row1, _strategyGPR);
 
                 _gridFRS.Rows.Add(row1);
 
@@ -587,13 +542,9 @@ namespace OsEngine.OsOptimizer
 
                 AddCell(row2, "FRS weights");
                 AddCell(row2, "-");
-                AddCell(row2, _cscWeight, false);
-                AddCell(row2, _psrWeight, false);
-                AddCell(row2, _ddsWeight, false);
-                AddCell(row2, _srcWeight, false);
-                AddCell(row2, _ratioWeight, false);
-                AddCell(row2, _totalReturnWeight, false);
-                AddCell(row2, _totalDrowDownWeight, false);
+                AddCell(row2, _pprWeight, false);
+                AddCell(row2, _trWeight, false);
+                AddCell(row2, _gprWeight, false);
 
                 _gridFRS.Rows.Add(row2);
 
@@ -603,13 +554,9 @@ namespace OsEngine.OsOptimizer
 
                 AddCell(row3, "Rank");
                 AddCell(row3, $"{bot.FRSRank}/{botCount}");
-                AddCell(row3, $"{bot.CSCRank}/{botCount}");
-                AddCell(row3, $"{bot.PSRRank}/{botCount}");
-                AddCell(row3, $"{bot.DDSRank}/{botCount}");
-                AddCell(row3, $"{bot.SRCRank}/{botCount}");
-                AddCell(row3, $"{bot.RatioRank}/{botCount}");
-                AddCell(row3, $"{bot.TotalReturnRank}/{botCount}");
-                AddCell(row3, $"{bot.TotalDrawDownRank}/{botCount}");
+                AddCell(row3, $"{bot.PPRRank}/{botCount}");
+                AddCell(row3, $"{bot.TRRank}/{botCount}");
+                AddCell(row3, $"{bot.GPRRank}/{botCount}");
                 _gridFRS.Rows.Add(row3);
             }
             catch { }
@@ -798,15 +745,11 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private decimal _strategyCSC;
-
-        private decimal _strategyPSR;
-
-        private decimal _strategyDDS;
-
-        private decimal _strategySRC;
-
         private decimal _strategyFRS;
+        private decimal _strategyPPR;
+        private decimal _strategyTR;
+        private decimal _strategyGPR;
+
 
         /// <summary>
         /// Список репортов с заполненными полями для третьей вкладки, так как показатели считаются для одного робота со всех периодов, они будут одинаковые
@@ -819,13 +762,9 @@ namespace OsEngine.OsOptimizer
             {
                 foreach (var r in reports.SelectMany(r => r.Reports))
                 {
-                    r.FRS =     r.CSC * _cscWeight +
-                                r.PSR * _psrWeight +
-                                r.DDS * _ddsWeight +
-                                r.SRC * _srcWeight +
-                                r.Ratio * _ratioWeight +
-                                r.TotalReturn * _totalReturnWeight +
-                                r.TotalDrawDown * _totalDrowDownWeight;
+                    r.FRS =     r.PPR * _pprWeight +
+                                r.TR * _trWeight +
+                                r.GPR * _gprWeight;
                 }
 
                 List<IGrouping<decimal, OptimizerReport>> frsRankGroup = reportsForCSCTable.Values.GroupBy(r => r.FRS).ToList();
@@ -841,7 +780,6 @@ namespace OsEngine.OsOptimizer
             }
 
             var insamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample);
-
             // Формируется словарь, в котором для каждого in sample хранится свой out of sample (последний in sample без out of sample отбрасывается)
             Dictionary<OptimazerFazeReport, OptimazerFazeReport> pairs = new Dictionary<OptimazerFazeReport, OptimazerFazeReport>();
             foreach (OptimazerFazeReport @is in insamples)
@@ -852,7 +790,7 @@ namespace OsEngine.OsOptimizer
                     pairs.Add(@is, oos);
                 }
             }
-
+            
             // Для каждого бота, который отличается по строковому ключу, генерирующегося из его параметров, составляется словарь из переиодов insample и соответствующим им out of sample
             Dictionary<string, Dictionary<OptimizerReport, OptimizerReport>> allReports = new Dictionary<string, Dictionary<OptimizerReport, OptimizerReport>>();
             Parallel.ForEach(pairs, pair =>
@@ -888,75 +826,23 @@ namespace OsEngine.OsOptimizer
                     IEnumerable<OptimizerReport> allOutSampleReports = group.Value.Values.Select(r => r);
 
                     CalculateBots( group.Value,
-                                out decimal csc,
-                                out decimal psr,
-                                out decimal dds,
-                                out decimal src,
                                 out decimal frs,
-                                out decimal ratio,
-                                out decimal totalReturn,
-                                out decimal totalDrawDown);
+                                out decimal ppr,
+                                out decimal tr,
+                                out decimal gpr);
 
                     foreach (var r in allInSampleReports.Union(allOutSampleReports))
                     {
-                        r.CSC = csc;
-                        r.PSR = psr;
-                        r.DDS = dds;
-                        r.SRC = src;
                         r.FRS = frs;
-                        r.Ratio = ratio;
-                        r.TotalReturn = totalReturn;
-                        r.TotalDrawDown = totalDrawDown;
+                        r.PPR = ppr;
+                        r.TR = tr;
+                        r.GPR = gpr;
                     }
                 });
 
                 var results = allReports.Values.Select(p => p.Keys.FirstOrDefault());
 
-                Parallel.Invoke(() => 
-                {
-                    List<IGrouping<decimal, OptimizerReport>> cscRankGroup = results.GroupBy(r => r.CSC).ToList();
-                    cscRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().CSC.CompareTo(r1.First().CSC)));
-                    for (int i = 0; i < cscRankGroup.Count; i++)
-                    {
-                        foreach (OptimizerReport report in cscRankGroup[i])
-                        {
-                            report.CSCRank = i + 1;
-                        }
-                    }
-                }, ()=> 
-                {
-                    List<IGrouping<decimal, OptimizerReport>> psrRankGroup = results.GroupBy(r => r.PSR).ToList();
-                    psrRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().PSR.CompareTo(r1.First().PSR)));
-                    for (int i = 0; i < psrRankGroup.Count; i++)
-                    {
-                        foreach (OptimizerReport report in psrRankGroup[i])
-                        {
-                            report.PSRRank = i + 1;
-                        }
-                    }
-                }, () =>
-                {
-                    List<IGrouping<decimal, OptimizerReport>> ddsRankGroup = results.GroupBy(r => r.DDS).ToList();
-                    ddsRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().DDS.CompareTo(r1.First().DDS)));
-                    for (int i = 0; i < ddsRankGroup.Count; i++)
-                    {
-                        foreach (OptimizerReport report in ddsRankGroup[i])
-                        {
-                            report.DDSRank = i + 1;
-                        }
-                    }
-                }, () =>
-                {
-                    List<IGrouping<decimal, OptimizerReport>> srcRankGroup = results.GroupBy(r => r.SRC).ToList();
-                    srcRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().SRC.CompareTo(r1.First().SRC)));
-                    for (int i = 0; i < srcRankGroup.Count; i++)
-                    {
-                        foreach (OptimizerReport report in srcRankGroup[i])
-                        {
-                            report.SRCRank = i + 1;
-                        }
-                    }
-                }, () =>
+                Parallel.Invoke(() =>
                 {
                     List<IGrouping<decimal, OptimizerReport>> frsRankGroup = results.GroupBy(r => r.FRS).ToList();
                     frsRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().FRS.CompareTo(r1.First().FRS)));
@@ -969,35 +855,35 @@ namespace OsEngine.OsOptimizer
                     }
                 }, () =>
                 {
-                    List<IGrouping<decimal, OptimizerReport>> ratioRankGroup = results.GroupBy(r => r.Ratio).ToList();
-                    ratioRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().Ratio.CompareTo(r1.First().Ratio)));
-                    for (int i = 0; i < ratioRankGroup.Count; i++)
+                    List<IGrouping<decimal, OptimizerReport>> pprRankGroup = results.GroupBy(r => r.PPR).ToList();
+                    pprRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().PPR.CompareTo(r1.First().PPR)));
+                    for (int i = 0; i < pprRankGroup.Count; i++)
                     {
-                        foreach (OptimizerReport report in ratioRankGroup[i])
+                        foreach (OptimizerReport report in pprRankGroup[i])
                         {
-                            report.RatioRank = i + 1;
+                            report.PPRRank = i + 1;
                         }
                     }
                 }, () =>
                 {
-                    List<IGrouping<decimal, OptimizerReport>> totalReturnRankGroup = results.GroupBy(r => r.TotalReturn).ToList();
-                    totalReturnRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalReturn.CompareTo(r1.First().TotalReturn)));
-                    for (int i = 0; i < totalReturnRankGroup.Count; i++)
+                    List<IGrouping<decimal, OptimizerReport>> trRankGroup = results.GroupBy(r => r.TR).ToList();
+                    trRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TR.CompareTo(r1.First().TR)));
+                    for (int i = 0; i < trRankGroup.Count; i++)
                     {
-                        foreach (OptimizerReport report in totalReturnRankGroup[i])
+                        foreach (OptimizerReport report in trRankGroup[i])
                         {
-                            report.TotalReturnRank = i + 1;
+                            report.TRRank = i + 1;
                         }
                     }
                 }, () =>
                 {
-                    List<IGrouping<decimal, OptimizerReport>> totalDrawDownRankGroup = results.GroupBy(r => r.TotalDrawDown).ToList();
-                    totalDrawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalDrawDown.CompareTo(r1.First().TotalDrawDown)));
-                    for (int i = 0; i < totalDrawDownRankGroup.Count; i++)
+                    List<IGrouping<decimal, OptimizerReport>> gprRankGroup = results.GroupBy(r => r.GPR).ToList();
+                    gprRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().GPR.CompareTo(r1.First().GPR)));
+                    for (int i = 0; i < gprRankGroup.Count; i++)
                     {
-                        foreach (OptimizerReport report in totalDrawDownRankGroup[i])
+                        foreach (OptimizerReport report in gprRankGroup[i])
                         {
-                            report.TotalDrawDownRank = i + 1;
+                            report.GPRRank = i + 1;
                         }
                     }
                 });
@@ -1011,83 +897,85 @@ namespace OsEngine.OsOptimizer
             }, () =>
             {
                 var stratDictionary = allReports.Values.Aggregate((x1, x2) => { return x1.Concat(x2).ToDictionary(x => x.Key, x => x.Value); });
-                CalculateBots(stratDictionary, out decimal csc, out decimal psr, out decimal dds, out decimal src, out decimal frs, out _, out _, out _);
-                _strategyCSC = csc;
-                _strategyPSR = psr;
-                _strategyDDS = dds;
-                _strategySRC = src;
+                CalculateBots(stratDictionary, out decimal frs, out decimal ppr, out decimal tr, out decimal gpr);
                 _strategyFRS = frs;
+                _strategyPPR = ppr;
+                _strategyTR = tr;
+                _strategyGPR = gpr;
             });
 
             void CalculateBots(Dictionary<OptimizerReport, OptimizerReport> dicReports,
-                            out decimal csc,
-                            out decimal psr,
-                            out decimal dds,
-                            out decimal src,
                             out decimal frs,
-                            out decimal ratio,
-                            out decimal totalReturn,
-                            out decimal totalDrawDown)
+                            out decimal ppr,
+                            out decimal tr,
+                            out decimal gpr)
             {
                 IEnumerable<OptimizerReport> allInSampleReports = dicReports.Keys.Select(r => r);
                 IEnumerable<OptimizerReport> allOutSampleReports = dicReports.Values.Select(r => r);
                 decimal avgProfitIS = allInSampleReports.Sum(r => r.AverageProfit) / allInSampleReports.Count();
                 decimal avgProfitOOS = allOutSampleReports.Sum(r => r.AverageProfit) / allOutSampleReports.Count();
-                csc = 0;
-                psr = 0;
-                dds = 0;
-                src = 0;
-                if (avgProfitIS > 0 && avgProfitOOS > 0)
+                
+                ppr = GetPPR(dicReports);
+                tr = GetTR(allOutSampleReports);
+                gpr = GetGPR(allInSampleReports, allOutSampleReports);
+
+                frs =   _pprWeight * ppr +
+                        _trWeight * tr +
+                        _gprWeight * gpr;
+            }
+
+            decimal CalculateTotalProfit(OptimizerReport firstInSamples, IEnumerable<OptimizerReport> allOutOfSamples)
+            {
+                // для правого графика? (переместить)
+                return firstInSamples.TotalProfit + allOutOfSamples.Sum(r => r.TotalProfit);
+            }
+
+            decimal GetMaxDrawDown(IEnumerable<OptimizerReport> allInSamples, IEnumerable<OptimizerReport> allOutOfSamples)
+            {
+                return Math.Max(allInSamples.Max(r => Math.Abs(r.MaxDrowDawn)), allOutOfSamples.Max(r => Math.Abs(r.MaxDrowDawn)));
+            }
+
+            decimal GetPPR(Dictionary<OptimizerReport, OptimizerReport> reportPairs)
+            {
+                int count = 0;
+                foreach (var pair in reportPairs)
                 {
-                    csc = (1 - (Math.Abs(avgProfitIS - avgProfitOOS) / Math.Max(avgProfitIS, avgProfitOOS))) * 100;
-                }
-
-                int psrCounter = 0;
-                foreach (var pair in dicReports)
-                {
-                    psrCounter += Math.Sign(pair.Key.TotalProfit) == Math.Sign(pair.Value.TotalProfit) ? 1 : 0;
-                }
-
-                psr = ((decimal)psrCounter / dicReports.Count) * 100;
-
-                decimal avgDDIS = allInSampleReports.Sum(r => r.MaxDrowDawn) / allInSampleReports.Count();
-                decimal avgDDOOS = allOutSampleReports.Sum(r => r.MaxDrowDawn) / allOutSampleReports.Count();
-                if (avgDDIS != 0)
-                {
-                    dds = (1 - ((avgDDOOS / avgDDIS) - 1)) * 100;
-                    dds = Math.Max(0, dds);
-                }
-
-                double[] sharpIS = allInSampleReports.Select(r => (double)r.SharpRatio).ToArray();
-                double[] sharpOOS = allOutSampleReports.Select(r => (double)r.SharpRatio).ToArray();
-
-                // Ещё можно использовать CorrelationBuilder.Correlation(sharpIS, sharpOOS), даёт похожие результаты, но иногда возвращает NaN
-                using (Chart chart = new Chart())
-                using (Series ser1 = new Series("1"))
-                using (Series ser2 = new Series("2"))
-                {
-                    for (int i = 0; i < sharpOOS.Length; i++)
+                    if (pair.Key.TotalProfit > 0 && pair.Value.TotalProfit > 0)
                     {
-                        ser1.Points.AddXY(i, sharpIS[i]);
-                        ser2.Points.AddXY(i, sharpOOS[i]);
+                        count++;
                     }
-
-                    chart.Series.Add(ser1);
-                    chart.Series.Add(ser2);
-                    src = (decimal)((chart.DataManipulator.Statistics.Correlation("1", "2") + 1) / 2) * 100;
                 }
+                return ((decimal)count) / ((decimal)reportPairs.Count);
+            }
 
-                totalDrawDown = allOutSampleReports.Sum(r => Math.Abs(r.MaxDrowDawn));
-                totalReturn = allOutSampleReports.Sum(r => r.TotalProfit);
-                ratio = totalDrawDown == 0 ? 0 : totalReturn / totalDrawDown;
+            decimal GetMedian(IEnumerable<decimal> numbers)
+            {
+                List<decimal> list = numbers.ToList();
+                list.Sort();
+                if (list.Count % 2 == 1)
+                {
+                    int index = list.Count / 2;
+                    return list[index];
+                }
+                else
+                {
+                    int index = list.Count / 2;
+                    return (list[index] + list[index - 1]) / 2;
+                }
+            }
 
-                frs = _cscWeight * csc +
-                                _psrWeight * psr +
-                                _ddsWeight * dds +
-                                _srcWeight * src +
-                                _ratioWeight * ratio +
-                                _totalReturnWeight * totalReturn +
-                                _totalDrowDownWeight * totalDrawDown;
+            decimal GetTR(IEnumerable<OptimizerReport> outOfSamples)
+            {
+                decimal median = GetMedian(outOfSamples.Select(r => r.TotalProfit));
+                decimal average = outOfSamples.Select(r => r.TotalProfit).Sum() / outOfSamples.Count();
+                return 1 - Math.Abs((average - median) / average);
+            }
+
+            decimal GetGPR(IEnumerable<OptimizerReport> inSamples, IEnumerable<OptimizerReport> outOfSamples)
+            {
+                decimal positiveIsCount = inSamples.Where(r => r.TotalProfit > 0).Count();
+                decimal positiveOsCount = outOfSamples.Where(r => r.TotalProfit > 0).Count();
+                return (positiveIsCount + positiveOsCount)/(inSamples.Count() + outOfSamples.Count());
             }
         }
 
@@ -1174,20 +1062,6 @@ namespace OsEngine.OsOptimizer
             _chartRobustness.SuppressExceptions = true;
         }
 
-        private void GetCSC()
-        {
-            if (_gridStepsOfOptimizationCSC.InvokeRequired)
-            {
-                _gridStepsOfOptimizationCSC.Invoke(new Action(GetCSC));
-                return;
-            }
-            try
-            {
-                CSCCalculated?.Invoke(this, _reports[0].Reports[_sortBotNumber].CSC);
-            }
-            catch
-            { }
-        }
 
         private void UpdateRobustnessChart()
         {

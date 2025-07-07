@@ -154,29 +154,17 @@ namespace OsEngine.OsOptimizer
             Comparison<OptimizerReport> func = null;
             switch (sortType)
             {
-                case CSCSortType.CSC:
-                    func = (rep1, rep2) => rep2.CSC.CompareTo(rep1.CSC);
-                    break;
-                case CSCSortType.PSR:
-                    func = (rep1, rep2) => rep2.PSR.CompareTo(rep1.PSR);
-                    break;
-                case CSCSortType.DDS:
-                    func = (rep1, rep2) => rep2.DDS.CompareTo(rep1.DDS);
-                    break;
-                case CSCSortType.SRC:
-                    func = (rep1, rep2) => rep2.SRC.CompareTo(rep1.SRC);
-                    break;
                 case CSCSortType.FRS:
                     func = (rep1, rep2) => rep2.FRS.CompareTo(rep1.FRS);
                     break;
-                case CSCSortType.Ratio:
-                    func = (rep1, rep2) => rep2.Ratio.CompareTo(rep1.Ratio);
+                case CSCSortType.PPR:
+                    func = (rep1, rep2) => rep2.PPR.CompareTo(rep1.PPR);
                     break;
-                case CSCSortType.TotalReturn:
-                    func = (rep1, rep2) => rep2.TotalReturn.CompareTo(rep1.TotalReturn);
+                case CSCSortType.TR:
+                    func = (rep1, rep2) => rep2.TR.CompareTo(rep1.TR);
                     break;
-                case CSCSortType.TotalDrawDown:
-                    func = (rep1, rep2) => rep2.TotalDrawDown.CompareTo(rep1.TotalDrawDown);
+                case CSCSortType.GPR:
+                    func = (rep1, rep2) => rep2.GPR.CompareTo(rep1.GPR);
                     break;
             }
 
@@ -437,37 +425,22 @@ namespace OsEngine.OsOptimizer
 
         public decimal SmaDeviation;
 
-        public decimal CSC;
-
-        public int CSCRank;
-
-        public decimal PSR;
-
-        public int PSRRank;
-
-        public decimal DDS;
-
-        public int DDSRank;
-
-        public decimal SRC;
-
-        public int SRCRank;
 
         public decimal FRS;
 
         public int FRSRank;
 
-        public decimal Ratio;
+        public decimal PPR;
 
-        public int RatioRank;
+        public int PPRRank;
 
-        public decimal TotalReturn;
+        public decimal TR;
 
-        public int TotalReturnRank;
+        public int TRRank;
 
-        public decimal TotalDrawDown;
+        public decimal GPR;
 
-        public int TotalDrawDownRank;
+        public int GPRRank;
 
         public string GetSaveString()
         {

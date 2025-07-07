@@ -51,7 +51,6 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
-            _resultsCharting.CSCCalculated += _resultsCharting_CSCCalculated;
 
             CheckBoxDataCapture.IsChecked = _captureData;
             CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
@@ -85,13 +84,9 @@ namespace OsEngine.OsOptimizer
             }
             TabControlResults.SelectionChanged += TabControlResults_SelectionChanged;
             _resultsCharting.WeightsChanged += _master.UpdateWeights;
-            _resultsCharting.UpdateWeights( _master.CscWeight,
-                                            _master.PsrWeight,
-                                            _master.DdsWeight,
-                                            _master.SrcWeight,
-                                            _master.RatioWeight,
-                                            _master.TotalReturnWeight,
-                                            _master.TotalDrowDownWeight);
+            _resultsCharting.UpdateWeights( _master.PPRWeight,
+                                            _master.TRWeight,
+                                            _master.GPRWeight);
 
             this.Activate();
             this.Focus();
@@ -107,11 +102,6 @@ namespace OsEngine.OsOptimizer
             {
                 _resultsCharting.ReLoad(_reports);
             }
-        }
-
-        private void _resultsCharting_CSCCalculated(object sender, decimal e)
-        {
-            LabelCSCMetricValue.Content = e;
         }
 
         public void Paint(List<OptimazerFazeReport> reports)
