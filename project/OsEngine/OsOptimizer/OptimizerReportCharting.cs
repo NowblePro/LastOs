@@ -434,6 +434,9 @@ namespace OsEngine.OsOptimizer
                 _gridFRS.Columns.Add(GetColumn("PPR", 80, readOnly: false));
                 _gridFRS.Columns.Add(GetColumn("TR", 80, readOnly: false));
                 _gridFRS.Columns.Add(GetColumn("GPR", 110, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("Total Profit", 110, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("Max DrawDown", 110, readOnly: false));
+                _gridFRS.Columns.Add(GetColumn("TProfit/MaxDD", 110, readOnly: false));
 
                 _gridFRS.Rows.Add(null, null);
                 _gridFRS.CellValueChanged += _gridFRS_CellValueChanged;
@@ -530,6 +533,9 @@ namespace OsEngine.OsOptimizer
                 AddCell(row0, bot.PPR);
                 AddCell(row0, bot.TR);
                 AddCell(row0, bot.GPR);
+                AddCell(row0, bot.TotalProfitAllPeriod);
+                AddCell(row0, bot.MaxDrawDownAllPeriod);
+                AddCell(row0, bot.ProfitToDrawDownAllPeriod);
 
                 _gridFRS.Rows.Add(row0);
 
@@ -541,6 +547,9 @@ namespace OsEngine.OsOptimizer
                 AddCell(row1, _strategyPPR);
                 AddCell(row1, _strategyTR);
                 AddCell(row1, _strategyGPR);
+                AddCell(row1, "-");
+                AddCell(row1, "-");
+                AddCell(row1, "-");
 
                 _gridFRS.Rows.Add(row1);
 
@@ -553,6 +562,9 @@ namespace OsEngine.OsOptimizer
                 AddCell(row2, _pprWeight, false);
                 AddCell(row2, _trWeight, false);
                 AddCell(row2, _gprWeight, false);
+                AddCell(row2, "-");
+                AddCell(row2, "-");
+                AddCell(row2, "-");
 
                 _gridFRS.Rows.Add(row2);
 
@@ -565,6 +577,9 @@ namespace OsEngine.OsOptimizer
                 AddCell(row3, $"{bot.PPRRank}/{botCount}");
                 AddCell(row3, $"{bot.TRRank}/{botCount}");
                 AddCell(row3, $"{bot.GPRRank}/{botCount}");
+                AddCell(row3, $"{bot.TotalProfitAllPeriodRank}/{botCount}");
+                AddCell(row3, $"{bot.MaxDrawDownAllPeriodRank}/{botCount}");
+                AddCell(row3, $"{bot.ProfitToDrawDownAllPeriodRank}/{botCount}");
                 _gridFRS.Rows.Add(row3);
             }
             catch { }
@@ -574,6 +589,7 @@ namespace OsEngine.OsOptimizer
         {
             DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
             cell.Value = Math.Round(value, 3);
+            cell.ToolTipText = $"{value}";
             row.Cells.Add(cell);
             cell.ReadOnly = readOnly;
         }
@@ -788,6 +804,7 @@ namespace OsEngine.OsOptimizer
             }
 
             var insamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample);
+            var outsamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.OutOfSample);
             // Формируется словарь, в котором для каждого in sample хранится свой out of sample (последний in sample без out of sample отбрасывается)
             Dictionary<OptimazerFazeReport, OptimazerFazeReport> pairs = new Dictionary<OptimazerFazeReport, OptimazerFazeReport>();
             foreach (OptimazerFazeReport @is in insamples)
@@ -894,6 +911,73 @@ namespace OsEngine.OsOptimizer
                             report.GPRRank = i + 1;
                         }
                     }
+                }, () =>
+                {
+                    Parallel.Invoke(() =>
+                    {
+                        DateTime start = insamples.Min(f => f.Faze.TimeStart);
+                        OptimazerFazeReport startIS = insamples.Where(f => f.Faze.TimeStart == start).Single();
+                        Parallel.ForEach(startIS.Reports, (inSample) =>
+                        {
+                            IEnumerable<OptimizerReport> outOfSamples = outsamples.SelectMany(o => o.Reports).Where(r => r.GetParamsToDataTable() == inSample.GetParamsToDataTable());
+                            decimal profit = CalculateTotalProfit(inSample, outOfSamples);
+                            foreach (var r in reports.SelectMany(f => f.Reports).Where(r => r.GetParamsToDataTable() == inSample.GetParamsToDataTable()))
+                            {
+                                r.TotalProfitAllPeriod = profit;
+                            }
+                        });
+                    }, () =>
+                    {
+                        Parallel.ForEach(allReports, (pair) =>
+                        {
+                            decimal maxDrawDown = GetMaxDrawDown(pair.Value.Keys, pair.Value.Values);
+                            foreach (var report in reports.SelectMany(r => r.Reports).Where(r => r.GetParamsToDataTable() == pair.Key))
+                            {
+                                report.MaxDrawDownAllPeriod = maxDrawDown;
+                            }
+                        });
+                    });
+
+                    Parallel.ForEach(reports.SelectMany(f => f.Reports), (r) =>
+                    {
+                        r.ProfitToDrawDownAllPeriod = r.TotalProfitAllPeriod / r.MaxDrawDownAllPeriod;
+                    });
+
+                    Parallel.Invoke(() =>
+                    {
+                        List<IGrouping<decimal, OptimizerReport>> profitRankGroup = results.GroupBy(r => r.TotalProfitAllPeriod).ToList();
+                        profitRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalProfitAllPeriod.CompareTo(r1.First().TotalProfitAllPeriod)));
+                        for (int i = 0; i < profitRankGroup.Count; i++)
+                        {
+                            foreach (OptimizerReport report in profitRankGroup[i])
+                            {
+                                report.TotalProfitAllPeriodRank = i + 1;
+                            }
+                        }
+                    }, () =>
+                    {
+                        List<IGrouping<decimal, OptimizerReport>> drawDownRankGroup = results.GroupBy(r => r.TotalProfitAllPeriod).ToList();
+                        drawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r1.First().MaxDrawDownAllPeriod.CompareTo(r2.First().MaxDrawDownAllPeriod)));
+                        for (int i = 0; i < drawDownRankGroup.Count; i++)
+                        {
+                            foreach (OptimizerReport report in drawDownRankGroup[i])
+                            {
+                                report.MaxDrawDownAllPeriodRank = i + 1;
+                            }
+                        }
+                    }
+                    , () =>
+                    {
+                        List<IGrouping<decimal, OptimizerReport>> profitToDrawDownRankGroup = results.GroupBy(r => r.ProfitToDrawDownAllPeriod).ToList();
+                        profitToDrawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().ProfitToDrawDownAllPeriod.CompareTo(r1.First().ProfitToDrawDownAllPeriod)));
+                        for (int i = 0; i < profitToDrawDownRankGroup.Count; i++)
+                        {
+                            foreach (OptimizerReport report in profitToDrawDownRankGroup[i])
+                            {
+                                report.ProfitToDrawDownAllPeriodRank = i + 1;
+                            }
+                        }
+                    });
                 });
 
                 reportsForCSCTable.Clear();
@@ -934,7 +1018,6 @@ namespace OsEngine.OsOptimizer
 
             decimal CalculateTotalProfit(OptimizerReport firstInSamples, IEnumerable<OptimizerReport> allOutOfSamples)
             {
-                // для правого графика? (переместить)
                 return firstInSamples.TotalProfit + allOutOfSamples.Sum(r => r.TotalProfit);
             }
 

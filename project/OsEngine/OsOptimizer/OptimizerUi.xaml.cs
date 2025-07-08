@@ -3462,6 +3462,9 @@ namespace OsEngine.OsOptimizer
         FRS,
         PPR,
         TR,
-        GPR
+        GPR,
+        TotalProfit,
+        MaxDrawDown,
+        ProfitToDrawDown
     }
 }

@@ -166,6 +166,16 @@ namespace OsEngine.OsOptimizer
                 case CSCSortType.GPR:
                     func = (rep1, rep2) => rep2.GPR.CompareTo(rep1.GPR);
                     break;
+                case CSCSortType.TotalProfit:
+                    func = (rep1, rep2) => rep2.TotalProfitAllPeriod.CompareTo(rep1.TotalProfitAllPeriod);
+                    break;
+                case CSCSortType.MaxDrawDown:
+                    // Обратная сортировка (наименьший - лучший результат)
+                    func = (rep1, rep2) => rep1.MaxDrawDownAllPeriod.CompareTo(rep2.MaxDrawDownAllPeriod);
+                    break;
+                case CSCSortType.ProfitToDrawDown:
+                    func = (rep1, rep2) => rep2.ProfitToDrawDownAllPeriod.CompareTo(rep1.ProfitToDrawDownAllPeriod);
+                    break;
             }
 
             if (func != null)
@@ -447,6 +457,24 @@ namespace OsEngine.OsOptimizer
         public decimal GPR;
 
         public int GPRRank;
+
+        /// <summary>
+        /// Общий доход за все периоды, суммируются: первый период In Sample и все периоды Out Of Sample, чтобы избежать повторного суммирования из-за наложения периодов
+        /// </summary>
+        public decimal TotalProfitAllPeriod;
+        public int TotalProfitAllPeriodRank;
+
+        /// <summary>
+        /// Максимальная просадка за все периоды
+        /// </summary>
+        public decimal MaxDrawDownAllPeriod;
+        public int MaxDrawDownAllPeriodRank;
+        /// <summary>
+        /// Отношение дохода за все периоды к максимальной просаде
+        /// </summary>
+        public decimal ProfitToDrawDownAllPeriod;
+        public int ProfitToDrawDownAllPeriodRank;
+
 
         public string GetSaveString()
         {
