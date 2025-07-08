@@ -215,45 +215,48 @@ namespace OsEngine.OsTrader.Panels.Tab
 
         public void calcJsonStatistics()
         {
+            if (_jsonData == null)
+            {
+                _jsonData = new JsonRunData();
+            }
+            if (_jsonData.statistics == null)
+            {
+                _jsonData.statistics = new JsonStatistics();
+            }
+
             List<string> positionsAllState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllPositions);
             List<string> positionsLongState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllLongPositions);
             List<string> positionsShortState = PositionStatisticGenerator.GetStatisticNew(_journal.CloseAllShortPositions);
 
-            JsonStatistics statistics = new JsonStatistics
-            {
-                total_profit = 0.0m,
-                sharp_ratio = 0.0m,
-                max_sma_deviation = 0.0m,
-                profit_factor = 0.0m,
-                recovery = 0.0m,
-                max_drow_down = 0.0m
-            };
-
             if (positionsAllState != null)
             {
-                statistics.total_profit = positionsAllState[0].ToDecimal();
-                statistics.long_total_profit = positionsLongState[0].ToDecimal();
-                statistics.short_total_profit = positionsShortState[0].ToDecimal();
-                statistics.total_profit_percent = positionsAllState[1].ToDecimal();
-                statistics.long_total_profit_percent = positionsLongState[1].ToDecimal();
-                statistics.short_total_profit_percent = positionsShortState[1].ToDecimal();
-                statistics.position_count = ((int)positionsAllState[2].ToDecimal());
-                statistics.long_position_count = ((int)positionsLongState[2].ToDecimal());
-                statistics.short_position_count = ((int)positionsShortState[2].ToDecimal());
-                statistics.sharp_ratio = positionsAllState[4].ToDecimal();
-                statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
-                statistics.profit_factor = positionsAllState[6].ToDecimal();
-                statistics.recovery = positionsAllState[7].ToDecimal();
-                statistics.max_drow_down = positionsAllState[30].ToDecimal();
-                statistics.profit_positions = ((int)positionsAllState[14].ToDecimal());
-                statistics.long_profit_positions = ((int)positionsLongState[14].ToDecimal());
-                statistics.short_profit_positions = ((int)positionsShortState[14].ToDecimal());
-                statistics.loss_positions = ((int)positionsAllState[22].ToDecimal());
-                statistics.long_loss_positions = ((int)positionsLongState[22].ToDecimal());
-                statistics.short_loss_positions = ((int)positionsShortState[22].ToDecimal());
+                _jsonData.statistics.total_profit = positionsAllState[0].ToDecimal();
+                _jsonData.statistics.total_profit_percent = positionsAllState[1].ToDecimal();
+                _jsonData.statistics.position_count = ((int)positionsAllState[2].ToDecimal());
+                _jsonData.statistics.sharp_ratio = positionsAllState[4].ToDecimal();
+                _jsonData.statistics.max_sma_deviation = positionsAllState[5].ToDecimal();
+                _jsonData.statistics.profit_factor = positionsAllState[6].ToDecimal();
+                _jsonData.statistics.recovery = positionsAllState[7].ToDecimal();
+                _jsonData.statistics.max_drow_down = positionsAllState[30].ToDecimal();
+                _jsonData.statistics.profit_positions = ((int)positionsAllState[14].ToDecimal());
+                _jsonData.statistics.loss_positions = ((int)positionsAllState[22].ToDecimal());
             }
-
-            _jsonData.statistics = statistics;
+            if (positionsLongState != null)
+            {
+                _jsonData.statistics.long_total_profit = positionsLongState[0].ToDecimal();
+                _jsonData.statistics.long_total_profit_percent = positionsLongState[1].ToDecimal();
+                _jsonData.statistics.long_position_count = ((int)positionsLongState[2].ToDecimal());
+                _jsonData.statistics.long_profit_positions = ((int)positionsLongState[14].ToDecimal());
+                _jsonData.statistics.long_loss_positions = ((int)positionsLongState[22].ToDecimal());
+            }
+            if (positionsShortState != null)
+            {
+                _jsonData.statistics.short_total_profit = positionsShortState[0].ToDecimal();
+                _jsonData.statistics.short_total_profit_percent = positionsShortState[1].ToDecimal();
+                _jsonData.statistics.short_position_count = ((int)positionsShortState[2].ToDecimal());
+                _jsonData.statistics.short_profit_positions = ((int)positionsShortState[14].ToDecimal());
+                _jsonData.statistics.short_loss_positions = ((int)positionsShortState[22].ToDecimal());
+            }
         }
 
         private int _prevClosePosCount = 0;
