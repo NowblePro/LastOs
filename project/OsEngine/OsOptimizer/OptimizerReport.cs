@@ -154,20 +154,27 @@ namespace OsEngine.OsOptimizer
             Comparison<OptimizerReport> func = null;
             switch (sortType)
             {
-                case CSCSortType.CSC:
-                    func = (rep1, rep2) => rep2.CSC.CompareTo(rep1.CSC);
-                    break;
-                case CSCSortType.PSR:
-                    func = (rep1, rep2) => rep2.PSR.CompareTo(rep1.PSR);
-                    break;
-                case CSCSortType.DDS:
-                    func = (rep1, rep2) => rep2.DDS.CompareTo(rep1.DDS);
-                    break;
-                case CSCSortType.SRC:
-                    func = (rep1, rep2) => rep2.SRC.CompareTo(rep1.SRC);
-                    break;
                 case CSCSortType.FRS:
                     func = (rep1, rep2) => rep2.FRS.CompareTo(rep1.FRS);
+                    break;
+                case CSCSortType.PPR:
+                    func = (rep1, rep2) => rep2.PPR.CompareTo(rep1.PPR);
+                    break;
+                case CSCSortType.TR:
+                    func = (rep1, rep2) => rep2.TR.CompareTo(rep1.TR);
+                    break;
+                case CSCSortType.GPR:
+                    func = (rep1, rep2) => rep2.GPR.CompareTo(rep1.GPR);
+                    break;
+                case CSCSortType.TotalProfit:
+                    func = (rep1, rep2) => rep2.TotalProfitAllPeriod.CompareTo(rep1.TotalProfitAllPeriod);
+                    break;
+                case CSCSortType.MaxDrawDown:
+                    // Обратная сортировка (наименьший - лучший результат)
+                    func = (rep1, rep2) => rep1.MaxDrawDownAllPeriod.CompareTo(rep2.MaxDrawDownAllPeriod);
+                    break;
+                case CSCSortType.ProfitToDrawDown:
+                    func = (rep1, rep2) => rep2.ProfitToDrawDownAllPeriod.CompareTo(rep1.ProfitToDrawDownAllPeriod);
                     break;
             }
 
@@ -197,8 +204,14 @@ namespace OsEngine.OsOptimizer
 
         public List<string> StrategyParameters = new List<string>();
 
+        private string paramsToDataTableCache = string.Empty;
         public string GetParamsToDataTable()
         {
+            if (!string.IsNullOrEmpty(paramsToDataTableCache))
+            {
+                return paramsToDataTableCache;
+            }
+
             string result = "";
 
             List<IIStrategyParameter> parameters = GetParameters();
@@ -240,7 +253,7 @@ namespace OsEngine.OsOptimizer
 
                 result += "\n";
             }
-
+            paramsToDataTableCache = result;
             return result;
         }
 
@@ -428,15 +441,40 @@ namespace OsEngine.OsOptimizer
 
         public decimal SmaDeviation;
 
-        public decimal CSC;
-
-        public decimal PSR;
-
-        public decimal DDS;
-
-        public decimal SRC;
 
         public decimal FRS;
+
+        public int FRSRank;
+
+        public decimal PPR;
+
+        public int PPRRank;
+
+        public decimal TR;
+
+        public int TRRank;
+
+        public decimal GPR;
+
+        public int GPRRank;
+
+        /// <summary>
+        /// Общий доход за все периоды, суммируются: первый период In Sample и все периоды Out Of Sample, чтобы избежать повторного суммирования из-за наложения периодов
+        /// </summary>
+        public decimal TotalProfitAllPeriod;
+        public int TotalProfitAllPeriodRank;
+
+        /// <summary>
+        /// Максимальная просадка за все периоды
+        /// </summary>
+        public decimal MaxDrawDownAllPeriod;
+        public int MaxDrawDownAllPeriodRank;
+        /// <summary>
+        /// Отношение дохода за все периоды к максимальной просаде
+        /// </summary>
+        public decimal ProfitToDrawDownAllPeriod;
+        public int ProfitToDrawDownAllPeriodRank;
+
 
         public string GetSaveString()
         {

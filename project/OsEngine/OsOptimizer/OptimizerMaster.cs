@@ -27,14 +27,13 @@ namespace OsEngine.OsOptimizer
     /// </summary>
     public class OptimizerMaster
     {
-        private decimal _cscWeight = 0.25m;
-        private decimal _psrWeight = 0.25m;
-        private decimal _ddsWeight = 0.25m;
-        private decimal _srcWeight = 0.25m;
-        public decimal CscWeight => _cscWeight;
-        public decimal PsrWeight => _psrWeight;
-        public decimal DdsWeight => _ddsWeight;
-        public decimal SrcWeight => _srcWeight;
+        private decimal _pprWeight = 0.25m;
+        private decimal _trWeight = 0.25m;
+        private decimal _gprWeight = 0.25m;
+
+        public decimal PPRWeight => _pprWeight;
+        public decimal TRWeight => _trWeight;
+        public decimal GPRWeight => _gprWeight;
         public OptimizerMaster()
         {
             _log = new Log("OptimizerLog", StartProgram.IsTester);
@@ -202,15 +201,14 @@ namespace OsEngine.OsOptimizer
             try
             {
                 string[] strings = str.Split(';');
-                _cscWeight = Convert.ToDecimal(strings[0], CultureInfo.InvariantCulture);
-                _psrWeight = Convert.ToDecimal(strings[1], CultureInfo.InvariantCulture);
-                _ddsWeight = Convert.ToDecimal(strings[2], CultureInfo.InvariantCulture);
-                _srcWeight = Convert.ToDecimal(strings[3], CultureInfo.InvariantCulture);
+                _pprWeight = Convert.ToDecimal(strings[0], CultureInfo.InvariantCulture);
+                _trWeight = Convert.ToDecimal(strings[1], CultureInfo.InvariantCulture);
+                _gprWeight = Convert.ToDecimal(strings[2], CultureInfo.InvariantCulture);
             }
             catch { }
         }
 
-        private string GetStringFromWeights() => $"{_cscWeight.ToString(CultureInfo.InvariantCulture)};{_psrWeight.ToString(CultureInfo.InvariantCulture)};{_ddsWeight.ToString(CultureInfo.InvariantCulture)};{_srcWeight.ToString(CultureInfo.InvariantCulture)}";
+        private string GetStringFromWeights() => $"{_pprWeight.ToString(CultureInfo.InvariantCulture)};{_trWeight.ToString(CultureInfo.InvariantCulture)};{_gprWeight.ToString(CultureInfo.InvariantCulture)}";
 
         // work with the progress of the optimization process/работа с прогрессом процесса оптимизации
 
@@ -1527,10 +1525,9 @@ namespace OsEngine.OsOptimizer
         {
             if (o is OptimizerReportCharting resultsCharting)
             {
-                _cscWeight = resultsCharting.CscWeight;
-                _psrWeight = resultsCharting.PsrWeight;
-                _ddsWeight = resultsCharting.DdsWeight;
-                _srcWeight = resultsCharting.SrcWeight;
+                _pprWeight = resultsCharting.PPRWeight;
+                _trWeight = resultsCharting.TRWeight;
+                _gprWeight = resultsCharting.GPRWeight;
                 Save();
             }
         }
