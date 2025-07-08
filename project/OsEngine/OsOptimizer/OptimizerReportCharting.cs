@@ -1079,13 +1079,13 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            if (e.ColumnIndex == 12)
+            if (e.ColumnIndex == 12 && sender is DataGridView dgv)
             {
-                ShowBotFullChartDialog(e);
+                ShowBotFullChartDialog(dgv, e);
             }
         }
 
-        private void ShowBotFullChartDialog(DataGridViewCellMouseEventArgs e)
+        private void ShowBotFullChartDialog(DataGridView gridView, DataGridViewCellMouseEventArgs e)
         {
             if (_reports.Count < e.RowIndex + 1)
             {
@@ -1094,12 +1094,14 @@ namespace OsEngine.OsOptimizer
 
             OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
 
-            if (fazeReport.Reports.Count < _sortBotNumber + 1)
+            string parameterString = $"{gridView.Rows[e.RowIndex].Cells[5].Value}";
+
+            OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == parameterString).SingleOrDefault();
+
+            if (report == null)
             {
                 return;
             }
-
-            OptimizerReport report = fazeReport.Reports[_sortBotNumber];
 
             if (ChartButtonClickEvent != null)
             {
