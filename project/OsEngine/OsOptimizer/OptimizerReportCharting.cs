@@ -246,10 +246,18 @@ namespace OsEngine.OsOptimizer
 
         private void SortCSCResults(List<OptimazerFazeReport> reports)
         {
-            for (int i = 0; i < reports.Count; i++)
+            if (reports == null || reports.Count == 0) return;
+
+            OptimazerFazeReport first = reports.First();
+            OptimazerFazeReport.SortResults(first.Reports, _sortBotsTypeCSC);
+            Parallel.For(1, reports.Count, i => 
             {
-                OptimazerFazeReport.SortResults(reports[i].Reports, _sortBotsTypeCSC);
-            }
+                OptimazerFazeReport faze = reports[i];
+                var indexes = faze.Reports.Select(r => new { Report = r, Index = first.Reports.IndexOf(first.Reports.Where(f => f.GetParamsToDataTable() == r.GetParamsToDataTable()).First()) });
+                var newList = indexes.ToList();
+                newList.Sort((rep1, rep2) => rep1.Index.CompareTo(rep2.Index));
+                faze.Reports = newList.Select(r => r.Report).ToList();
+            });
         }
 
         private void ReLoadCSCTask(List<OptimazerFazeReport> reports, bool calculate = false, bool calculateFRS = false)
@@ -767,7 +775,7 @@ namespace OsEngine.OsOptimizer
                                 r.GPR * _gprWeight;
                 }
 
-                List<IGrouping<decimal, OptimizerReport>> frsRankGroup = reportsForCSCTable.Values.GroupBy(r => r.FRS).ToList();
+                List<IGrouping<decimal, OptimizerReport>> frsRankGroup = reports.SelectMany(r => r.Reports).GroupBy(r => r.FRS).ToList();
                 frsRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().FRS.CompareTo(r1.First().FRS)));
                 for (int i = 0; i < frsRankGroup.Count; i++)
                 {
@@ -968,7 +976,8 @@ namespace OsEngine.OsOptimizer
             {
                 decimal median = GetMedian(outOfSamples.Select(r => r.TotalProfit));
                 decimal average = outOfSamples.Select(r => r.TotalProfit).Sum() / outOfSamples.Count();
-                return 1 - Math.Abs((average - median) / average);
+                
+                return average == 0 ? 0 : 1 - Math.Abs((average - median) / average);
             }
 
             decimal GetGPR(IEnumerable<OptimizerReport> inSamples, IEnumerable<OptimizerReport> outOfSamples)

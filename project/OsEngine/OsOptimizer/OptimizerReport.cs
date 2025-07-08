@@ -194,8 +194,14 @@ namespace OsEngine.OsOptimizer
 
         public List<string> StrategyParameters = new List<string>();
 
+        private string paramsToDataTableCache = string.Empty;
         public string GetParamsToDataTable()
         {
+            if (!string.IsNullOrEmpty(paramsToDataTableCache))
+            {
+                return paramsToDataTableCache;
+            }
+
             string result = "";
 
             List<IIStrategyParameter> parameters = GetParameters();
@@ -237,7 +243,7 @@ namespace OsEngine.OsOptimizer
 
                 result += "\n";
             }
-
+            paramsToDataTableCache = result;
             return result;
         }
 
