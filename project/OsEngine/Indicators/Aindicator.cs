@@ -55,6 +55,11 @@ namespace OsEngine.Indicators
                     IncludeIndicators[i].Clear();
                 }
             }
+
+            if (NeedToReloadEvent != null)
+            {
+                NeedToReloadEvent(this);
+            }
         }
 
         public void Delete()
