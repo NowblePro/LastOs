@@ -940,7 +940,9 @@ namespace OsEngine.OsOptimizer
 
                     Parallel.ForEach(reports.SelectMany(f => f.Reports), (r) =>
                     {
-                        r.ProfitToDrawDownAllPeriod = r.TotalProfitAllPeriod / r.MaxDrawDownAllPeriod;
+                        decimal a = r.TotalProfitAllPeriod == 0 ? 10e-6m : r.TotalProfitAllPeriod;
+                        decimal b = r.MaxDrawDownAllPeriod == 0 ? 10e-3m : r.MaxDrawDownAllPeriod;
+                        r.ProfitToDrawDownAllPeriod = a / b;
                     });
 
                     Parallel.Invoke(() =>
@@ -1004,6 +1006,14 @@ namespace OsEngine.OsOptimizer
             {
                 IEnumerable<OptimizerReport> allInSampleReports = dicReports.Keys.Select(r => r);
                 IEnumerable<OptimizerReport> allOutSampleReports = dicReports.Values.Select(r => r);
+                if (allInSampleReports.Count() == 0 || allOutSampleReports.Count() == 0)
+                {
+                    ppr = 0;
+                    tr = 0;
+                    gpr = 0;
+                    frs = 0;
+                    return;
+                }
                 decimal avgProfitIS = allInSampleReports.Sum(r => r.AverageProfit) / allInSampleReports.Count();
                 decimal avgProfitOOS = allOutSampleReports.Sum(r => r.AverageProfit) / allOutSampleReports.Count();
                 
@@ -1029,6 +1039,7 @@ namespace OsEngine.OsOptimizer
             decimal GetPPR(Dictionary<OptimizerReport, OptimizerReport> reportPairs)
             {
                 int count = 0;
+                if (reportPairs.Count == 0) return count;
                 foreach (var pair in reportPairs)
                 {
                     if (pair.Key.TotalProfit > 0 && pair.Value.TotalProfit > 0)
@@ -1057,6 +1068,7 @@ namespace OsEngine.OsOptimizer
 
             decimal GetTR(IEnumerable<OptimizerReport> outOfSamples)
             {
+                if (outOfSamples.Count() == 0) return 0;
                 decimal median = GetMedian(outOfSamples.Select(r => r.TotalProfit));
                 decimal average = outOfSamples.Select(r => r.TotalProfit).Sum() / outOfSamples.Count();
                 
@@ -1067,7 +1079,9 @@ namespace OsEngine.OsOptimizer
             {
                 decimal positiveIsCount = inSamples.Where(r => r.TotalProfit > 0).Count();
                 decimal positiveOsCount = outOfSamples.Where(r => r.TotalProfit > 0).Count();
-                return (positiveIsCount + positiveOsCount)/(inSamples.Count() + outOfSamples.Count());
+                int totalCount = inSamples.Count() + outOfSamples.Count();
+                if (totalCount == 0) return 0;
+                return (positiveIsCount + positiveOsCount) / (totalCount);
             }
         }
 
