@@ -3,8 +3,8 @@ using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.OsTrader.Panels.Tab;
+using OsEngine.Robots.Classes;
 using System.Collections.Generic;
-using System;
 
 namespace OsEngine.Robots.TrigonumCustom.Channel
 {
@@ -29,8 +29,22 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterDecimal _deviation;
         private StrategyParameterInt _backstep;
 
-        //private Aindicator _volumeFilter;
-        //private StrategyParameterInt _volumeFilterLength;
+        private Aindicator _volumeFilter;
+        private StrategyParameterInt _volumeFilterLength;
+
+        private Aindicator _smaFilter;
+        private StrategyParameterInt _smaFilterLength;
+
+        // создаем переменные для Трейлинг стопа
+        //---------------------------------
+        private TrailingStop _trailingStop;
+        private StrategyParameterBool TrailingStopIsOn;
+        private StrategyParameterString TrailingStopTypeOrder;
+        private StrategyParameterDecimal ChangeStepStop;
+        private StrategyParameterDecimal MinDist;
+        private StrategyParameterDecimal QuantityStepsPrices;
+        private StrategyParameterString PointOrPercent;
+        //---------------------------------
 
         public ZZChannelCustom(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -52,6 +66,10 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _deviation = CreateParameter("Deviation", 0.5m, 0.1m, 10m, 0.5m, "Robot parameters");
             _backstep = CreateParameter("Back Step", 3, 1, 15, 1, "Robot parameters");
 
+            _volumeFilterLength = CreateParameter("Volume Filter Length", 10, 1, 15, 1, "Robot parameters");
+
+            _smaFilterLength = CreateParameter("Sma Filter Length", 100, 50, 500, 10, "Robot parameters");
+
             _zz = IndicatorsFactory.CreateIndicatorByName(nameClass: "ZigZagChannelCustom", name: name + "ZigZagChannel", canDelete: false);
             _zz = (Aindicator)_tab.CreateCandleIndicator(_zz, nameArea: "Prime");
             _zz.ParametersDigit[0].Value = _depth.ValueInt;
@@ -59,10 +77,45 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _zz.ParametersDigit[2].Value = _backstep.ValueInt;
             _zz.Save();
 
+            _volumeFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Volume", name: name + "Volume", canDelete: false);
+            _volumeFilter = (Aindicator)_tab.CreateCandleIndicator(_volumeFilter, nameArea: "VolumeArea");
+            _volumeFilter.Save();
+
+            _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
+            _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
+            _smaFilter.ParametersDigit[0].Value = _smaFilterLength.ValueInt;
+            _smaFilter.Save();
+
+            // создаем параметры настроек и создаем объект класса TrailingStop
+            //---------------------------------
+            TrailingStopIsOn = CreateParameter("Is Trailing stop On", false, "Trailing Stop");
+            TrailingStopTypeOrder = CreateParameter("Type order", OrderPriceType.Market.ToString(), new[] { OrderPriceType.Market.ToString(), OrderPriceType.Limit.ToString() }, "Trailing Stop");
+            PointOrPercent = CreateParameter("Choice Points or Percent", "Points", new[] { "Points", "Percent" }, "Trailing Stop");
+            ChangeStepStop = CreateParameter("Stop level change step", 1, 1, 100, 001m, "Trailing Stop");
+            MinDist = CreateParameter("Minimum distance to price", 1, 1, 100, 0.01m, "Trailing Stop");
+            QuantityStepsPrices = CreateParameter("Quantity steps prices for limit order", 0m, 0, 10000, 1, "Trailing Stop");
+            _trailingStop = new TrailingStop(_tab, TrailingStopTypeOrder.ValueString, ChangeStepStop.ValueDecimal, MinDist.ValueDecimal, QuantityStepsPrices.ValueDecimal, PointOrPercent.ValueString);
+            //---------------------------------
+
             StopOrActivateIndicators();
             ParametrsChangeByUser += ZZCh_ParametrsChangeByUser;
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
             ZZCh_ParametrsChangeByUser();
+
+            _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
+        }
+
+        private void _tab_PositionOpeningSuccesEvent(Position obj)
+        {
+            // этот код для того, чтобы стоп открывался в тот же момент, когда окрывается ордер
+            // если включен режим трейлинг стопа, то обращаемся к методу SetTrailingStop и передаем в него цену закрытия последней свечи
+            //-----------------------------------------
+            if (TrailingStopIsOn.ValueBool)
+            {
+                _trailingStop.SetTrailingStop(obj.EntryPrice);
+                return;
+            }
+            //--------------------------------------
         }
 
         private void ZZCh_ParametrsChangeByUser()
@@ -73,14 +126,31 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             if (_zz.ParametersDigit[0].Value != _depth.ValueInt
                 || _zz.ParametersDigit[1].Value != _deviation.ValueDecimal
-                || _zz.ParametersDigit[2].Value != _backstep.ValueInt)
+                || _zz.ParametersDigit[2].Value != _backstep.ValueInt
+                || _smaFilter.ParametersDigit[0].Value != _smaFilterLength.ValueInt)
             {
                 _zz.ParametersDigit[0].Value = _depth.ValueInt;
                 _zz.ParametersDigit[1].Value = _deviation.ValueDecimal;
                 _zz.ParametersDigit[2].Value = _backstep.ValueInt;
+                _smaFilter.ParametersDigit[0].Value = _smaFilterLength.ValueInt;
                 _zz.Reload();
                 _zz.Save();
+                _smaFilter.Reload();
+                _smaFilter.Save();
             }
+
+            // если мы меняли параметры настроек, то пересоздаем объект класса TrailingStop
+            //---------------
+            if (TrailingStopIsOn.ValueBool)
+            {
+                _trailingStop = null;
+                _trailingStop = new TrailingStop(_tab, TrailingStopTypeOrder.ValueString, ChangeStepStop.ValueDecimal, MinDist.ValueDecimal, QuantityStepsPrices.ValueDecimal, PointOrPercent.ValueString);
+            }
+            else
+            {
+                _trailingStop = null;
+            }
+            //-------------------
         }
 
         private void StopOrActivateIndicators()
@@ -116,20 +186,73 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             {
                 return;
             }
-            if (_depth.ValueInt >= candles.Count)
+            if (_depth.ValueInt >= candles.Count
+                || _volumeFilterLength.ValueInt >= candles.Count
+                || _smaFilterLength.ValueInt >= candles.Count)
             {
                 return;
             }
 
             List<Position> positions = _tab.PositionsOpenAll;
 
+            decimal last_price = candles[candles.Count - 1].Close;
+
+            decimal zz_up = _zz.DataSeries[2].Last;
+            decimal zz_down = _zz.DataSeries[3].Last;
+
+            decimal sma = _smaFilter.DataSeries[0].Last;
+
             if (positions.Count == 0)
             {// enter logic
-                decimal high = _zz.DataSeries[0].Last;
-                decimal low = _zz.DataSeries[1].Last;
+                if (zz_up <= zz_down)
+                {
+                    return;
+                }
+
+                if (!BuySignalIsFiltered(candles))
+                {
+                    if (last_price > zz_up && last_price > sma)
+                    {
+                        _tab.BuyAtLimit(GetVolume(), last_price + _slippage.ValueDecimal);
+                    }
+                }
+
+                if (!SellSignalIsFiltered(candles))
+                {
+                    if (last_price < zz_down && last_price < sma)
+                    {
+                        _tab.SellAtLimit(GetVolume(), last_price + _slippage.ValueDecimal);
+                    }
+                }
             }
             else
             {//exit logic
+                // если включен режим трейлинг стопа, то обращаемся к методу SetTrailingStop и передаем в него цену закрытия последней свечи
+                //-----------------------------------------
+                if (TrailingStopIsOn.ValueBool)
+                {
+                    _trailingStop.SetTrailingStop(candles[candles.Count - 1].Close);
+                    return;
+                }
+                //--------------------------------------
+
+                Position pos = positions[0];
+
+                if (pos.Direction == Side.Buy)
+                {
+                    if (last_price < zz_up)
+                    {
+                        _tab.CloseAtStop(pos, last_price, last_price - _slippage.ValueDecimal);
+                    }
+                }
+
+                if (pos.Direction == Side.Sell)
+                {
+                    if (last_price > zz_down)
+                    {
+                        _tab.CloseAtProfit(pos, last_price, last_price + _slippage.ValueDecimal);
+                    }
+                }
             }
         }
 
@@ -151,11 +274,29 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         private bool BuySignalIsFiltered(List<Candle> candles)
         {
+            decimal last_volume = _volumeFilter.DataSeries[0].Last;
+            for (int i = 1; i < _volumeFilterLength.ValueInt; ++i)
+            {
+                if (_volumeFilter.DataSeries[0].Values[_volumeFilter.DataSeries[0].Values.Count - i - 1] > last_volume)
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
 
         private bool SellSignalIsFiltered(List<Candle> candles)
         {
+            decimal last_volume = _volumeFilter.DataSeries[0].Last;
+            for (int i = 1; i < _volumeFilterLength.ValueInt; ++i)
+            {
+                if (_volumeFilter.DataSeries[0].Values[_volumeFilter.DataSeries[0].Values.Count - i - 1] > last_volume)
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
 
