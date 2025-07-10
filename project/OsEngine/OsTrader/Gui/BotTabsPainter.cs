@@ -11,6 +11,8 @@ using OsEngine.Market;
 using System.Windows.Input;
 using OsEngine.Journal;
 using OsEngine.Logging;
+using Excel = Microsoft.Office.Interop.Excel;
+using System.IO;
 
 namespace OsEngine.OsTrader.Gui
 {
@@ -287,8 +289,12 @@ namespace OsEngine.OsTrader.Gui
                 { // вызываем добавление нового бота
                     _master.CreateNewBot();
                 }
+                else if (coluIndex == 7 && rowIndex == botsCount + 1)
+                {
+                    LoadBotVolumesFromExcel();
+                }
 
-                if(_grid.Rows.Count <= _prevActiveRow)
+                if (_grid.Rows.Count <= _prevActiveRow)
                 {
                     _prevActiveRow = rowIndex;
                     return;
@@ -311,6 +317,64 @@ namespace OsEngine.OsTrader.Gui
         private int _mouseYPos;
 
         BotPanel _lastSelectedBot;
+
+        private void LoadBotVolumesFromExcel()
+        {
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Filter = "Excel Files|*.xls;*.xlsx;*.xlsm|All files (*.*)|*.*";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    if (string.IsNullOrEmpty(dialog.FileName) || !File.Exists(dialog.FileName)) return;
+                    Excel.Application excelApp = new Excel.Application(); // Создание экземпляра Excel-приложения
+                    Excel.Workbooks workbooks = excelApp.Workbooks;
+                    Excel.Workbook workbook = workbooks.Open(dialog.FileName); // Открытие файла
+
+                    try
+                    {
+                        foreach (Excel.Worksheet sheet in workbook.Sheets)
+                        {
+                            Excel.Range usedRange = sheet.UsedRange; // Получение диапазона используемых ячеек
+
+                            int rowsCount = usedRange.Rows.Count;
+                            //int columnsCount = usedRange.Columns.Count;
+
+                            //Console.WriteLine($"Sheet Name: {sheet.Name}");
+
+                            //for (int i = 1; i <= rowsCount; i++)
+                            //{
+                            //    for (int j = 1; j <= columnsCount; j++)
+                            //    {
+                            //        object value = ((Excel.Range)usedRange.Cells[i, j]).Value2;
+                            //        if (value != null)
+                            //            Console.Write(value + "\\t");
+                            //        else
+                            //            Console.Write("\\t");
+                            //    }
+                            //    Console.WriteLine();
+                            //}
+
+                            int volumeRowIndex = -1;
+                            for (int i = 1; i <= rowsCount; i++)
+                            {
+                                object cell = ((Excel.Range)usedRange.Cells[2, 1]).Value2;
+                                if (cell != null && $"{cell}" == "Sortino")
+                                {
+                                    volumeRowIndex = i;
+                                    break;
+                                }
+                            }
+                            if (volumeRowIndex < 0) throw new Exception("Не найдена строка с объёмами");
+                        }
+                    }
+                    finally
+                    {
+                        workbook.Close(false); // Закрываем книгу без сохранения изменений
+                        excelApp.Quit();       // Завершаем приложение Excel
+                    }
+                }
+            }
+        }
 
         private void _grid_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
@@ -935,6 +999,7 @@ colum9.HeaderText = "Journal";
             row.Cells[6].Value = "";
 
             row.Cells.Add(new DataGridViewButtonCell());
+            row.Cells[7].Value = "Загрузить объёмы";
             row.Cells.Add(new DataGridViewButtonCell());
             row.Cells[8].Value = OsLocalization.Trader.Label40; //"Journal";
             row.Cells.Add(new DataGridViewButtonCell());
