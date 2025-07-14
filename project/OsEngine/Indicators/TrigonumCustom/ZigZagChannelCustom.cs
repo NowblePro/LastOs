@@ -94,7 +94,7 @@ namespace OsEngine.Indicators
                     }
                     setHigh(index, candles[index].High);
                 }
-                _trendDir = 1;
+                    _trendDir = 1;
             }
 
             if (isLow(candles, index))
