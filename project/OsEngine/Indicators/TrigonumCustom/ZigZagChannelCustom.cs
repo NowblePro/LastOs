@@ -93,9 +93,8 @@ namespace OsEngine.Indicators
                         fixLow(_lastLowPointIndex, candles[_lastLowPointIndex].Low);
                     }
                     setHigh(index, candles[index].High);
-
-                    _trendDir = 1;
                 }
+                _trendDir = 1;
             }
 
             if (isLow(candles, index))
@@ -111,9 +110,8 @@ namespace OsEngine.Indicators
                         fixHigh(_lastHighPointIndex, candles[_lastHighPointIndex].High);
                     }
                     setLow(index, candles[index].Low);
-
-                    _trendDir = -1;
                 }
+                _trendDir = -1;
             }
 
             if (_ZZHighs.Count >= _channels_length.ValueInt)
@@ -129,6 +127,11 @@ namespace OsEngine.Indicators
 
         bool isHigh(List<Candle> candles, int index)
         {
+            if (_trendDir == 1 && candles[_lastHighPointIndex].High > candles[index].High)
+            {
+                return false;
+            }
+
             for (int i = candles.Count - _depth.ValueInt - 1; i < candles.Count - 1; ++i)
             {
                 if (candles[index].High <= candles[i].High)
@@ -137,7 +140,7 @@ namespace OsEngine.Indicators
                 }
             }
 
-            if ((candles[index].High - candles[_lastLowPointIndex].Low) < _deviation.ValueDecimal
+            if (calcDeviation(candles[index].High, candles[_lastLowPointIndex].Low) < _deviation.ValueDecimal
                 || (index - _lastLowPointIndex) < _backstep.ValueInt)
             {
                 return false;
@@ -148,6 +151,11 @@ namespace OsEngine.Indicators
 
         bool isLow(List<Candle> candles, int index)
         {
+            if (_trendDir == -1 && candles[_lastLowPointIndex].Low < candles[index].Low)
+            {
+                return false;
+            }
+
             for (int i = candles.Count - _depth.ValueInt - 1; i < candles.Count - 1; ++i)
             {
                 if (candles[index].Low >= candles[i].Low)
@@ -156,7 +164,7 @@ namespace OsEngine.Indicators
                 }
             }
 
-            if ((candles[_lastHighPointIndex].High - candles[index].Low) < _deviation.ValueDecimal
+            if (calcDeviation(candles[_lastHighPointIndex].High, candles[index].Low) < _deviation.ValueDecimal
                 || (index - _lastHighPointIndex) < _backstep.ValueInt)
             {
                 return false;
@@ -197,6 +205,11 @@ namespace OsEngine.Indicators
         private void fixLow(int index, decimal value)
         {
             _ZZLows.Add(new ZZPoint(index, value));
+        }
+
+        private decimal calcDeviation(decimal high_value, decimal low_value)
+        {
+            return (high_value - low_value) / (high_value / 100);
         }
 
         private void findChannelPoint(int index, bool isHigh)
