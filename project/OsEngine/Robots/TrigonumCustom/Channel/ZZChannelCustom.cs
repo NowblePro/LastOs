@@ -314,16 +314,16 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
                 if (last_price > zz_up)
                 {
-                    if (!BuySignalIsFiltered(candles))
-                    {
+                if (!BuySignalIsFiltered(candles))
+                {
                         _tab.BuyAtLimit(GetVolume(), last_price + _slippage.ValueDecimal);
                     }
                 }
 
                 if (last_price < zz_down)
                 {
-                    if (!SellSignalIsFiltered(candles))
-                    {
+                if (!SellSignalIsFiltered(candles))
+                {
                         _tab.SellAtLimit(GetVolume(), last_price + _slippage.ValueDecimal);
                     }
                 }
@@ -417,14 +417,14 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             if (_volumeFilterIsOn.ValueBool)
             {
-                decimal last_volume = _volumeFilter.DataSeries[0].Last;
-                for (int i = 1; i < _volumeFilterLength.ValueInt; ++i)
+            decimal last_volume = _volumeFilter.DataSeries[0].Last;
+            for (int i = 1; i < _volumeFilterLength.ValueInt; ++i)
+            {
+                if (_volumeFilter.DataSeries[0].Values[_volumeFilter.DataSeries[0].Values.Count - i - 1] > last_volume)
                 {
-                    if (_volumeFilter.DataSeries[0].Values[_volumeFilter.DataSeries[0].Values.Count - i - 1] > last_volume)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
+            }
             }
 
             return false;
@@ -452,14 +452,14 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             if (_volumeFilterIsOn.ValueBool)
             {
-                decimal last_volume = _volumeFilter.DataSeries[0].Last;
-                for (int i = 1; i < _volumeFilterLength.ValueInt; ++i)
+            decimal last_volume = _volumeFilter.DataSeries[0].Last;
+            for (int i = 1; i < _volumeFilterLength.ValueInt; ++i)
+            {
+                if (_volumeFilter.DataSeries[0].Values[_volumeFilter.DataSeries[0].Values.Count - i - 1] > last_volume)
                 {
-                    if (_volumeFilter.DataSeries[0].Values[_volumeFilter.DataSeries[0].Values.Count - i - 1] > last_volume)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
+            }
             }
 
             return false;
