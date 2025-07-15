@@ -289,11 +289,23 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             {
                 return;
             }
+
+            if (_volumeFilterIsOn.ValueBool && _volumeFilterLength.ValueInt >= candles.Count)
+            {
+                return;
+            }
+            if (_smaFilterIsOn.ValueBool && _smaFilterLength.ValueInt >= candles.Count)
+            {
+                return;
+            }
+            if (_rsiExitIsOn.ValueBool && _lengthRsi.ValueInt >= candles.Count)
+            {
+                return;
+            }
+
             if (_depth.ValueInt >= candles.Count
                 || ((IndicatorParameterBool)_zz.Parameters[5]).ValueBool == false
-                || ((IndicatorParameterBool)_zz.Parameters[6]).ValueBool == false
-                || _volumeFilterLength.ValueInt >= candles.Count
-                || _smaFilterLength.ValueInt >= candles.Count)
+                || ((IndicatorParameterBool)_zz.Parameters[6]).ValueBool == false)
             {
                 return;
             }
