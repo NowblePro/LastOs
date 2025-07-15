@@ -781,7 +781,7 @@ namespace OsEngine.Market.Servers.Tester
 
             if (_dataIsActive == false)
             {
-                TimeNow = TimeNow.AddSeconds(1);
+                //TimeNow = TimeNow.AddSeconds(1); // из-за добавления секунды теряется первая свеча
             }
             else if (_timeAddType == TimeAddInTestType.Millisecond)
             {
