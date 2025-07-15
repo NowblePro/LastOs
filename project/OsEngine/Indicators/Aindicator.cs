@@ -34,6 +34,11 @@ namespace OsEngine.Indicators
             }
 
             OnStateChange(IndicatorState.Configure);
+
+            if (NeedToResetDataEvent != null)
+            {
+                NeedToResetDataEvent(this);
+            }
         }
 
         public void Clear()
@@ -54,6 +59,11 @@ namespace OsEngine.Indicators
                 {
                     IncludeIndicators[i].Clear();
                 }
+            }
+
+            if (NeedToResetDataEvent != null)
+            {
+                NeedToResetDataEvent(this);
             }
         }
 
@@ -688,6 +698,11 @@ namespace OsEngine.Indicators
                     return;
                 }
 
+                if (NeedToResetDataEvent != null)
+                {
+                    NeedToResetDataEvent(this);
+                }
+
                 ProcessAll(_myCandles);
 
                 if (NeedToReloadEvent != null)
@@ -698,6 +713,8 @@ namespace OsEngine.Indicators
         }
 
         public event Action<IIndicator> NeedToReloadEvent;
+
+        public event Action<IIndicator> NeedToResetDataEvent;
 
         #endregion
 
