@@ -13,6 +13,9 @@ using OsEngine.Journal;
 using OsEngine.Logging;
 using Excel = Microsoft.Office.Interop.Excel;
 using System.IO;
+using System.Linq;
+using System.Globalization;
+using System.Text;
 
 namespace OsEngine.OsTrader.Gui
 {
@@ -337,34 +340,103 @@ namespace OsEngine.OsTrader.Gui
                             Excel.Range usedRange = sheet.UsedRange; // Получение диапазона используемых ячеек
 
                             int rowsCount = usedRange.Rows.Count;
-                            //int columnsCount = usedRange.Columns.Count;
 
-                            //Console.WriteLine($"Sheet Name: {sheet.Name}");
 
-                            //for (int i = 1; i <= rowsCount; i++)
-                            //{
-                            //    for (int j = 1; j <= columnsCount; j++)
-                            //    {
-                            //        object value = ((Excel.Range)usedRange.Cells[i, j]).Value2;
-                            //        if (value != null)
-                            //            Console.Write(value + "\\t");
-                            //        else
-                            //            Console.Write("\\t");
-                            //    }
-                            //    Console.WriteLine();
-                            //}
-
-                            int volumeRowIndex = -1;
-                            for (int i = 1; i <= rowsCount; i++)
+                            List<string> portfolios = new List<string>();
+                            for (int i = 1; i <= rowsCount + 1; i++)
                             {
-                                object cell = ((Excel.Range)usedRange.Cells[2, 1]).Value2;
-                                if (cell != null && $"{cell}" == "Sortino")
+                                object cell = ((Excel.Range)usedRange.Cells[i, 1]).Value2;
+                                string portfolio = $"{cell}";
+                                if (!string.IsNullOrEmpty(portfolio))
+                                {
+                                    portfolios.Add(portfolio);
+                                }
+                            }
+
+                            VolumeSelection selection = new VolumeSelection();
+                            selection.SetPortfolios(portfolios);
+                            bool selected = selection.ShowDialog() ?? false;
+
+                            if (!selected)
+                            {
+                                return;
+                            }
+                            string portfolioName = selection.SelectedPortfolio;
+                            int volumeRowIndex = -1;
+                            for (int i = 1; i <= rowsCount + 1; i++)
+                            {
+                                object cell = ((Excel.Range)usedRange.Cells[i, 1]).Value2;
+                                if (cell != null && $"{cell}" == portfolioName)
                                 {
                                     volumeRowIndex = i;
                                     break;
                                 }
                             }
                             if (volumeRowIndex < 0) throw new Exception("Не найдена строка с объёмами");
+
+                            int namesRowIndex = 1;
+                            int namesColumnStart = 2;
+                            Dictionary<string, string> errors = new Dictionary<string, string>();
+                            for (int i = namesColumnStart; i < usedRange.Columns.Count + 1; i++)
+                            {
+                                object botName = ((Excel.Range)usedRange.Cells[namesRowIndex, i]).Value2;
+                                try
+                                {
+                                    object volume = ((Excel.Range)usedRange.Cells[volumeRowIndex, i]).Value2;
+                                    BotPanel bot = GetBot($"{botName}");
+                                    if (bot == null) continue;
+                                    if (decimal.TryParse($"{volume}".Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalVolume))
+                                    {
+                                        IIStrategyParameter parameter = bot.Parameters.Where(p => p.Name == "Volume").SingleOrDefault();
+                                        if (parameter == null) throw new Exception("Не найден параметр Volume");
+                                        IIStrategyParameter parameterVolumeType = bot.Parameters.Where(p => p.Name == "Volume type").SingleOrDefault();
+                                        if (parameterVolumeType == null) throw new Exception("Не найден параметр Volume type");
+                                        if (parameter is StrategyParameterDecimal p && parameterVolumeType is StrategyParameterString pType)
+                                        {
+                                            string percent = pType.ValuesString.Where(str => str.Contains("%") || str.ToLower().Contains("percent")).FirstOrDefault();
+                                            if (string.IsNullOrEmpty(percent)) throw new Exception("Не найдена опция процентов у типа объёма");
+                                            pType.ValueString = percent;
+                                            p.ValueDecimal = decimalVolume;
+                                        }
+                                        else
+                                        {
+                                            throw new Exception("Типы параметров не совпадают");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        throw new Exception("Не удалось спарсить значение объёма");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    errors.Add($"{botName}", ex.Message);
+                                }
+                            }
+
+                            StringBuilder errorBuilder = new StringBuilder();
+                            foreach (var pair in errors)
+                            {
+                                errorBuilder.AppendLine($"{pair.Key}: {pair.Value}");
+                            }
+
+                            if (errorBuilder.Length > 0)
+                            {
+                                throw new Exception(errorBuilder.ToString());
+                            }
+
+                            BotPanel GetBot(string name)
+                            {
+                                for (int i = 0; i < _grid.Rows.Count; i++)
+                                {
+                                    string botName = _grid.Rows[i].Cells[1].Value?.ToString() ?? "";
+                                    if (name == botName)
+                                    {
+                                        return _master.PanelsArray[i];
+                                    }
+                                }
+                                return null;
+                            }
                         }
                     }
                     finally

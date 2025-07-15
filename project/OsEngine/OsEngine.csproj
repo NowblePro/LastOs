@@ -1115,6 +1115,9 @@
     <Compile Include="OsTrader\Gui\TesterUiLight.xaml.cs">
       <DependentUpon>TesterUiLight.xaml</DependentUpon>
     </Compile>
+    <Compile Include="OsTrader\Gui\VolumeSelection.xaml.cs">
+      <DependentUpon>VolumeSelection.xaml</DependentUpon>
+    </Compile>
     <Compile Include="OsTrader\HotUpdateManager.cs" />
     <Compile Include="OsTrader\Panels\Attributes\BotAttribute.cs" />
     <Compile Include="OsTrader\Panels\BotPanelChartUI.xaml.cs">
@@ -1827,6 +1830,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="OsTrader\Gui\TesterUiLight.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="OsTrader\Gui\VolumeSelection.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
