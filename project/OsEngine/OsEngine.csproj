@@ -1383,6 +1383,7 @@
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Tm.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\Stoch.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ZZChannelCustom.cs" />
+    <Compile Include="Robots\TrigonumCustom\Testing\FrequentOrders.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseHmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseTwoSmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingParabolicSarClassicTradeRsi.cs" />

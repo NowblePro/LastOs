@@ -4594,7 +4594,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     }
                 }
 
-                Order newOrder = _dealCreator.CreateOrder(Security, Side.Sell, price, volume, orderType,
+                Order newOrder = _dealCreator.CreateOrder(Security, position.NameBot, Side.Sell, price, volume, orderType,
                     ManualPositionSupport.SecondToOpen, StartProgram, OrderPositionConditionType.Open,ManualPositionSupport.OrderTypeTime);
                 newOrder.IsStopOrProfit = isStopOrProfit;
                 newOrder.LifeTime = timeLife;
@@ -4737,7 +4737,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     }
                 }
 
-                Order newOrder = _dealCreator.CreateOrder(Security, Side.Buy, price, volume, orderType,
+                Order newOrder = _dealCreator.CreateOrder(Security, position.NameBot, Side.Buy, price, volume, orderType,
                     ManualPositionSupport.SecondToOpen, StartProgram, OrderPositionConditionType.Open, ManualPositionSupport.OrderTypeTime);
                 newOrder.IsStopOrProfit = isStopOrProfit;
                 newOrder.LifeTime = timeLife;

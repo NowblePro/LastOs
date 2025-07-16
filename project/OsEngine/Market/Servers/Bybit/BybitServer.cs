@@ -1859,7 +1859,7 @@ namespace OsEngine.Market.Servers.Bybit
 
                     try
                     {
-                        newOrder.NumberUser = Convert.ToInt32(responseMyTrades.data[i].orderLinkId);
+                        newOrder.NumberUser = GetNumberUser(responseMyTrades.data[i].orderLinkId); // Convert.ToInt32(responseMyTrades.data[i].orderLinkId);
                     }
                     catch
                     {
@@ -2348,7 +2348,7 @@ namespace OsEngine.Market.Servers.Bybit
                     parameters["marketUnit"] = "baseCoin";
                 }
 
-                parameters["orderLinkId"] = order.NumberUser.ToString();
+                parameters["orderLinkId"] = GenCustomId(order); // order.NumberUser.ToString(); // TODO
 
                 if (_hedgeMode)
                 {
@@ -2403,7 +2403,7 @@ namespace OsEngine.Market.Servers.Bybit
                 }
 
                 parameters["symbol"] = order.SecurityNameCode.Replace(".P", "");
-                parameters["orderLinkId"] = order.NumberUser.ToString();
+                parameters["orderLinkId"] = GenCustomId(order); // order.NumberUser.ToString();
                 parameters["price"] = newPrice.ToString().Replace(",", ".");
 
                 JToken place_order_response = CreatePrivateQuery(parameters, HttpMethod.Post, "/v5/order/amend");
@@ -2457,7 +2457,7 @@ namespace OsEngine.Market.Servers.Bybit
             }
             else
             {
-                parameters["orderLinkId"] = order.NumberUser.ToString();
+                parameters["orderLinkId"] = GenCustomId(order); // order.NumberUser.ToString();
             }
 
             try
@@ -2536,7 +2536,7 @@ namespace OsEngine.Market.Servers.Bybit
                     continue;
                 }
 
-                parametrs["orderLinkId"] = order.NumberUser;
+                parametrs["orderLinkId"] = GenCustomId(order); // order.NumberUser;
 
                 JToken bOrders = CreatePrivateQuery(parametrs, HttpMethod.Get, "/v5/order/history");
 
@@ -2775,7 +2775,7 @@ namespace OsEngine.Market.Servers.Bybit
                 newOrder.TimeCallBack = TimeManager.GetDateTimeFromTimeStamp(Convert.ToInt64(order.SelectToken("updatedTime").ToString()));
                 newOrder.TimeCreate = newOrder.TimeCallBack;
 
-                string numUser = order.SelectToken("orderLinkId").ToString();
+                string numUser = GetNumberUser(order.SelectToken("orderLinkId").ToString()).ToString(); // order.SelectToken("orderLinkId").ToString(); // TODO
 
                 if (string.IsNullOrEmpty(numUser) == false)
                 {
@@ -2862,7 +2862,7 @@ namespace OsEngine.Market.Servers.Bybit
                 newOrder.TimeCallBack = TimeManager.GetDateTimeFromTimeStamp(Convert.ToInt64(order.SelectToken("updatedTime").ToString()));
                 newOrder.TimeCreate = newOrder.TimeCallBack;
 
-                string numUser = order.SelectToken("orderLinkId").ToString();
+                string numUser = GetNumberUser(order.SelectToken("orderLinkId").ToString()).ToString(); // order.SelectToken("orderLinkId").ToString(); // TODO
 
                 if (string.IsNullOrEmpty(numUser) == false)
                 {
@@ -3242,9 +3242,51 @@ namespace OsEngine.Market.Servers.Bybit
         }
 
         #endregion 13
+
+        #region 14 Service
+
+        private string GenCustomId(Order order)
+        {
+            string result = "";
+
+            result += order.NumberUser.ToString();
+            result += "@";
+            result += order.NameBot;
+            result += order.PortfolioNumber;
+            result += order.SecurityNameCode.Replace(".P", "");
+
+            return result;
+        }
+
+        private int GetNumberUser(string str)
+        {
+            const char symbol = '@';
+
+            if (string.IsNullOrEmpty(str))
+                return 0;
+
+            int symbolIndex = str.IndexOf(symbol);
+
+            if (symbolIndex == -1)
+            {
+                if (int.TryParse(str, out int number))
+                    return number;
+                else
+                    return 0;
+            }
+
+            string numberPart = str.Substring(0, symbolIndex);
+
+            if (int.TryParse(numberPart, out int parsedNumber))
+                return parsedNumber;
+            else
+                return 0;
+        }
+
+        #endregion 14
     }
 
-    #region 14 Enum
+    #region 15 Enum
 
     public enum Net_type
     {
@@ -3266,5 +3308,5 @@ namespace OsEngine.Market.Servers.Bybit
         option
     }
 
-    #endregion 14
+    #endregion 15
 }

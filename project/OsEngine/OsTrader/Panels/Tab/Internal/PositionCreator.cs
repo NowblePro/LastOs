@@ -27,7 +27,7 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             newDeal.Direction = direction;
             newDeal.State = PositionStateType.Opening;
 
-            newDeal.AddNewOpenOrder(CreateOrder(security, direction, priceOrder, volume, 
+            newDeal.AddNewOpenOrder(CreateOrder(security, botName, direction, priceOrder, volume, 
                 priceType, timeLife, startProgram,OrderPositionConditionType.Open, orderTypeTime));
 
             newDeal.NameBot = botName;
@@ -53,14 +53,14 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         /// Create order
         /// </summary>
         public Order CreateOrder(Security security,
-            Side direction, decimal priceOrder, decimal volume, 
+            string nameBot, Side direction, decimal priceOrder, decimal volume, 
             OrderPriceType priceType, TimeSpan timeLife, StartProgram startProgram,
                 OrderPositionConditionType positionConditionType, OrderTypeTime orderTypeTime)
         {
             Order newOrder = new Order();
 
             newOrder.NumberUser = NumberGen.GetNumberOrder(startProgram);
-            
+            newOrder.NameBot = nameBot;
             newOrder.Side = direction;
             newOrder.Price = priceOrder;
             newOrder.Volume = volume;
@@ -101,6 +101,7 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             Order newOrder = new Order();
 
             newOrder.NumberUser = NumberGen.GetNumberOrder(startProgram);
+            newOrder.NameBot = deal.NameBot;
             newOrder.Side = direction;
             newOrder.Price = price;
             newOrder.Volume = volume;
