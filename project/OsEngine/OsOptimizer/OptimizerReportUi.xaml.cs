@@ -34,6 +34,7 @@ namespace OsEngine.OsOptimizer
             HostStepsOfOptimizationTable,
             HostRobustness,
             HostStepsOfOptimizationTable1,
+            HostStepsOfOptimizationTable2,
             ComboBoxSortResultsType,
             LabelRobustnessMetricValue,
             ComboBoxSortResultsBotNumPercent,

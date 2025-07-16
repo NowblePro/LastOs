@@ -26,6 +26,7 @@ namespace OsEngine.OsOptimizer
             WindowsFormsHost hostStepsOfOptimization,
             WindowsFormsHost hostRobustness,
             WindowsFormsHost hostStepsOfOptimizationCSC,
+            WindowsFormsHost hostDynamicTable,
             System.Windows.Controls.ComboBox boxTypeSort,
             System.Windows.Controls.Label labelRobustnessMetricValue,
             System.Windows.Controls.ComboBox boxTypeSortBotNum,
@@ -37,6 +38,7 @@ namespace OsEngine.OsOptimizer
             _currentCulture = OsLocalization.CurCulture;
             _hostStepsOfOptimization = hostStepsOfOptimization;
             _hostStepsOfOptimizationCSC = hostStepsOfOptimizationCSC;
+            _hostDynamicTable = hostDynamicTable;
             _hostRobustness = hostRobustness;
             _labelRobustnessMetricValue = labelRobustnessMetricValue;
 
@@ -365,10 +367,47 @@ namespace OsEngine.OsOptimizer
 
         private WindowsFormsHost _hostStepsOfOptimization;
         private WindowsFormsHost _hostStepsOfOptimizationCSC;
+        private WindowsFormsHost _hostDynamicTable;
         private DataGridView _gridStepsOfOptimization;
         private DataGridView _gridStepsOfOptimizationCSC;
+        private DataGridView _gridDynamicTable;
 
         private DataGridView GetStepsOfOptimizationDGV()
+        {
+            DataGridView gridStepsOfOptimization = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
+                DataGridViewAutoSizeRowsMode.None, true);
+
+            cell0.Style = gridStepsOfOptimization.DefaultCellStyle;
+
+            gridStepsOfOptimization.ScrollBars = ScrollBars.Vertical;
+
+            gridStepsOfOptimization.Columns.Add(GetColumn("Period", 80));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Start", 80, false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("End", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Best bot number InSample", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Best bot in period", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Parameters", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Bot results in OutOfSample", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Profit", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Average profit %", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Position count", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("SMA(20) Deviation", readOnly: false));
+
+            DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
+            column11.CellTemplate = new DataGridViewButtonCell();
+            column11.ReadOnly = true;
+            column11.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            gridStepsOfOptimization.Columns.Add(column11);
+
+            gridStepsOfOptimization.Rows.Add(null, null);
+            return gridStepsOfOptimization;
+        }
+
+        private Period InSamplePeriod { get; set; } = null;
+        private List<Period> OutOfSamplePeriods = new List<Period>();
+
+        private DataGridView GetDynamicDGV()
         {
             DataGridView gridStepsOfOptimization = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
                 DataGridViewAutoSizeRowsMode.None, true);
@@ -404,9 +443,11 @@ namespace OsEngine.OsOptimizer
         {
             _gridStepsOfOptimization = GetStepsOfOptimizationDGV();
             _gridStepsOfOptimizationCSC = GetStepsOfOptimizationDGV();
+            _gridDynamicTable = GetDynamicDGV();
 
             _hostStepsOfOptimization.Child = _gridStepsOfOptimization;
             _hostStepsOfOptimizationCSC.Child = _gridStepsOfOptimizationCSC;
+            _hostDynamicTable.Child = _gridDynamicTable;
         }
 
         private WindowsFormsHost _hostFRS;
@@ -766,6 +807,21 @@ namespace OsEngine.OsOptimizer
             catch (Exception ex)
             {
                 SendLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void UpdateDynamicTable(DataGridView table)
+        {
+            if (table.InvokeRequired)
+            {
+                table.Invoke(new Action<DataGridView>(UpdateDynamicTable), table);
+                return;
+            }
+
+            if (InSamplePeriod == null)
+            {
+                
+                return;
             }
         }
 
