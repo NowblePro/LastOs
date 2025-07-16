@@ -39,6 +39,11 @@ namespace OsEngine.Entity
         public string NumberMarket;
 
         /// <summary>
+        /// Name of the robot that placed the order
+        /// </summary>
+        public string NameBot;
+
+        /// <summary>
         /// Instrument code for which the transaction took place
         /// </summary>
         public string SecurityNameCode;
