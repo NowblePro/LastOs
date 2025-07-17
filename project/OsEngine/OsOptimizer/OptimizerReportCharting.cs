@@ -284,6 +284,7 @@ namespace OsEngine.OsOptimizer
                 UpdateAverageProfitChart(_hostAverageProfitChartCSC, _chartAverageProfitCSC, _sortBotNumberCSC);
                 UpdateProfitFactorChart(_hostProfitFactorCSC, _chartProfitFactorCSC);
                 UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
+                UpdateDynamicTable(_gridDynamicTable);
             }
             catch (Exception e)
             {
@@ -376,7 +377,7 @@ namespace OsEngine.OsOptimizer
         {
             DataGridView gridStepsOfOptimization = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
                 DataGridViewAutoSizeRowsMode.None, true);
-
+            gridStepsOfOptimization.CellMouseClick += _gridResults_CellMouseClick;
             cell0.Style = gridStepsOfOptimization.DefaultCellStyle;
 
             gridStepsOfOptimization.ScrollBars = ScrollBars.Vertical;
@@ -404,39 +405,68 @@ namespace OsEngine.OsOptimizer
             return gridStepsOfOptimization;
         }
 
-        private Period InSamplePeriod { get; set; } = null;
+        /// <summary>
+        /// Периоды для четвёртой вкладки с динамическим выбором периодов
+        /// </summary>
+        private Period InSamplePeriod { get; set; } = new Period();
         private List<Period> OutOfSamplePeriods = new List<Period>();
 
         private DataGridView GetDynamicDGV()
         {
-            DataGridView gridStepsOfOptimization = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
-                DataGridViewAutoSizeRowsMode.None, true);
+            DataGridView gridDynamicStepsTable = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
+                DataGridViewAutoSizeRowsMode.None, false);
+            gridDynamicStepsTable.CellClick += DynamicTable_CellClick;
+            gridDynamicStepsTable.Click += GridDynamicStepsTable_Click;
+            gridDynamicStepsTable.CellValueChanged += GridDynamicStepsTable_CellValueChanged;
+            ContextMenu menu = new ContextMenu();
+            MenuItem deleteMenuItem = new MenuItem("Удалить", (sender, e) => 
+            {
+                if (sender is MenuItem item && item.Tag is Period p)
+                {
+                    OutOfSamplePeriods.Remove(p);
+                    UpdateDynamicTable(_gridDynamicTable);
+                }
+            });
+            menu.MenuItems.Add(deleteMenuItem);
 
-            cell0.Style = gridStepsOfOptimization.DefaultCellStyle;
+            gridDynamicStepsTable.ContextMenu = menu;
+            cell0.Style = gridDynamicStepsTable.DefaultCellStyle;
 
-            gridStepsOfOptimization.ScrollBars = ScrollBars.Vertical;
+            gridDynamicStepsTable.ScrollBars = ScrollBars.Vertical;
 
-            gridStepsOfOptimization.Columns.Add(GetColumn("Period", 80));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Start", 80, false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("End", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Best bot number InSample", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Best bot in period", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Parameters", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Bot results in OutOfSample", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Profit", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Average profit %", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Position count", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("SMA(20) Deviation", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Period"));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Start", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("End", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Period name", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Profit", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Average profit %", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Position count", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Max DrawDown", readOnly: false));
 
             DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
             column11.CellTemplate = new DataGridViewButtonCell();
             column11.ReadOnly = true;
             column11.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-            gridStepsOfOptimization.Columns.Add(column11);
+            gridDynamicStepsTable.Columns.Add(column11);
 
-            gridStepsOfOptimization.Rows.Add(null, null);
-            return gridStepsOfOptimization;
+            gridDynamicStepsTable.Rows.Add(null, null);
+            return gridDynamicStepsTable;
+        }
+
+        private void GridDynamicStepsTable_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (sender is DataGridView dgv)
+            {
+                if (e.ColumnIndex == 3)
+                {
+                    Period period = GetPeriod(e.RowIndex);
+                    if (period != null)
+                    {
+                        period.Name = $"{dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value}";
+                    }
+                }
+            }
         }
 
         private void CreateStepsOfOptimization()
@@ -626,21 +656,23 @@ namespace OsEngine.OsOptimizer
             catch { }
         }
 
-        private void AddCell(DataGridViewRow row, decimal value, bool readOnly = true)
+        private DataGridViewTextBoxCell AddCell(DataGridViewRow row, decimal value, bool readOnly = true)
         {
             DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
             cell.Value = Math.Round(value, 3);
             cell.ToolTipText = $"{value}";
             row.Cells.Add(cell);
             cell.ReadOnly = readOnly;
+            return cell;
         }
 
-        private void AddCell(DataGridViewRow row, object value, bool readOnly = true)
+        private DataGridViewTextBoxCell AddCell(DataGridViewRow row, object value, bool readOnly = true)
         {
             DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
             cell.Value = value;
             row.Cells.Add(cell);
             cell.ReadOnly = readOnly;
+            return cell;
         }
 
         private DataGridViewColumn GetColumn(string name, int width = 0, bool readOnly = true)
@@ -668,7 +700,6 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            gridStepsOfOptimization.CellMouseClick -= _gridResults_CellMouseClick;
             gridStepsOfOptimization.Rows.Clear();
 
             if (_reports == null)
@@ -800,9 +831,6 @@ namespace OsEngine.OsOptimizer
 
                     gridStepsOfOptimization.Rows.Add(row);
                 }
-
-                gridStepsOfOptimization.CellMouseClick += _gridResults_CellMouseClick;
-
             }
             catch (Exception ex)
             {
@@ -817,11 +845,163 @@ namespace OsEngine.OsOptimizer
                 table.Invoke(new Action<DataGridView>(UpdateDynamicTable), table);
                 return;
             }
+            table.Rows.Clear();
 
-            if (InSamplePeriod == null)
+            FillPeriod(InSamplePeriod, "In Sample");
+
+            // Заполнение Out Of Sample периодов
+            for (int i = 0; i < OutOfSamplePeriods.Count; i++)
             {
+                FillPeriod(OutOfSamplePeriods[i], "Out Of Sample");
+            }
+
+            DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
+            DataGridViewButtonCell cellEnd = new DataGridViewButtonCell();
+            cellEnd.Value = "Добавить Out Of Sample";
+            endRow.Cells.Add(cellEnd);
+            table.Rows.Add(endRow);
+
+            bool IsPeriodDefined(Period p) => p.Start != null && p.End != null;
+
+            void FillPeriod(Period period, string periodName)
+            {
+                DataGridViewRow row = new DataGridViewRow() { Height = 30 };
+
+                AddCell(row, periodName, true);
+                for (int i = 1; i < table.Columns.Count; i++)
+                {
+                    if (i == 1)
+                    {
+                        if (period.Start == null)
+                        {
+                            DataGridViewButtonCell cell1 = new DataGridViewButtonCell();
+                            cell1.Value = "Редактировать";
+                            row.Cells.Add(cell1);
+                        }
+                        else
+                        {
+                            DataGridViewTextBoxCell cell = AddCell(row, period.Start.Value.ToString("dd.MM.yyyy"));
+                            cell.ToolTipText = period.Start.Value.ToString();
+                        }
+                    }
+                    else if (i == 2)
+                    {
+                        if (period.End == null)
+                        {
+                            DataGridViewButtonCell cell1 = new DataGridViewButtonCell();
+                            cell1.Value = "Редактировать";
+                            row.Cells.Add(cell1);
+                        }
+                        else
+                        {
+                            DataGridViewTextBoxCell cell = AddCell(row, period.End.Value.ToString("dd.MM.yyyy"));
+                            cell.ToolTipText = period.End.Value.ToString();
+                        }
+                    }
+                    else
+                    {
+                        if (IsPeriodDefined(period))
+                        {
+                            if (i == 3)
+                            {
+                                // Название периода (опционально)
+                                AddCell(row, period.Name, false);
+                            }
+                            else
+                            {
+                                AddCell(row, " ", true);
+                            }
+                        }
+                        else
+                        {
+                            AddCell(row, "-", true);
+                        }
+                    }
+                }
+                table.Rows.Add(row);
+            }
+        }
+
+        private void GridDynamicStepsTable_Click(object sender, EventArgs e)
+        {
+            if (sender is DataGridView dgv && e is MouseEventArgs mouse)
+            {
+                var info = dgv.HitTest(mouse.X, mouse.Y);
+                if (mouse.Button != MouseButtons.Right || info.Type != DataGridViewHitTestType.Cell || info.RowIndex < 1 || info.RowIndex > OutOfSamplePeriods.Count)
+                {
+                    return;
+                }
+                dgv.ContextMenu.MenuItems[0].Tag = OutOfSamplePeriods[info.RowIndex - 1];
+                dgv.ContextMenu.Show(dgv, new Point(mouse.X, mouse.Y));
+            }
+        }
+
+        private void DynamicTable_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+
+            if (sender is DataGridView dgv)
+            {
+                bool changed = false;
+
+                Period period = GetPeriod(e.RowIndex);
+
+                if (period == null)
+                {
+                    if (e.ColumnIndex == 0)
+                    {
+                        OutOfSamplePeriods.Add(new Period());
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    if (e.ColumnIndex == 1)
+                    {
+                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(DateTime.Now);
+                        dialog.ShowDialog();
+                        if (dialog.IsSaved)
+                        {
+                            period.Start = dialog.Time;
+                            changed = true;
+                        }
+                    }
+
+                    if (e.ColumnIndex == 2)
+                    {
+                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(DateTime.Now);
+                        dialog.ShowDialog();
+                        if (dialog.IsSaved)
+                        {
+                            period.End = dialog.Time;
+                            changed = true;
+                        }
+                    }
+                }
                 
-                return;
+                if (changed)
+                {
+                    UpdateDynamicTable(dgv);
+                }
+            }
+        }
+
+        Period GetPeriod(int rowIndex)
+        {
+            if (rowIndex == 0)
+            {
+                return InSamplePeriod;
+            }
+            else
+            {
+                if (rowIndex - 1 < OutOfSamplePeriods.Count)
+                {
+                    return OutOfSamplePeriods[rowIndex - 1];
+                }
+                else
+                {
+                    return null;
+                }
             }
         }
 
@@ -1157,7 +1337,7 @@ namespace OsEngine.OsOptimizer
 
         private void ShowBotFullChartDialog(DataGridView gridView, DataGridViewCellMouseEventArgs e)
         {
-            if (_reports.Count < e.RowIndex + 1)
+            if (_reports == null || _reports.Count < e.RowIndex + 1)
             {
                 return;
             }

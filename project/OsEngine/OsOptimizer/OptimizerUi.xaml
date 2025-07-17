@@ -146,7 +146,7 @@
                                     <ComboBox x:Name="ComboBoxSortResultsBotNumPercent1" HorizontalAlignment="Left" Margin="407,10,0,0" VerticalAlignment="Top" Width="67" Height="22"/>
                                 </Grid>
                             </TabItem>
-                            <TabItem Name="TabControlResultsOutOfSampleResults2" Header="4">
+                            <TabItem Name="TabControlResultsOutOfSampleResults2" Header="Фазы">
                                 <Grid Name="PrimeGrid2">
                                     <Grid Name="BottomGrid2" Height="218" VerticalAlignment="Bottom" Margin="0,0,284,0" >
                                         <Grid.ColumnDefinitions>

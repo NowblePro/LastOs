@@ -8,7 +8,8 @@ namespace OsEngine.Entity
 {
     internal class Period
     {
-        public DateTime Start { get; set; }
-        public DateTime End { get; set; }
+        public string Name { get; set; } = "";
+        public DateTime? Start { get; set; } = null;
+        public DateTime? End { get; set; } = null;
     }
 }
