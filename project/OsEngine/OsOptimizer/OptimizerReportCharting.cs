@@ -894,12 +894,12 @@ namespace OsEngine.OsOptimizer
                 }
             }
             
-            FillPeriod(InSamplePeriod, "In Sample");
+            FillPeriod(InSamplePeriod, "In Sample", 0);
 
             // Заполнение Out Of Sample периодов
             for (int i = 0; i < OutOfSamplePeriods.Count; i++)
             {
-                FillPeriod(OutOfSamplePeriods[i], "Out Of Sample");
+                FillPeriod(OutOfSamplePeriods[i], "Out Of Sample", i + 1);
             }
 
             DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
@@ -910,7 +910,25 @@ namespace OsEngine.OsOptimizer
 
             bool IsPeriodDefined(Period p) => p.Start != null && p.End != null && p.Start < p.End;
 
-            void FillPeriod(Period period, string periodName)
+            string GetCellValue(int rowIndex, int columnIndex)
+            {
+                string cellVAlue = string.Empty;
+                if (fazes != null && fazes.Count > 0 && rowIndex < fazes.Count)
+                {
+                    OptimazerFazeReport faze = fazes[rowIndex];
+                    if (faze != null)
+                    {
+                        if (columnIndex == 5) 
+                        {
+                            // Profit
+                            cellVAlue = $"{Math.Round(faze.Reports[0].TotalProfit, 3)}";
+                        }
+                    }
+                }
+                return cellVAlue;
+            }
+
+            void FillPeriod(Period period, string periodName, int rowIndex)
             {
                 DataGridViewRow row = new DataGridViewRow() { Height = 30 };
 
@@ -954,19 +972,14 @@ namespace OsEngine.OsOptimizer
                                 // Название периода (опционально)
                                 AddCell(row, period.Name, false);
                             }
-                            if (i == 4)
+                            else if (i == 4)
                             {
                                 // Параметры
                                 AddCell(row, parameters);
                             }
-                            else if (i == 5)
-                            {
-                                // Профит
-                                // todo: заполнить из соответствующей фазы, если список фаз не null
-                            }
                             else
                             {
-                                AddCell(row, " ", true);
+                                AddCell(row, GetCellValue(rowIndex, i), true);
                             }
                         }
                         else
