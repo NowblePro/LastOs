@@ -1,30 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using OsEngine.Entity;
+﻿using OsEngine.Entity;
 using OsEngine.Indicators;
-using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
+using OsEngine.OsTrader.Panels.Tab;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
 
 namespace OsEngine.Robots.TrigonumCustom.Base.ATR
 {
-
-    [Bot("ReverseAdaptivePriceChannelAtrTm")]
-    public class ReverseAdaptivePriceChannelAtrTm : BotPanel
+    [Bot("ImpulseTwoSmaWithAtrTm")]
+    class ImpulseTwoSmaWithAtrTm : BotPanel
     {
-        private BotTabSimple _tab;
+        BotTabSimple _tab;
 
-        public StrategyParameterString Regime;
+        StrategyParameterString Regime;
         public StrategyParameterDecimal VolumeOnPosition;
         public StrategyParameterString VolumeRegime;
-        public StrategyParameterDecimal Slippage;
 
         private StrategyParameterTimeOfDay TimeStart;
         private StrategyParameterTimeOfDay TimeEnd;
 
-        public Aindicator _APC;
-        private StrategyParameterInt AdxPeriod;
-        private StrategyParameterInt Ratio;
+        public Aindicator _sma1;
+        public StrategyParameterInt _periodSma1;
+
+        public Aindicator _sma2;
+        public StrategyParameterInt _periodSma2;
+
+        public StrategyParameterInt LookBack;
 
         public Aindicator _smaFilter;
         private StrategyParameterInt SmaLengthFilter;
@@ -44,8 +47,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
         private bool _needUpdateIterator;
         private int _iterator = 1;
 
-        public ReverseAdaptivePriceChannelAtrTm(string name, StartProgram startProgram)
-            : base(name, startProgram)
+        private bool _atrResult = false;
+
+        public ImpulseTwoSmaWithAtrTm(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
             _tab = TabsSimple[0];
@@ -54,15 +58,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
 
-            Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
-
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
 
-            AdxPeriod = CreateParameter("Ronco Period", 14, 2, 300, 12, "Robot parameters");
-            Ratio = CreateParameter("Ratio", 100, 50, 300, 10, "Robot parameters");
+            LookBack = CreateParameter("Candles Look Back", 4, 1, 10, 1, "Robot parameters");
 
-            SmaLengthFilter = CreateParameter("Sma Length Filter", 100, 10, 500, 1, "Filters");
+            _periodSma1 = CreateParameter("fast SMA period", 250, 50, 500, 50, "Robot parameters");
+            _periodSma2 = CreateParameter("slow SMA2 period", 1000, 500, 1500, 100, "Robot parameters");
+
+            SmaLengthFilter = CreateParameter("Sma Length", 100, 10, 500, 1, "Filters");
 
             SmaPositionFilterIsOn = CreateParameter("Is SMA Filter On", false, "Filters");
             SmaSlopeFilterIsOn = CreateParameter("Is Sma Slope Filter On", false, "Filters");
@@ -78,46 +82,46 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
 
             _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Filter", canDelete: false);
             _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
-            _smaFilter.DataSeries[0].Color = System.Drawing.Color.Azure;
+            _smaFilter.DataSeries[0].Color = Color.Azure;
             _smaFilter.ParametersDigit[0].Value = SmaLengthFilter.ValueInt;
             _smaFilter.Save();
 
-            _APC = IndicatorsFactory.CreateIndicatorByName("AdaptivePriceChannel_Indicator", name + "APC", false);
-            _APC = (Aindicator)_tab.CreateCandleIndicator(_APC, "Prime");
-            _APC.ParametersDigit[0].Value = AdxPeriod.ValueInt;
-            _APC.ParametersDigit[1].Value = Ratio.ValueInt;
-            _APC.Save();
+            _sma1 = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
+            _sma1 = (Aindicator)_tab.CreateCandleIndicator(_sma1, nameArea: "Prime");
+            _sma1.ParametersDigit[0].Value = _periodSma1.ValueInt;
+            _sma1.DataSeries[0].Color = Color.Red;
+            _sma1.Save();
+
+            _sma2 = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma2", canDelete: false);
+            _sma2 = (Aindicator)_tab.CreateCandleIndicator(_sma2, nameArea: "Prime");
+            _sma2.ParametersDigit[0].Value = _periodSma2.ValueInt;
+            _sma2.DataSeries[0].Color = Color.Green;
+            _sma2.Save();
 
             StopOrActivateIndicators();
-            ParametrsChangeByUser += RoncoParam_ParametrsChangeByUser;
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
-            RoncoParam_ParametrsChangeByUser();
-            _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
+            ParametrsChangeByUser += LRegBot_ParametrsChangeByUser;
+            LRegBot_ParametrsChangeByUser();
         }
 
-        private void _tab_PositionOpeningSuccesEvent(Position obj)
-        {
-            _tab.SellAtStopCancel();
-            _tab.BuyAtStopCancel();
-        }
-
-        private void RoncoParam_ParametrsChangeByUser()
+        private void LRegBot_ParametrsChangeByUser()
         {
             StopOrActivateIndicators();
 
-            if (_APC.ParametersDigit[0].Value != AdxPeriod.ValueInt ||
-                    _APC.ParametersDigit[1].Value != Ratio.ValueInt)
+            if (_sma1.ParametersDigit[0].Value != _periodSma1.ValueInt)
             {
-                _APC.ParametersDigit[0].Value = AdxPeriod.ValueInt;
-                _APC.ParametersDigit[1].Value = Ratio.ValueInt;
-                _APC.Save();
-                _APC.Reload();
+                _sma1.ParametersDigit[0].Value = _periodSma1.ValueInt;
+                _sma1.Reload();
+                _sma1.Save();
             }
 
-            if (_smaFilter.DataSeries.Count == 0)
+            if (_sma2.ParametersDigit[0].Value != _periodSma2.ValueInt)
             {
-                return;
+                _sma2.ParametersDigit[0].Value = _periodSma2.ValueInt;
+                _sma2.Reload();
+                _sma2.Save();
             }
+
             if (_smaFilter.ParametersDigit[0].Value != SmaLengthFilter.ValueInt)
             {
                 _smaFilter.ParametersDigit[0].Value = SmaLengthFilter.ValueInt;
@@ -146,8 +150,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
         private void StopOrActivateIndicators()
         {
             if (SmaPositionFilterIsOn.ValueBool == false
-                      && SmaSlopeFilterIsOn.ValueBool == false
-                      && _smaFilter.IsOn == true)
+           && SmaSlopeFilterIsOn.ValueBool == false
+           && _smaFilter.IsOn == true)
             {
                 _smaFilter.IsOn = false;
                 _smaFilter.Reload();
@@ -163,7 +167,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
 
         public override string GetNameStrategyType()
         {
-            return "ReverseAdaptivePriceChannelAtrTm";
+            return "ImpulseTwoSmaWithAtrTm";
         }
 
         public override void ShowIndividualSettingsDialog()
@@ -174,6 +178,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
         // Logic
         private void _tab_CandleFinishedEvent(List<Candle> candles)
         {
+            decimal lastCandle = candles[candles.Count - 1].Close;
+
+            if (AtrRegime.ValueString != "Off")
+            {
+                _atrResult = AtrLogic(candles, lastCandle);
+            }
+
+            if (Regime.ValueString == "Off") { return; }
+
             if (TimeStart.Value > _tab.TimeServerCurrent ||
                 TimeEnd.Value < _tab.TimeServerCurrent)
             {
@@ -181,20 +194,71 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
                 return;
             }
 
-            decimal lastCandle = candles[candles.Count - 1].Close;
-
-            if (candles.Count < AdxPeriod.ValueInt + 10 ||
-                candles.Count < 50)
+            if (SmaLengthFilter.ValueInt >= candles.Count)
             {
                 return;
             }
 
-            decimal upChannel = _APC.DataSeries[0].Last;
-            decimal downChannel = _APC.DataSeries[1].Last;
-
-            if (upChannel == 0 || downChannel == 0)
+            if (LookBack.ValueInt + 2 > candles.Count)
             {
                 return;
+            }
+
+            if (candles.Count < _periodSma1.ValueInt || candles.Count < _periodSma2.ValueInt) { return; }
+
+            decimal lastMa2 = _sma2.DataSeries[0].Last;
+            decimal prewMa2 = _sma2.DataSeries[0].Values[candles.Count - 2];
+
+            bool sigUp = false;
+            bool sigDown = false;
+            bool sigUpClose = false;
+            bool sigDownClose = false;
+
+            // signal long
+            for (int i = candles.Count - 1; i > candles.Count - 1 - LookBack.ValueInt; i--)
+            {
+                if (_sma1.DataSeries[0].Values[i] < _sma2.DataSeries[0].Values[i])
+                {
+                    sigUp = false;
+                    sigDownClose = false;
+                    break;
+                }
+
+                sigUp = true;
+                sigDownClose = true;
+            }
+
+            if (sigUp == true && _sma1.DataSeries[0].Values[candles.Count - LookBack.ValueInt - 2] > _sma2.DataSeries[0].Values[candles.Count - LookBack.ValueInt - 2])
+            { // repeat signal
+                sigUp = false;
+            }
+
+            if (lastMa2 < prewMa2)
+            {
+                sigUp = false;
+            }
+
+            // signal short
+            for (int i = candles.Count - 1; i > candles.Count - 1 - LookBack.ValueInt; i--)
+            {
+                if (_sma1.DataSeries[0].Values[i] > _sma2.DataSeries[0].Values[i])
+                {
+                    sigDown = false;
+                    sigUpClose = false;
+                    break;
+                }
+                sigDown = true;
+                sigUpClose = true;
+            }
+
+            if (sigDown == true && _sma1.DataSeries[0].Values[candles.Count - LookBack.ValueInt - 2] < _sma2.DataSeries[0].Values[candles.Count - LookBack.ValueInt - 2])
+            { // repeat signal
+                sigDown = false;
+            }
+
+            if (lastMa2 > prewMa2)
+            {
+                sigDown = false;
             }
 
             List<Position> positions = _tab.PositionsOpenAll;
@@ -204,23 +268,19 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
                 ////////////////////////
                 if (AtrRegime.ValueString == "On" || AtrRegime.ValueString == "Entry Only")
                 {
-                    if (AtrLogic(candles, lastCandle)) return;
+                    if (_atrResult) return;
                 }
                 ////////////////////////
 
-                if (BuySignalIsFiltered(candles) == false)
+                // enter logic
+                if (!BuySignalIsFiltered(candles) && sigUp)
                 {
-                    decimal _slippage = Slippage.ValueDecimal * upChannel / 100;
-                    _tab.BuyAtStopCancel();
-                    _tab.BuyAtStop(GetVolume(), upChannel + _tab.Securiti.PriceStep + _slippage, upChannel + _tab.Securiti.PriceStep,
-                        StopActivateType.HigherOrEqual);
+                    _tab.BuyAtMarket(GetVolume());
                 }
-                if (SellSignalIsFiltered(candles) == false)
+
+                if (!SellSignalIsFiltered(candles) && sigDown)
                 {
-                    decimal _slippage = Slippage.ValueDecimal * downChannel / 100;
-                    _tab.SellAtStopCancel();
-                    _tab.SellAtStop(GetVolume(), downChannel - _tab.Securiti.PriceStep - _slippage, downChannel - _tab.Securiti.PriceStep,
-                        StopActivateType.LowerOrEqyal);
+                    _tab.SellAtMarket(GetVolume());
                 }
             }
             else
@@ -228,52 +288,62 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
                 ////////////////////////
                 if (AtrRegime.ValueString == "On" || AtrRegime.ValueString == "Exit Only")
                 {
-                    if (AtrLogic(candles, lastCandle)) return;
+                    if (_atrResult) return;
                 }
                 ////////////////////////
 
-                _tab.SellAtStopCancel();
-                _tab.BuyAtStopCancel();
-                Position pos = positions[0];
-
-                if (positions.Count > 1)
+                //exit logic
+                for (int i = 0; i < positions.Count; i++)
                 {
-
-                }
-
-                if (pos.CloseActiv == true)
-                {
-                    return;
-                }
-
-                if (pos.Direction == Side.Buy)
-                {
-                    decimal priceLine = downChannel - _tab.Securiti.PriceStep;
-                    decimal priceOrder = downChannel - _tab.Securiti.PriceStep;
-                    decimal _slippage = Slippage.ValueDecimal * priceOrder / 100;
-
-                    if (SellSignalIsFiltered(candles) == false)
+                    if (positions[i].State == PositionStateType.ClosingFail)
                     {
-                        _tab.SellAtStopCancel();
-                        _tab.SellAtStop(GetVolume(), priceOrder - _slippage, priceLine, StopActivateType.LowerOrEqyal);
+                        _tab.CloseAtMarket(positions[i], positions[i].OpenVolume);
+                        continue;
                     }
 
-                    _tab.CloseAtStop(pos, priceLine, priceOrder - _slippage);
-                }
-                else if (pos.Direction == Side.Sell)
-                {
-                    decimal priceLine = upChannel + _tab.Securiti.PriceStep;
-                    decimal priceOrder = upChannel + _tab.Securiti.PriceStep;
-                    decimal _slippage = Slippage.ValueDecimal * priceOrder / 100;
+                    if (positions[i].State != PositionStateType.Open) { continue; }
 
-                    if (BuySignalIsFiltered(candles) == false)
+                    // logic to reverse long position
+                    if (positions[i].Direction == Side.Buy && (sigDown || sigUpClose))
                     {
-                        _tab.BuyAtStopCancel();
-                        _tab.BuyAtStop(GetVolume(), priceOrder + _slippage, priceLine, StopActivateType.HigherOrEqual);
+                        _tab.CloseAtMarket(positions[i], positions[i].OpenVolume);
+
+                        if (!SellSignalIsFiltered(candles))
+                        {
+                            _tab.SellAtMarket(GetVolume());
+                        }
+                        continue;
                     }
-                    _tab.CloseAtStop(pos, priceLine, priceOrder + _slippage);
+
+                    // logic to reverse short position
+                    if (positions[i].Direction == Side.Sell && (sigUp || sigDownClose))
+                    {
+                        _tab.CloseAtMarket(positions[i], positions[i].OpenVolume);
+
+                        if (!BuySignalIsFiltered(candles))
+                        {
+                            _tab.BuyAtMarket(GetVolume());
+                        }
+                        continue;
+                    }
                 }
             }
+        }
+
+        private void CancelStopsAndProfits()
+        {
+            List<Position> positions = _tab.PositionsOpenAll;
+
+            for (int i = 0; i < positions.Count; i++)
+            {
+                Position pos = positions[i];
+
+                pos.StopOrderIsActiv = false;
+                pos.ProfitOrderIsActiv = false;
+            }
+
+            _tab.BuyAtStopCancel();
+            _tab.SellAtStopCancel();
         }
 
         private bool BuySignalIsFiltered(List<Candle> candles)
@@ -286,7 +356,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
                 Regime.ValueString == "OnlyClosePosition")
             {
                 return true;
-                //if the robot's operating mode does not correspond to the direction of the positio
+                //if the robot's operating mode does not correspond to the direction of the position
             }
 
             if (SmaPositionFilterIsOn.ValueBool)
@@ -345,22 +415,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
             return false;
         }
 
-        private void CancelStopsAndProfits()
-        {
-            List<Position> positions = _tab.PositionsOpenAll;
-
-            for (int i = 0; i < positions.Count; i++)
-            {
-                Position pos = positions[i];
-
-                pos.StopOrderIsActiv = false;
-                pos.ProfitOrderIsActiv = false;
-            }
-
-            _tab.BuyAtStopCancel();
-            _tab.SellAtStopCancel();
-        }
-
         private decimal GetVolume()
         {
             decimal volume = 0;
@@ -369,7 +423,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
             {
                 decimal contractPrice = TabsSimple[0].PriceBestAsk;
                 volume = VolumeOnPosition.ValueDecimal / contractPrice;
-
             }
             else if (VolumeRegime.ValueString == "Number of contracts")
             {
@@ -432,5 +485,4 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
             return false;
         }
     }
-
 }
