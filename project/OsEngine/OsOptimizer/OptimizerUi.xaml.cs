@@ -206,7 +206,8 @@ namespace OsEngine.OsOptimizer
                 LabelRobustnessMetricValue,
                 ComboBoxSortResultsBotNumPercent,
                 ComboBoxSortResultsType1,
-                ComboBoxSortResultsBotNumPercent1
+                ComboBoxSortResultsBotNumPercent1,
+                _master
                 );
 
             _resultsCharting.ActivateTotalProfitChart(WindowsFormsHostTotalProfit, ComboBoxTotalProfit);
@@ -3223,7 +3224,7 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], _captureData);
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex].GetParameters(), _captureData);
 
             bot.ShowChartDialog();
         }
@@ -3283,7 +3284,7 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], _captureData);
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex].GetParameters(), _captureData);
 
             if (bot == null)
             {
@@ -3298,7 +3299,7 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, report, _captureData);
+            BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
 
             if (bot == null)
             {

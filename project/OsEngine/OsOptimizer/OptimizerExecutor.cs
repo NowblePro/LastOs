@@ -1062,7 +1062,7 @@ namespace OsEngine.OsOptimizer
         // единичный тест
 
         public BotPanel TestBot(OptimazerFazeReport reportFaze,
-            OptimizerReport reportToBot, StartProgram startProgram, AwaitObject awaitObj, bool capture_data = false)
+            List<IIStrategyParameter> parametrs, StartProgram startProgram, AwaitObject awaitObj, bool capture_data = false)
         {
             if (_primeThreadWorker != null)
             {
@@ -1077,8 +1077,6 @@ namespace OsEngine.OsOptimizer
             _asyncBotFactory.CreateNewBots(names, _master.StrategyName, _master.IsScript, startProgram);
 
             OptimizerServer server = CreateNewServer(reportFaze,false);
-
-            List<IIStrategyParameter> parametrs = reportToBot.GetParameters();
 
             BotPanel bot = CreateNewBot(botName,
                 parametrs, parametrs, server, startProgram);

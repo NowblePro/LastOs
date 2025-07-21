@@ -1441,7 +1441,7 @@ namespace OsEngine.OsOptimizer
 
         // прогрузка одного робота по параметрам
 
-        public BotPanel TestBot(OptimazerFazeReport faze, OptimizerReport report, bool captureData = false)
+        public BotPanel TestBot(OptimazerFazeReport faze, List<IIStrategyParameter> parameters, bool captureData = false)
         {
             if(_aloneTestIsOver == false) // TODO check this
             {
@@ -1453,7 +1453,7 @@ namespace OsEngine.OsOptimizer
             _aloneTestIsOver = false;
 
             _fazeToTestAloneTest = faze;
-            _reportToTestAloneTest = report;
+            _reportToTestAloneTest = parameters;
             _awaitUiMasterAloneTest = new AwaitObject(OsLocalization.Optimizer.Label52, 100, 0, true);
 
             _captureData = captureData;
@@ -1470,7 +1470,7 @@ namespace OsEngine.OsOptimizer
 
         OptimazerFazeReport _fazeToTestAloneTest;
 
-        OptimizerReport _reportToTestAloneTest;
+        List<IIStrategyParameter> _reportToTestAloneTest;
 
         AwaitObject _awaitUiMasterAloneTest;
 

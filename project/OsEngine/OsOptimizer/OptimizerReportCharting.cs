@@ -1,4 +1,11 @@
-﻿using System;
+﻿using Microsoft.Office.Core;
+using OsEngine.Charts;
+using OsEngine.Entity;
+using OsEngine.Language;
+using OsEngine.Logging;
+using OsEngine.OsOptimizer.OptEntity;
+using OsEngine.OsTrader.Panels;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -9,19 +16,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 using System.Windows.Forms.Integration;
-using OsEngine.Charts;
-using OsEngine.Entity;
-using OsEngine.Language;
-using OsEngine.Logging;
-using OsEngine.OsOptimizer.OptEntity;
-using OsEngine.OsTrader.Panels;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace OsEngine.OsOptimizer
 {
     public class OptimizerReportCharting
     {
         private DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-
+        private OptimizerMaster _master;
         public OptimizerReportCharting(
             WindowsFormsHost hostStepsOfOptimization,
             WindowsFormsHost hostRobustness,
@@ -31,9 +33,11 @@ namespace OsEngine.OsOptimizer
             System.Windows.Controls.Label labelRobustnessMetricValue,
             System.Windows.Controls.ComboBox boxTypeSortBotNum,
             System.Windows.Controls.ComboBox boxTypeSortCSC,
-            System.Windows.Controls.ComboBox boxTypeSortBotNumCSC
+            System.Windows.Controls.ComboBox boxTypeSortBotNumCSC,
+            OptimizerMaster master
             )
         {
+            _master = master;
             _sortBotsType = SortBotsType.TotalProfit;
             _currentCulture = OsLocalization.CurCulture;
             _hostStepsOfOptimization = hostStepsOfOptimization;
@@ -226,7 +230,7 @@ namespace OsEngine.OsOptimizer
                 {
                     return;
                 }
-
+                GetTotalPeriod(reports);
                 for (int i = 0; i < reports.Count; i++)
                 {
                     OptimazerFazeReport.SortResults(reports[i].Reports, _sortBotsType);
@@ -273,6 +277,7 @@ namespace OsEngine.OsOptimizer
                 {
                     return;
                 }
+                GetTotalPeriod(reports);
                 if (calculate || calculateFRS)
                 {
                     CalculateCSCResults(reports, !calculate);
@@ -331,6 +336,14 @@ namespace OsEngine.OsOptimizer
             {
                 SendLogMessage(e.ToString(), LogMessageType.Error);
             }
+        }
+
+
+
+        private void GetTotalPeriod(List<OptimazerFazeReport> reports)
+        {
+            TotalPeriod.Start = reports.Min(f => f.Faze.TimeStart);
+            TotalPeriod.End = reports.Max(f => f.Faze.TimeEnd);
         }
 
         private void GetBestBotNum(List<OptimizerReport> reports)
@@ -410,6 +423,7 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         private Period InSamplePeriod { get; set; } = new Period();
         private List<Period> OutOfSamplePeriods = new List<Period>();
+        private Period TotalPeriod { get; set; } = new Period();
 
         private DataGridView GetDynamicDGV()
         {
@@ -438,6 +452,7 @@ namespace OsEngine.OsOptimizer
             gridDynamicStepsTable.Columns.Add(GetColumn("Start", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("End", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Period name", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Parameters", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Profit", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Average profit %", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Position count", readOnly: false));
@@ -838,6 +853,23 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        private void GetFazeFromPeriod(List<Period> periods, out List<OptimazerFazeReport> result)
+        {
+            result = new List<OptimazerFazeReport>();
+            for (int i = 0; i < periods.Count; i++)
+            {
+                OptimazerFazeReport fazeReport = new OptimazerFazeReport();
+                Period period = periods[i];
+                OptimizerFaze newFaze = new OptimizerFaze();
+                newFaze.TypeFaze = i == 0 ? OptimizerFazeType.InSample : OptimizerFazeType.OutOfSample;
+                newFaze.TimeStart = (DateTime)period.Start;
+                newFaze.TimeEnd = (DateTime)period.End;
+                newFaze.Days = (int)((DateTime)period.End - (DateTime)period.Start).TotalDays;
+                fazeReport.Faze = newFaze;
+                result.Add(fazeReport);
+            }
+        }
+
         private void UpdateDynamicTable(DataGridView table)
         {
             if (table.InvokeRequired)
@@ -846,7 +878,22 @@ namespace OsEngine.OsOptimizer
                 return;
             }
             table.Rows.Clear();
-
+            // todo: убедиться, что _reports отсортированы в соответствии с логикой третьей вкладки
+            string parameters = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
+            List<Period> periods = new List<Period>() { InSamplePeriod };
+            periods.AddRange(OutOfSamplePeriods);
+            List<OptimazerFazeReport> fazes = null;
+            if (periods.All(p => IsPeriodDefined(p)))
+            {
+                GetFazeFromPeriod(periods, out fazes);
+                // todo: добавить кэширование результатов
+                foreach (OptimazerFazeReport faze in fazes)
+                {
+                    BotPanel bot = _master.TestBot(faze, _reports[0].Reports[_sortBotNumberCSC].GetParameters());
+                    faze.Load(bot);
+                }
+            }
+            
             FillPeriod(InSamplePeriod, "In Sample");
 
             // Заполнение Out Of Sample периодов
@@ -861,7 +908,7 @@ namespace OsEngine.OsOptimizer
             endRow.Cells.Add(cellEnd);
             table.Rows.Add(endRow);
 
-            bool IsPeriodDefined(Period p) => p.Start != null && p.End != null;
+            bool IsPeriodDefined(Period p) => p.Start != null && p.End != null && p.Start < p.End;
 
             void FillPeriod(Period period, string periodName)
             {
@@ -907,6 +954,16 @@ namespace OsEngine.OsOptimizer
                                 // Название периода (опционально)
                                 AddCell(row, period.Name, false);
                             }
+                            if (i == 4)
+                            {
+                                // Параметры
+                                AddCell(row, parameters);
+                            }
+                            else if (i == 5)
+                            {
+                                // Профит
+                                // todo: заполнить из соответствующей фазы, если список фаз не null
+                            }
                             else
                             {
                                 AddCell(row, " ", true);
@@ -944,7 +1001,9 @@ namespace OsEngine.OsOptimizer
             {
                 bool changed = false;
 
+                Period prevPeriod = GetPeriod(e.RowIndex - 1);
                 Period period = GetPeriod(e.RowIndex);
+                Period nextPeriod = GetPeriod(e.RowIndex + 1);
 
                 if (period == null)
                 {
@@ -958,7 +1017,7 @@ namespace OsEngine.OsOptimizer
                 {
                     if (e.ColumnIndex == 1)
                     {
-                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(DateTime.Now);
+                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.Start ?? prevPeriod?.End ?? (DateTime)TotalPeriod.Start);
                         dialog.ShowDialog();
                         if (dialog.IsSaved)
                         {
@@ -969,7 +1028,7 @@ namespace OsEngine.OsOptimizer
 
                     if (e.ColumnIndex == 2)
                     {
-                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(DateTime.Now);
+                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.End ?? nextPeriod?.Start ?? period.Start ?? (DateTime)TotalPeriod.End);
                         dialog.ShowDialog();
                         if (dialog.IsSaved)
                         {
@@ -994,7 +1053,7 @@ namespace OsEngine.OsOptimizer
             }
             else
             {
-                if (rowIndex - 1 < OutOfSamplePeriods.Count)
+                if (rowIndex - 1 < OutOfSamplePeriods.Count && rowIndex > 0)
                 {
                     return OutOfSamplePeriods[rowIndex - 1];
                 }
