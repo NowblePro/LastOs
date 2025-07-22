@@ -1356,6 +1356,8 @@
     <Compile Include="Robots\CounterTrend\WilliamsRangeTrade.cs" />
     <Compile Include="Robots\PositionsMicromanagement\TwoEntrySample.cs" />
     <Compile Include="Robots\Trend\TwoTimeFramesBot.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\BreakBBWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\BreakHighLowByAdxWithAtrTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ATR\BreakKeltnerChannelsWithAtrTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ATR\BreakLinearRegressionChannel2WithAtrCorrectedTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ATR\ImpulseMoveLongBotExtTimeWithAtrTm.cs" />
