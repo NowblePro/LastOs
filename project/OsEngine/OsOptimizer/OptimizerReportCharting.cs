@@ -853,9 +853,8 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private void GetFazeFromPeriod(List<Period> periods, out List<OptimazerFazeReport> result)
+        private void GetFazeFromPeriod(List<Period> periods)
         {
-            result = new List<OptimazerFazeReport>();
             for (int i = 0; i < periods.Count; i++)
             {
                 OptimazerFazeReport fazeReport = new OptimazerFazeReport();
@@ -866,9 +865,11 @@ namespace OsEngine.OsOptimizer
                 newFaze.TimeEnd = (DateTime)period.End;
                 newFaze.Days = (int)((DateTime)period.End - (DateTime)period.Start).TotalDays;
                 fazeReport.Faze = newFaze;
-                result.Add(fazeReport);
+                period.Report = fazeReport;
             }
         }
+
+        Dictionary<Period, BotPanel> periodCache = new Dictionary<Period, BotPanel>();
 
         private void UpdateDynamicTable(DataGridView table)
         {
@@ -882,24 +883,42 @@ namespace OsEngine.OsOptimizer
             string parameters = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
             List<Period> periods = new List<Period>() { InSamplePeriod };
             periods.AddRange(OutOfSamplePeriods);
-            List<OptimazerFazeReport> fazes = null;
             if (periods.All(p => IsPeriodDefined(p)))
             {
-                GetFazeFromPeriod(periods, out fazes);
-                // todo: добавить кэширование результатов
-                foreach (OptimazerFazeReport faze in fazes)
+                GetFazeFromPeriod(periods);
+                foreach (Period period in periods)
                 {
-                    BotPanel bot = _master.TestBot(faze, _reports[0].Reports[_sortBotNumberCSC].GetParameters());
-                    faze.Load(bot);
+                    BotPanel bot;
+
+                    if (string.IsNullOrEmpty(period.RobotKey))
+                    {
+                        period.RobotKey = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
+                    }
+
+                    if (periodCache.ContainsKey(period))
+                    {
+                        bot = periodCache[period];
+                        period.Report.Load(bot);
+                    }
+                    else
+                    {
+                        bot = _master.TestBot(period.Report, _reports[0].Reports[_sortBotNumberCSC].GetParameters());
+                        if (bot != null)
+                        {
+                            Thread.Sleep(100);
+                            period.Report.Load(bot);
+                            periodCache.Add(period, bot);
+                        }
+                    }
                 }
             }
             
-            FillPeriod(InSamplePeriod, "In Sample", 0);
+            FillPeriod(InSamplePeriod, "In Sample");
 
             // Заполнение Out Of Sample периодов
             for (int i = 0; i < OutOfSamplePeriods.Count; i++)
             {
-                FillPeriod(OutOfSamplePeriods[i], "Out Of Sample", i + 1);
+                FillPeriod(OutOfSamplePeriods[i], "Out Of Sample");
             }
 
             DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
@@ -910,25 +929,46 @@ namespace OsEngine.OsOptimizer
 
             bool IsPeriodDefined(Period p) => p.Start != null && p.End != null && p.Start < p.End;
 
-            string GetCellValue(int rowIndex, int columnIndex)
+            string GetCellValue(Period period, int columnIndex)
             {
                 string cellVAlue = string.Empty;
-                if (fazes != null && fazes.Count > 0 && rowIndex < fazes.Count)
+                if (period.Report != null && period.Report.Reports.Count > 0)
                 {
-                    OptimazerFazeReport faze = fazes[rowIndex];
+                    OptimazerFazeReport faze = period.Report;
                     if (faze != null)
                     {
-                        if (columnIndex == 5) 
+                        if (columnIndex == 5)
                         {
                             // Profit
                             cellVAlue = $"{Math.Round(faze.Reports[0].TotalProfit, 3)}";
+                        }
+                        if (columnIndex == 6)
+                        {
+                            // Average Profit
+                            cellVAlue = $"{Math.Round(faze.Reports[0].AverageProfit, 3)}";
+                        }
+                        if (columnIndex == 7)
+                        {
+                            // Positions count
+                            cellVAlue = $"{faze.Reports[0].PositionsCount}";
+                        }
+                        if (columnIndex == 8)
+                        {
+                            // Sharp Ratio
+                            cellVAlue = $"{Math.Round(faze.Reports[0].SharpRatio, 3)}";
+                        }
+
+                        if (columnIndex == 9)
+                        {
+                            // Max DrawDown
+                            cellVAlue = $"{Math.Round(faze.Reports[0].MaxDrowDawn, 3)}";
                         }
                     }
                 }
                 return cellVAlue;
             }
 
-            void FillPeriod(Period period, string periodName, int rowIndex)
+            void FillPeriod(Period period, string periodName)
             {
                 DataGridViewRow row = new DataGridViewRow() { Height = 30 };
 
@@ -979,7 +1019,7 @@ namespace OsEngine.OsOptimizer
                             }
                             else
                             {
-                                AddCell(row, GetCellValue(rowIndex, i), true);
+                                AddCell(row, GetCellValue(period, i), true);
                             }
                         }
                         else
