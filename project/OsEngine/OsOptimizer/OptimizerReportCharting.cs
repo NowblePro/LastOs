@@ -418,11 +418,6 @@ namespace OsEngine.OsOptimizer
             return gridStepsOfOptimization;
         }
 
-        /// <summary>
-        /// Периоды для четвёртой вкладки с динамическим выбором периодов
-        /// </summary>
-        private Period InSamplePeriod { get; set; } = new Period();
-        private List<Period> OutOfSamplePeriods = new List<Period>();
         private Period TotalPeriod { get; set; } = new Period();
 
         private DataGridView GetDynamicDGV()
@@ -437,7 +432,7 @@ namespace OsEngine.OsOptimizer
             {
                 if (sender is MenuItem item && item.Tag is Period p)
                 {
-                    OutOfSamplePeriods.Remove(p);
+                    _master.Phazes.OutOfSamplePeriods.Remove(p);
                     UpdateDynamicTable(_gridDynamicTable);
                 }
             });
@@ -881,8 +876,8 @@ namespace OsEngine.OsOptimizer
             table.Rows.Clear();
             // todo: убедиться, что _reports отсортированы в соответствии с логикой третьей вкладки
             string parameters = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
-            List<Period> periods = new List<Period>() { InSamplePeriod };
-            periods.AddRange(OutOfSamplePeriods);
+            List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
+            periods.AddRange(_master.Phazes.OutOfSamplePeriods);
             if (periods.All(p => IsPeriodDefined(p)))
             {
                 GetFazeFromPeriod(periods);
@@ -913,12 +908,12 @@ namespace OsEngine.OsOptimizer
                 }
             }
             
-            FillPeriod(InSamplePeriod, "In Sample");
+            FillPeriod(_master.Phazes.InSamplePeriod, "In Sample");
 
             // Заполнение Out Of Sample периодов
-            for (int i = 0; i < OutOfSamplePeriods.Count; i++)
+            for (int i = 0; i < _master.Phazes.OutOfSamplePeriods.Count; i++)
             {
-                FillPeriod(OutOfSamplePeriods[i], "Out Of Sample");
+                FillPeriod(_master.Phazes.OutOfSamplePeriods[i], "Out Of Sample");
             }
 
             DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
@@ -926,6 +921,8 @@ namespace OsEngine.OsOptimizer
             cellEnd.Value = "Добавить Out Of Sample";
             endRow.Cells.Add(cellEnd);
             table.Rows.Add(endRow);
+
+            _master.OnPeriodsChanged();
 
             bool IsPeriodDefined(Period p) => p.Start != null && p.End != null && p.Start < p.End;
 
@@ -1037,11 +1034,11 @@ namespace OsEngine.OsOptimizer
             if (sender is DataGridView dgv && e is MouseEventArgs mouse)
             {
                 var info = dgv.HitTest(mouse.X, mouse.Y);
-                if (mouse.Button != MouseButtons.Right || info.Type != DataGridViewHitTestType.Cell || info.RowIndex < 1 || info.RowIndex > OutOfSamplePeriods.Count)
+                if (mouse.Button != MouseButtons.Right || info.Type != DataGridViewHitTestType.Cell || info.RowIndex < 1 || info.RowIndex > _master.Phazes.OutOfSamplePeriods.Count)
                 {
                     return;
                 }
-                dgv.ContextMenu.MenuItems[0].Tag = OutOfSamplePeriods[info.RowIndex - 1];
+                dgv.ContextMenu.MenuItems[0].Tag = _master.Phazes.OutOfSamplePeriods[info.RowIndex - 1];
                 dgv.ContextMenu.Show(dgv, new Point(mouse.X, mouse.Y));
             }
         }
@@ -1062,7 +1059,7 @@ namespace OsEngine.OsOptimizer
                 {
                     if (e.ColumnIndex == 0)
                     {
-                        OutOfSamplePeriods.Add(new Period());
+                        _master.Phazes.OutOfSamplePeriods.Add(new Period());
                         changed = true;
                     }
                 }
@@ -1102,13 +1099,13 @@ namespace OsEngine.OsOptimizer
         {
             if (rowIndex == 0)
             {
-                return InSamplePeriod;
+                return _master.Phazes.InSamplePeriod;
             }
             else
             {
-                if (rowIndex - 1 < OutOfSamplePeriods.Count && rowIndex > 0)
+                if (rowIndex - 1 < _master.Phazes.OutOfSamplePeriods.Count && rowIndex > 0)
                 {
-                    return OutOfSamplePeriods[rowIndex - 1];
+                    return _master.Phazes.OutOfSamplePeriods[rowIndex - 1];
                 }
                 else
                 {
