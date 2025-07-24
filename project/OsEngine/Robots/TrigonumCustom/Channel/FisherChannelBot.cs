@@ -407,12 +407,10 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private decimal GetVolume()
         {
             decimal volume = 0;
-
+            decimal contractPrice = tab.PriceBestAsk == 0 ? 1 : TabsSimple[0].PriceBestAsk;
             if (volumeType.ValueString == CONTRACT_CURRENCY)
             {
-                decimal contractPrice = TabsSimple[0].PriceBestAsk;
                 volume = volumeOnPosition.ValueDecimal / contractPrice;
-
             }
             else if (volumeType.ValueString == NUMBER_OF_CONTRACTS)
             {
@@ -420,7 +418,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             }
             else if (volumeType.ValueString == PERCENT)
             {
-                volume = tab.Portfolio.ValueCurrent * (volumeOnPosition.ValueDecimal / 100) / tab.PriceBestAsk / tab.Security.Lot;
+                decimal lot = tab.Security.Lot == 0 ? 1 : tab.Security.Lot;
+                volume = tab.Portfolio.ValueCurrent * (volumeOnPosition.ValueDecimal / 100) / contractPrice / lot;
             }
 
             if (StartProgram == StartProgram.IsTester)
