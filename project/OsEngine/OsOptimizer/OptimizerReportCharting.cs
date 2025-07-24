@@ -7,6 +7,7 @@ using OsEngine.OsOptimizer.OptEntity;
 using OsEngine.OsTrader.Panels;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -878,9 +879,21 @@ namespace OsEngine.OsOptimizer
             string parameters = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
+
+            FillPeriod(_master.Phazes.InSamplePeriod, "In Sample");
+
+            // Заполнение Out Of Sample периодов
+            for (int i = 0; i < _master.Phazes.OutOfSamplePeriods.Count; i++)
+            {
+                FillPeriod(_master.Phazes.OutOfSamplePeriods[i], "Out Of Sample");
+            }
+
             if (periods.All(p => IsPeriodDefined(p)))
             {
                 GetFazeFromPeriod(periods);
+
+                List<Task> tasks = new List<Task>();
+
                 foreach (Period period in periods)
                 {
                     BotPanel bot;
@@ -890,32 +903,46 @@ namespace OsEngine.OsOptimizer
                         period.RobotKey = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
                     }
 
-                    if (periodCache.ContainsKey(period))
+                    if (IsPeriodDefined(period) && periodCache.ContainsKey(period))
                     {
                         bot = periodCache[period];
                         period.Report.Load(bot);
+                        Change(period, bot);
                     }
                     else
                     {
-                        bot = _master.TestBot(period.Report, _reports[0].Reports[_sortBotNumberCSC].GetParameters());
-                        if (bot != null)
+                        Period local = period;
+
+                        tasks.Add(OptimizerMaster.TestSingleBot(local.Report, _reports[0].Reports[_sortBotNumberCSC].GetParameters(), _master, (b) => 
                         {
-                            Thread.Sleep(100);
-                            period.Report.Load(bot);
-                            periodCache.Add(period, bot);
+                            if (b != null)
+                            {
+                                lock(periodCache)
+                                {
+                                    local.Report.Load(b);
+                                    periodCache.Add(local, b);
+                                }
+                                Change(local, b);
+                            }
+                        }));
+                    }
+
+                    void Change(Period p, BotPanel panel)
+                    {
+                        if (p == _master.Phazes.InSamplePeriod)
+                        {
+                            ChangePeriod(p, 0);
+                        }
+                        else
+                        {
+                            ChangePeriod(p, _master.Phazes.OutOfSamplePeriods.IndexOf(p) + 1);
                         }
                     }
                 }
+
+                Parallel.ForEach(tasks, (t) => t.Wait());
             }
             
-            FillPeriod(_master.Phazes.InSamplePeriod, "In Sample");
-
-            // Заполнение Out Of Sample периодов
-            for (int i = 0; i < _master.Phazes.OutOfSamplePeriods.Count; i++)
-            {
-                FillPeriod(_master.Phazes.OutOfSamplePeriods[i], "Out Of Sample");
-            }
-
             DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
             DataGridViewButtonCell cellEnd = new DataGridViewButtonCell();
             cellEnd.Value = "Добавить Out Of Sample";
@@ -965,67 +992,93 @@ namespace OsEngine.OsOptimizer
                 return cellVAlue;
             }
 
-            void FillPeriod(Period period, string periodName)
+            void ChangePeriod(Period period, int rowIndex)
             {
-                DataGridViewRow row = new DataGridViewRow() { Height = 30 };
-
-                AddCell(row, periodName, true);
-                for (int i = 1; i < table.Columns.Count; i++)
+                if (table.InvokeRequired)
                 {
-                    if (i == 1)
+                    table.Invoke((Action<Period, int>)ChangePeriod, period, rowIndex);
+                    return;
+                }
+                lock(table)
+                {
+                    Console.WriteLine($"ROW INDEX {rowIndex}, Period = {period.Start} -- {period.End}");
+                    DataGridViewRow row = table.Rows[rowIndex];
+                    for (int i = 5; i < table.Columns.Count; i++)
                     {
-                        if (period.Start == null)
-                        {
-                            DataGridViewButtonCell cell1 = new DataGridViewButtonCell();
-                            cell1.Value = "Редактировать";
-                            row.Cells.Add(cell1);
-                        }
-                        else
-                        {
-                            DataGridViewTextBoxCell cell = AddCell(row, period.Start.Value.ToString("dd.MM.yyyy"));
-                            cell.ToolTipText = period.Start.Value.ToString();
-                        }
-                    }
-                    else if (i == 2)
-                    {
-                        if (period.End == null)
-                        {
-                            DataGridViewButtonCell cell1 = new DataGridViewButtonCell();
-                            cell1.Value = "Редактировать";
-                            row.Cells.Add(cell1);
-                        }
-                        else
-                        {
-                            DataGridViewTextBoxCell cell = AddCell(row, period.End.Value.ToString("dd.MM.yyyy"));
-                            cell.ToolTipText = period.End.Value.ToString();
-                        }
-                    }
-                    else
-                    {
+                        var cell = row.Cells[i];
                         if (IsPeriodDefined(period))
                         {
-                            if (i == 3)
-                            {
-                                // Название периода (опционально)
-                                AddCell(row, period.Name, false);
-                            }
-                            else if (i == 4)
-                            {
-                                // Параметры
-                                AddCell(row, parameters);
-                            }
-                            else
-                            {
-                                AddCell(row, GetCellValue(period, i), true);
-                            }
-                        }
-                        else
-                        {
-                            AddCell(row, "-", true);
+                            cell.Value = GetCellValue(period, i);
                         }
                     }
                 }
-                table.Rows.Add(row);
+            }
+
+            void FillPeriod(Period period, string periodName)
+            {
+                lock (table) 
+                {
+                    DataGridViewRow row = new DataGridViewRow() { Height = 30 };
+
+                    AddCell(row, periodName, true);
+
+                    for (int i = 1; i < table.Columns.Count; i++)
+                    {
+                        if (i == 1)
+                        {
+                            if (period.Start == null)
+                            {
+                                DataGridViewButtonCell cell1 = new DataGridViewButtonCell();
+                                cell1.Value = "Редактировать";
+                                row.Cells.Add(cell1);
+                            }
+                            else
+                            {
+                                DataGridViewTextBoxCell cell = AddCell(row, period.Start.Value.ToString("dd.MM.yyyy"));
+                                cell.ToolTipText = period.Start.Value.ToString();
+                            }
+                        }
+                        else if (i == 2)
+                        {
+                            if (period.End == null)
+                            {
+                                DataGridViewButtonCell cell1 = new DataGridViewButtonCell();
+                                cell1.Value = "Редактировать";
+                                row.Cells.Add(cell1);
+                            }
+                            else
+                            {
+                                DataGridViewTextBoxCell cell = AddCell(row, period.End.Value.ToString("dd.MM.yyyy"));
+                                cell.ToolTipText = period.End.Value.ToString();
+                            }
+                        }
+                        else
+                        {
+                            if (IsPeriodDefined(period))
+                            {
+                                if (i == 3)
+                                {
+                                    // Название периода (опционально)
+                                    AddCell(row, period.Name, false);
+                                }
+                                else if (i == 4)
+                                {
+                                    // Параметры
+                                    AddCell(row, parameters);
+                                }
+                                else
+                                {
+                                    AddCell(row, GetCellValue(period, i), true);
+                                }
+                            }
+                            else
+                            {
+                                AddCell(row, "-", true);
+                            }
+                        }
+                    }
+                    table.Rows.Add(row);
+                }
             }
         }
 

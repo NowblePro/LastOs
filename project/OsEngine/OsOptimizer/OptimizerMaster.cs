@@ -1470,6 +1470,17 @@ namespace OsEngine.OsOptimizer
 
         // прогрузка одного робота по параметрам
 
+        public static Task TestSingleBot(OptimazerFazeReport faze, List<IIStrategyParameter> parameters, OptimizerMaster master, Action<BotPanel> callBack)
+        {
+            return Task.Run(() => 
+            {
+                OptimizerExecutor optimizerExecutor = new OptimizerExecutor(master);
+                optimizerExecutor.LogMessageEvent += master.SendLogMessage;
+                BotPanel result = master._optimizerExecutor.TestSingleBot(faze, parameters, StartProgram.IsTester);
+                callBack?.Invoke(result);
+            });
+        }
+
         public BotPanel TestBot(OptimazerFazeReport faze, List<IIStrategyParameter> parameters, bool captureData = false)
         {
             if(_aloneTestIsOver == false) // TODO check this

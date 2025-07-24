@@ -839,28 +839,8 @@ namespace OsEngine.OsOptimizer
             return server;
         }
 
-        private BotPanel CreateNewBot(string botName,
-            List<IIStrategyParameter> parametrs,
-            List<IIStrategyParameter> paramOptimized,
-            OptimizerServer server, StartProgram regime)
+        private void CopyParametersToBot(BotPanel bot, List<IIStrategyParameter> parametrs, List<IIStrategyParameter> paramOptimized)
         {
-            BotPanel bot = null;
-            
-            try
-            {
-                bot = _asyncBotFactory.GetBot(_master.StrategyName, botName);
-
-                if (bot.Parameters.Count != parametrs.Count)
-                {
-                    return null;
-                }
-            }
-            catch(Exception ex)
-            {
-                SendLogMessage(ex.ToString(), LogMessageType.Error);
-                return null;
-            }
-
             try
             {
                 for (int i = 0; i < parametrs.Count; i++)
@@ -936,11 +916,35 @@ namespace OsEngine.OsOptimizer
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                SendLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private BotPanel CreateNewBot(string botName,
+            List<IIStrategyParameter> parametrs,
+            List<IIStrategyParameter> paramOptimized,
+            OptimizerServer server, StartProgram regime)
+        {
+            BotPanel bot = null;
+            
+            try
+            {
+                bot = _asyncBotFactory.GetBot(_master.StrategyName, botName);
+
+                if (bot.Parameters.Count != parametrs.Count)
+                {
+                    return null;
+                }
+            }
             catch(Exception ex)
             {
-                SendLogMessage(ex.ToString(),LogMessageType.Error);
+                SendLogMessage(ex.ToString(), LogMessageType.Error);
                 return null;
             }
+            
+            CopyParametersToBot(bot, parametrs, paramOptimized);
            
             try
             {
@@ -1058,6 +1062,69 @@ namespace OsEngine.OsOptimizer
         /// событие о том что нужно переместить интерфейс в определённое место
         /// </summary>
         public event Action<NeadToMoveUiTo> NeadToMoveUiToEvent;
+
+        public BotPanel TestSingleBot(OptimazerFazeReport reportFaze,
+            List<IIStrategyParameter> parametrs, StartProgram startProgram)
+        {
+            DateTime startTime = DateTime.Now;
+            string botName = NumberGen.GetNumberDeal(StartProgram.IsOsOptimizer).ToString();
+            BotPanel bot = BotFactory.GetStrategyForName(_master.StrategyName, botName, startProgram, _master.IsScript);
+            if (bot == null)
+            {
+                SendLogMessage("Test over whith error. A different robot is selected in the optimizer", LogMessageType.Error);
+                return null;
+            }
+            OptimizerServer server = CreateNewServer(reportFaze, false);
+            CopyParametersToBot(bot, parametrs, null);
+            // todo: также скопировать в botTab из локального OptimizerServer, найти используемые глобальные поля в OptimizerMaster и избавиться от них
+            DateTime timeStartWaiting = DateTime.Now;
+            while (bot.IsConnected == false)
+            {
+                Thread.Sleep(50);
+
+                if (timeStartWaiting.AddSeconds(20) < DateTime.Now)
+                {
+                    SendLogMessage(OsLocalization.Optimizer.Message10, LogMessageType.Error);
+                    return null;
+                }
+            }
+
+            server.TestingStart();
+
+            int countSameTime = 0;
+            DateTime timeServerLast = DateTime.MinValue;
+
+            timeStartWaiting = DateTime.Now;
+
+            while (bot.TabsSimple[0].CandlesAll == null
+                   ||
+                   bot.TabsSimple[0].TimeServerCurrent.AddHours(1) < reportFaze.Faze.TimeEnd)
+            {
+                // hack попробовать убрать
+                Thread.Sleep(1000);
+                if (timeStartWaiting.AddSeconds(300) < DateTime.Now)
+                {
+                    break;
+                }
+
+                if (timeServerLast == bot.TabsSimple[0].TimeServerCurrent)
+                {
+                    countSameTime++;
+
+                    if (countSameTime >= 5)
+                    { // пять раз подряд время сервера не меняется. Тест окончен
+                        break;
+                    }
+                }
+                else
+                {
+                    timeServerLast = bot.TabsSimple[0].TimeServerCurrent;
+                    countSameTime = 0;
+                }
+            }
+
+            return bot;
+        }
 
         // единичный тест
 
