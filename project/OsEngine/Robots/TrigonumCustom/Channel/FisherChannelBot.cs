@@ -22,6 +22,11 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private const string NUMBER_OF_CONTRACTS = "Number Of Contracts";
         private const string CONTRACT_CURRENCY = "Contract currency";
         private const string PERCENT = "Percent";
+        private const string ON = "On";
+        private const string OFF = "Off";
+        private const string ONLY_SHORT = "OnlyShort";
+        private const string ONLY_LONG = "OnlyLong";
+        private const string ONLY_CLOSE_POSITION = "OnlyClosePosition";
         #endregion
         /// <summary> Период, за который считается индикатор Фишера </summary>
         private StrategyParameterInt fisherPeriod;
@@ -33,7 +38,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterDecimal topLine;
         /// <summary> Значение на графике Фишера, при котором засчитывается перепроданность </summary>
         private StrategyParameterDecimal bottomLine;
-
+        private StrategyParameterString Regime;
         /// <summary>
         /// Величина, показывающая необходимую разницу экстремумов для срабатывания логики покупки/продажи
         /// </summary>
@@ -90,6 +95,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         {
             TabCreate(BotTabType.Simple);
             tab = TabsSimple[0];
+
+            Regime = CreateParameter("Regime", "Off", new[] { OFF, ON, ONLY_LONG, ONLY_SHORT, ONLY_CLOSE_POSITION }, "Base");
             slippage = CreateParameter("Slippage", 0.1m, 0.1m, 5, 0.1m, "Base");
 
             _saveJson = CreateParameter("Save Json Data", false, "Base");
@@ -208,11 +215,13 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             UpdateExtremums(fisherValues, fisherSma, lastCandles);
 
-            if (positions.Count == 0)
+            if (Regime.ValueString == OFF) return;
+
+            if (positions.Count == 0 && Regime.ValueString != ONLY_CLOSE_POSITION)
             {
                 CheckEnterPosition();
             }
-            else
+            else 
             {
                 CheckStop(positions, candles);
             }
@@ -318,7 +327,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             int lastExtremumsCount = 2;
             int maxCount = currentMaximums.Where(i => i != 0).Count();
 
-            if (maxCount > 1 && currentMaximums.Last() != 0)
+            if (Regime.ValueString != ONLY_LONG && maxCount > 1 && currentMaximums.Last() != 0)
             {
                 currentMaximums = currentMaximums.Where(i => i != 0).Skip(maxCount - lastExtremumsCount).ToList();
                 currentMaxPrices = currentMaxPrices.Where(i => i != 0).Skip(maxCount - lastExtremumsCount).ToList();
@@ -336,7 +345,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             }
 
             int minCount = currentMinimums.Where(i => i != 0).Count();
-            if (minCount > 1 && currentMinimums.Last() != 0)
+            if (Regime.ValueString != ONLY_SHORT && minCount > 1 && currentMinimums.Last() != 0)
             {
                 currentMinimums = currentMinimums.Where(i => i != 0).Skip(minCount - lastExtremumsCount).ToList();
                 currentMinPrices = currentMinPrices.Where(i => i != 0).Skip(minCount - lastExtremumsCount).ToList();
@@ -398,12 +407,10 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private decimal GetVolume()
         {
             decimal volume = 0;
-
+            decimal contractPrice = tab.PriceBestAsk == 0 ? 1 : TabsSimple[0].PriceBestAsk;
             if (volumeType.ValueString == CONTRACT_CURRENCY)
             {
-                decimal contractPrice = TabsSimple[0].PriceBestAsk;
                 volume = volumeOnPosition.ValueDecimal / contractPrice;
-
             }
             else if (volumeType.ValueString == NUMBER_OF_CONTRACTS)
             {
@@ -411,7 +418,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             }
             else if (volumeType.ValueString == PERCENT)
             {
-                volume = tab.Portfolio.ValueCurrent * (volumeOnPosition.ValueDecimal / 100) / tab.PriceBestAsk / tab.Security.Lot;
+                decimal lot = tab.Security.Lot == 0 ? 1 : tab.Security.Lot;
+                volume = tab.Portfolio.ValueCurrent * (volumeOnPosition.ValueDecimal / 100) / contractPrice / lot;
             }
 
             if (StartProgram == StartProgram.IsTester)

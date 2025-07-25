@@ -1357,6 +1357,16 @@
     <Compile Include="Robots\CounterTrend\WilliamsRangeTrade.cs" />
     <Compile Include="Robots\PositionsMicromanagement\TwoEntrySample.cs" />
     <Compile Include="Robots\Trend\TwoTimeFramesBot.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\BreakBBWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\BreakHighLowByAdxWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\BreakKeltnerChannelsWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\BreakLinearRegressionChannel2WithAtrCorrectedTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\ImpulseMoveLongBotExtTimeWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\ImpulseSmaLRWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\ImpulseTwoSmaWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\ParabolicSarClassicTradeWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\ReverseAdaptivePriceChannelWithAtrTm.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\ATR\TrailingImpulseHmaRsiWithAtrTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAdxTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAdxRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
@@ -1384,6 +1394,7 @@
     <Compile Include="Robots\TrigonumCustom\Channel\ReverseAdaptivePriceChannelPlus_2Tm.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\Stoch.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ZZChannelCustom.cs" />
+    <Compile Include="Robots\TrigonumCustom\Testing\FrequentOrders.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseHmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseTwoSmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingParabolicSarClassicTradeRsi.cs" />
