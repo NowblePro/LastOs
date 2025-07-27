@@ -431,7 +431,7 @@ namespace OsEngine.OsOptimizer
             ContextMenu menu = new ContextMenu();
             MenuItem deleteMenuItem = new MenuItem("Удалить", (sender, e) => 
             {
-                if (sender is MenuItem item && item.Tag is Period p)
+                if (sender is MenuItem item && item.Parent.Tag is Period p)
                 {
                     _master.Phazes.OutOfSamplePeriods.Remove(p);
                     UpdateDynamicTable(_gridDynamicTable);
@@ -439,7 +439,21 @@ namespace OsEngine.OsOptimizer
             });
             menu.MenuItems.Add(deleteMenuItem);
 
+            MenuItem reCalcMenuItem = new MenuItem("Пересчитать", (sender, e) =>
+            {
+                if (sender is MenuItem item && item.Parent.Tag is Period p)
+                {
+                    if(periodCache.ContainsKey(p))
+                    {
+                        periodCache.Remove(p);
+                    }
+                    UpdateDynamicTable(_gridDynamicTable);
+                }
+            });
+            menu.MenuItems.Add(reCalcMenuItem);
+
             gridDynamicStepsTable.ContextMenu = menu;
+            menu.Popup += DynamicTableMenu_Popup;
             cell0.Style = gridDynamicStepsTable.DefaultCellStyle;
 
             gridDynamicStepsTable.ScrollBars = ScrollBars.Vertical;
@@ -463,6 +477,14 @@ namespace OsEngine.OsOptimizer
 
             gridDynamicStepsTable.Rows.Add(null, null);
             return gridDynamicStepsTable;
+        }
+
+        private void DynamicTableMenu_Popup(object sender, EventArgs e)
+        {
+            if (sender is ContextMenu menu && menu.Tag is Period p)
+            {
+                menu.MenuItems[0].Visible = p != _master.Phazes.InSamplePeriod;
+            }
         }
 
         private void GridDynamicStepsTable_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -939,8 +961,6 @@ namespace OsEngine.OsOptimizer
                         }
                     }
                 }
-
-                Parallel.ForEach(tasks, (t) => t.Wait());
             }
             
             DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
@@ -1066,6 +1086,14 @@ namespace OsEngine.OsOptimizer
                                     // Параметры
                                     AddCell(row, parameters);
                                 }
+                                else if (i == 10)
+                                {
+                                    // График
+                                    DataGridViewButtonCell cellChart = new DataGridViewButtonCell();
+                                    cellChart.Value = $"График";
+                                    row.Cells.Add(cellChart);
+                                    cellChart.ReadOnly = true;
+                                }
                                 else
                                 {
                                     AddCell(row, GetCellValue(period, i), true);
@@ -1087,11 +1115,19 @@ namespace OsEngine.OsOptimizer
             if (sender is DataGridView dgv && e is MouseEventArgs mouse)
             {
                 var info = dgv.HitTest(mouse.X, mouse.Y);
-                if (mouse.Button != MouseButtons.Right || info.Type != DataGridViewHitTestType.Cell || info.RowIndex < 1 || info.RowIndex > _master.Phazes.OutOfSamplePeriods.Count)
+                if (mouse.Button != MouseButtons.Right || info.Type != DataGridViewHitTestType.Cell || info.RowIndex < 0 || info.RowIndex > _master.Phazes.OutOfSamplePeriods.Count)
                 {
                     return;
                 }
-                dgv.ContextMenu.MenuItems[0].Tag = _master.Phazes.OutOfSamplePeriods[info.RowIndex - 1];
+                if (info.RowIndex == 0)
+                {
+                    dgv.ContextMenu.Tag = _master.Phazes.InSamplePeriod;
+                }
+                else
+                {
+                    dgv.ContextMenu.Tag = _master.Phazes.OutOfSamplePeriods[info.RowIndex - 1];
+                }
+                    
                 dgv.ContextMenu.Show(dgv, new Point(mouse.X, mouse.Y));
             }
         }
@@ -1099,6 +1135,29 @@ namespace OsEngine.OsOptimizer
         private void DynamicTable_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
+
+            if (e.ColumnIndex == 10 && sender is DataGridView gridView)
+            {
+                // График
+                Period period = GetPeriod(e.RowIndex);
+                OptimazerFazeReport fazeReport = period.Report;
+                OptimizerReport report = fazeReport.Reports.FirstOrDefault();
+
+                if (report == null)
+                {
+                    return;
+                }
+
+                BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[0].GetParameters(), false);
+
+                if (bot == null)
+                {
+                    return;
+                }
+
+                bot.ShowChartDialog();
+                return;
+            }
 
             if (sender is DataGridView dgv)
             {

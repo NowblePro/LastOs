@@ -32,6 +32,8 @@ namespace OsEngine.OsOptimizer
         private decimal _trWeight = 0.25m;
         private decimal _gprWeight = 0.25m;
 
+        private object saveLoadLocker = new object();
+
         public decimal PPRWeight => _pprWeight;
         public decimal TRWeight => _trWeight;
         public decimal GPRWeight => _gprWeight;
@@ -106,53 +108,56 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         private void Save()
         {
-            try
+            lock(saveLoadLocker)
             {
-                using (StreamWriter writer = new StreamWriter(@"Engine\OptimizerSettings.txt", false)
-                    )
+                try
                 {
-                    writer.WriteLine(ThreadsCount);
-                    writer.WriteLine(StrategyName);
-                    writer.WriteLine(StartDepozit);
+                    using (StreamWriter writer = new StreamWriter(@"Engine\OptimizerSettings.txt", false)
+                        )
+                    {
+                        writer.WriteLine(ThreadsCount);
+                        writer.WriteLine(StrategyName);
+                        writer.WriteLine(StartDepozit);
 
-                    writer.WriteLine(_filterProfitValue);
-                    writer.WriteLine(_filterProfitIsOn);
-                    writer.WriteLine(_filterMaxDrowDownValue);
-                    writer.WriteLine(_filterMaxDrowDownIsOn);
-                    writer.WriteLine(_filterMiddleProfitValue);
-                    writer.WriteLine(_filterMiddleProfitIsOn);
-                    writer.WriteLine(_filterProfitFactorValue);
-                    writer.WriteLine(_filterProfitFactorIsOn);
+                        writer.WriteLine(_filterProfitValue);
+                        writer.WriteLine(_filterProfitIsOn);
+                        writer.WriteLine(_filterMaxDrowDownValue);
+                        writer.WriteLine(_filterMaxDrowDownIsOn);
+                        writer.WriteLine(_filterMiddleProfitValue);
+                        writer.WriteLine(_filterMiddleProfitIsOn);
+                        writer.WriteLine(_filterProfitFactorValue);
+                        writer.WriteLine(_filterProfitFactorIsOn);
 
-                    writer.WriteLine(_timeStart.ToString(CultureInfo.InvariantCulture));
-                    writer.WriteLine(_timeEnd.ToString(CultureInfo.InvariantCulture));
-                    writer.WriteLine(_percentOnFilration);
+                        writer.WriteLine(_timeStart.ToString(CultureInfo.InvariantCulture));
+                        writer.WriteLine(_timeEnd.ToString(CultureInfo.InvariantCulture));
+                        writer.WriteLine(_percentOnFilration);
 
-                    writer.WriteLine(_filterDealsCountValue);
-                    writer.WriteLine(_filterDealsCountIsOn);
-                    writer.WriteLine(_isScript);
-                    writer.WriteLine(_iterationCount);
-                    writer.WriteLine(_commissionType);
-                    writer.WriteLine(_commissionValue);
-                    writer.WriteLine(_lastInSample);
+                        writer.WriteLine(_filterDealsCountValue);
+                        writer.WriteLine(_filterDealsCountIsOn);
+                        writer.WriteLine(_isScript);
+                        writer.WriteLine(_iterationCount);
+                        writer.WriteLine(_commissionType);
+                        writer.WriteLine(_commissionValue);
+                        writer.WriteLine(_lastInSample);
 
-                    writer.WriteLine(_saveJson);
-                    writer.WriteLine(_saveJsonCandles);
-                    writer.WriteLine(_saveJsonPath);
+                        writer.WriteLine(_saveJson);
+                        writer.WriteLine(_saveJsonCandles);
+                        writer.WriteLine(_saveJsonPath);
 
-                    writer.WriteLine(GetStringFromWeights());
-                    writer.Close();
+                        writer.WriteLine(GetStringFromWeights());
+                        writer.Close();
+                    }
+
+                    using (StreamWriter writer = new StreamWriter(@"Engine\OptimizerSettings.json", false))
+                    {
+                        string str = JsonConvert.SerializeObject(Phazes, Formatting.Indented);
+                        writer.WriteLine(str);
+                    }
                 }
-
-                using (StreamWriter writer = new StreamWriter(@"Engine\OptimizerSettings.json", false))
+                catch (Exception error)
                 {
-                    string str = JsonConvert.SerializeObject(Phazes, Formatting.Indented);
-                    writer.WriteLine(str);
+                    SendLogMessage(error.ToString(), LogMessageType.Error);
                 }
-            }
-            catch (Exception error)
-            {
-                SendLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
 
@@ -162,66 +167,69 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         private void Load()
         {
-            if (File.Exists(@"Engine\OptimizerSettings.txt"))
+            lock(saveLoadLocker)
             {
-                try
+                if (File.Exists(@"Engine\OptimizerSettings.txt"))
                 {
-                    using (StreamReader reader = new StreamReader(@"Engine\OptimizerSettings.txt"))
+                    try
                     {
-                        _threadsCount = Convert.ToInt32(reader.ReadLine());
-                        _strategyName = reader.ReadLine();
-                        _startDepozit = reader.ReadLine().ToDecimal();
-                        _filterProfitValue = reader.ReadLine().ToDecimal();
-                        _filterProfitIsOn = Convert.ToBoolean(reader.ReadLine());
-                        _filterMaxDrowDownValue = reader.ReadLine().ToDecimal();
-                        _filterMaxDrowDownIsOn = Convert.ToBoolean(reader.ReadLine());
-                        _filterMiddleProfitValue = reader.ReadLine().ToDecimal();
-                        _filterMiddleProfitIsOn = Convert.ToBoolean(reader.ReadLine());
-                        _filterProfitFactorValue = reader.ReadLine().ToDecimal();
-                        _filterProfitFactorIsOn = Convert.ToBoolean(reader.ReadLine());
-
-                        _timeStart = Convert.ToDateTime(reader.ReadLine(), CultureInfo.InvariantCulture);
-                        _timeEnd = Convert.ToDateTime(reader.ReadLine(), CultureInfo.InvariantCulture);
-                        _percentOnFilration = reader.ReadLine().ToDecimal();
-
-                        _filterDealsCountValue = Convert.ToInt32(reader.ReadLine());
-                        _filterDealsCountIsOn = Convert.ToBoolean(reader.ReadLine());
-                        _isScript = Convert.ToBoolean(reader.ReadLine());
-                        _iterationCount = Convert.ToInt32(reader.ReadLine());
-                        _commissionType = (ComissionType)Enum.Parse(typeof(ComissionType),
-                            reader.ReadLine() ?? ComissionType.None.ToString());
-                        _commissionValue = reader.ReadLine().ToDecimal();
-                        _lastInSample = Convert.ToBoolean(reader.ReadLine());
-
-                        _saveJson = Convert.ToBoolean(reader.ReadLine());
-                        _saveJsonCandles = Convert.ToBoolean(reader.ReadLine());
-                        _saveJsonPath = reader.ReadLine();
-
-                        string weights = reader.ReadLine();
-                        if (!string.IsNullOrEmpty(weights))
+                        using (StreamReader reader = new StreamReader(@"Engine\OptimizerSettings.txt"))
                         {
-                            SetWeightsFromString(weights);
-                        }
-                        reader.Close();
-                    }
-                }
-                catch (Exception error)
-                {
-                    //SendLogMessage(error.ToString(), LogMessageType.Error);
-                }
-            }
+                            _threadsCount = Convert.ToInt32(reader.ReadLine());
+                            _strategyName = reader.ReadLine();
+                            _startDepozit = reader.ReadLine().ToDecimal();
+                            _filterProfitValue = reader.ReadLine().ToDecimal();
+                            _filterProfitIsOn = Convert.ToBoolean(reader.ReadLine());
+                            _filterMaxDrowDownValue = reader.ReadLine().ToDecimal();
+                            _filterMaxDrowDownIsOn = Convert.ToBoolean(reader.ReadLine());
+                            _filterMiddleProfitValue = reader.ReadLine().ToDecimal();
+                            _filterMiddleProfitIsOn = Convert.ToBoolean(reader.ReadLine());
+                            _filterProfitFactorValue = reader.ReadLine().ToDecimal();
+                            _filterProfitFactorIsOn = Convert.ToBoolean(reader.ReadLine());
 
-            if (File.Exists(@"Engine\OptimizerSettings.json"))
-            {
-                try
-                {
-                    using (StreamReader reader = new StreamReader(@"Engine\OptimizerSettings.json"))
+                            _timeStart = Convert.ToDateTime(reader.ReadLine(), CultureInfo.InvariantCulture);
+                            _timeEnd = Convert.ToDateTime(reader.ReadLine(), CultureInfo.InvariantCulture);
+                            _percentOnFilration = reader.ReadLine().ToDecimal();
+
+                            _filterDealsCountValue = Convert.ToInt32(reader.ReadLine());
+                            _filterDealsCountIsOn = Convert.ToBoolean(reader.ReadLine());
+                            _isScript = Convert.ToBoolean(reader.ReadLine());
+                            _iterationCount = Convert.ToInt32(reader.ReadLine());
+                            _commissionType = (ComissionType)Enum.Parse(typeof(ComissionType),
+                                reader.ReadLine() ?? ComissionType.None.ToString());
+                            _commissionValue = reader.ReadLine().ToDecimal();
+                            _lastInSample = Convert.ToBoolean(reader.ReadLine());
+
+                            _saveJson = Convert.ToBoolean(reader.ReadLine());
+                            _saveJsonCandles = Convert.ToBoolean(reader.ReadLine());
+                            _saveJsonPath = reader.ReadLine();
+
+                            string weights = reader.ReadLine();
+                            if (!string.IsNullOrEmpty(weights))
+                            {
+                                SetWeightsFromString(weights);
+                            }
+                            reader.Close();
+                        }
+                    }
+                    catch (Exception error)
                     {
-                        string str = reader.ReadToEnd();
-                        Phazes = JsonConvert.DeserializeObject(str, typeof(Phazes)) as Phazes;
+                        //SendLogMessage(error.ToString(), LogMessageType.Error);
                     }
                 }
-                catch { }
+
+                if (File.Exists(@"Engine\OptimizerSettings.json"))
+                {
+                    try
+                    {
+                        using (StreamReader reader = new StreamReader(@"Engine\OptimizerSettings.json"))
+                        {
+                            string str = reader.ReadToEnd();
+                            Phazes = JsonConvert.DeserializeObject(str, typeof(Phazes)) as Phazes;
+                        }
+                    }
+                    catch { }
+                }
             }
         }
 
@@ -1472,12 +1480,17 @@ namespace OsEngine.OsOptimizer
 
         public static Task TestSingleBot(OptimazerFazeReport faze, List<IIStrategyParameter> parameters, OptimizerMaster master, Action<BotPanel> callBack)
         {
+
+            OptimizerExecutor optimizerExecutor = new OptimizerExecutor(master);
+            optimizerExecutor.LogMessageEvent += master.SendLogMessage;
+            BotPanel result = optimizerExecutor.TestSingleBot(faze, parameters, StartProgram.IsTester);
+            //optimizerExecutor.StartNewBot
+            //optimizerExecutor.Start
+            callBack?.Invoke(result);
+
             return Task.Run(() => 
             {
-                OptimizerExecutor optimizerExecutor = new OptimizerExecutor(master);
-                optimizerExecutor.LogMessageEvent += master.SendLogMessage;
-                BotPanel result = master._optimizerExecutor.TestSingleBot(faze, parameters, StartProgram.IsTester);
-                callBack?.Invoke(result);
+                
             });
         }
 
