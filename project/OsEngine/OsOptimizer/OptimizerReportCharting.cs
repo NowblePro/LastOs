@@ -445,6 +445,7 @@ namespace OsEngine.OsOptimizer
                 {
                     if(periodCache.ContainsKey(p))
                     {
+                        p.Report = null;
                         periodCache.Remove(p);
                     }
                     UpdateDynamicTable(_gridDynamicTable);
@@ -877,8 +878,9 @@ namespace OsEngine.OsOptimizer
             {
                 OptimazerFazeReport fazeReport = new OptimazerFazeReport();
                 Period period = periods[i];
+                if (period.Report != null) continue;
                 OptimizerFaze newFaze = new OptimizerFaze();
-                newFaze.TypeFaze = i == 0 ? OptimizerFazeType.InSample : OptimizerFazeType.OutOfSample;
+                newFaze.TypeFaze = period == _master.Phazes.InSamplePeriod ? OptimizerFazeType.InSample : OptimizerFazeType.OutOfSample;
                 newFaze.TimeStart = (DateTime)period.Start;
                 newFaze.TimeEnd = (DateTime)period.End;
                 newFaze.Days = (int)((DateTime)period.End - (DateTime)period.Start).TotalDays;
@@ -897,7 +899,6 @@ namespace OsEngine.OsOptimizer
                 return;
             }
             table.Rows.Clear();
-            // todo: убедиться, что _reports отсортированы в соответствии с логикой третьей вкладки
             string parameters = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
@@ -910,55 +911,52 @@ namespace OsEngine.OsOptimizer
                 FillPeriod(_master.Phazes.OutOfSamplePeriods[i], "Out Of Sample");
             }
 
-            if (periods.All(p => IsPeriodDefined(p)))
+            List<Period> definedPeriods = periods.Where(p => p.IsDefined).ToList();
+
+            foreach (Period period in definedPeriods)
             {
-                GetFazeFromPeriod(periods);
+                GetFazeFromPeriod(definedPeriods);
 
-                List<Task> tasks = new List<Task>();
+                BotPanel bot;
 
-                foreach (Period period in periods)
+                if (string.IsNullOrEmpty(period.RobotKey))
                 {
-                    BotPanel bot;
+                    period.RobotKey = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
+                }
 
-                    if (string.IsNullOrEmpty(period.RobotKey))
-                    {
-                        period.RobotKey = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
-                    }
+                if (periodCache.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
+                {
+                    bot = periodCache[period];
+                    period.Report.Load(bot);
+                    Change(period, bot);
+                }
+                else
+                {
+                    Period local = period;
 
-                    if (IsPeriodDefined(period) && periodCache.ContainsKey(period))
+                    OptimizerMaster.TestSingleBot(local.Report, _reports[0].Reports[_sortBotNumberCSC].GetParameters(), _master, (b) =>
                     {
-                        bot = periodCache[period];
-                        period.Report.Load(bot);
-                        Change(period, bot);
+                        if (b != null)
+                        {
+                            lock (periodCache)
+                            {
+                                local.Report.Load(b);
+                                periodCache.Add(local, b);
+                            }
+                            Change(local, b);
+                        }
+                    });
+                }
+
+                void Change(Period p, BotPanel panel)
+                {
+                    if (p == _master.Phazes.InSamplePeriod)
+                    {
+                        ChangePeriod(p, 0);
                     }
                     else
                     {
-                        Period local = period;
-
-                        tasks.Add(OptimizerMaster.TestSingleBot(local.Report, _reports[0].Reports[_sortBotNumberCSC].GetParameters(), _master, (b) => 
-                        {
-                            if (b != null)
-                            {
-                                lock(periodCache)
-                                {
-                                    local.Report.Load(b);
-                                    periodCache.Add(local, b);
-                                }
-                                Change(local, b);
-                            }
-                        }));
-                    }
-
-                    void Change(Period p, BotPanel panel)
-                    {
-                        if (p == _master.Phazes.InSamplePeriod)
-                        {
-                            ChangePeriod(p, 0);
-                        }
-                        else
-                        {
-                            ChangePeriod(p, _master.Phazes.OutOfSamplePeriods.IndexOf(p) + 1);
-                        }
+                        ChangePeriod(p, _master.Phazes.OutOfSamplePeriods.IndexOf(p) + 1);
                     }
                 }
             }
@@ -971,7 +969,7 @@ namespace OsEngine.OsOptimizer
 
             _master.OnPeriodsChanged();
 
-            bool IsPeriodDefined(Period p) => p.Start != null && p.End != null && p.Start < p.End;
+            UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
 
             string GetCellValue(Period period, int columnIndex)
             {
@@ -1007,6 +1005,12 @@ namespace OsEngine.OsOptimizer
                             // Max DrawDown
                             cellVAlue = $"{Math.Round(faze.Reports[0].MaxDrowDawn, 3)}";
                         }
+
+                        if (columnIndex == 10)
+                        {
+                            // График
+                            cellVAlue = $"График";
+                        }
                     }
                 }
                 return cellVAlue;
@@ -1026,7 +1030,7 @@ namespace OsEngine.OsOptimizer
                     for (int i = 5; i < table.Columns.Count; i++)
                     {
                         var cell = row.Cells[i];
-                        if (IsPeriodDefined(period))
+                        if (period.IsDefined)
                         {
                             cell.Value = GetCellValue(period, i);
                         }
@@ -1074,7 +1078,7 @@ namespace OsEngine.OsOptimizer
                         }
                         else
                         {
-                            if (IsPeriodDefined(period))
+                            if (period.IsDefined)
                             {
                                 if (i == 3)
                                 {
@@ -1141,6 +1145,11 @@ namespace OsEngine.OsOptimizer
                 // График
                 Period period = GetPeriod(e.RowIndex);
                 OptimazerFazeReport fazeReport = period.Report;
+                if (fazeReport == null)
+                {
+                    return;
+                }
+
                 OptimizerReport report = fazeReport.Reports.FirstOrDefault();
 
                 if (report == null)
@@ -1851,7 +1860,16 @@ namespace OsEngine.OsOptimizer
             _hostTotalProfitCSC.Child = _chartTotalProfitCSC;
             UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
 
-            _comboBoxTotalProfitEquityTypeCSC.SelectionChanged += _comboBoxTotalProfitEquityTypeCSC_SelectionChanged; ;
+            _comboBoxTotalProfitEquityTypeCSC.SelectionChanged += _comboBoxTotalProfitEquityTypeCSC_SelectionChanged;
+        }
+
+        private Chart _chartTotalProfitDynamic;
+
+        public void ActivateTotalProfitChartDynamic(WindowsFormsHost hostTotalProfit)
+        {
+            _chartTotalProfitDynamic = GetTotalProfitChart();
+            hostTotalProfit.Child = _chartTotalProfitDynamic;
+            UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
         }
 
 
@@ -2080,6 +2098,79 @@ namespace OsEngine.OsOptimizer
                     {
                         chartTotalProfit.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
                         chartTotalProfit.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SendLogMessage(ex.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void UpdateTotalProfitChartDynamic(Chart chart)
+        {
+            if (chart.InvokeRequired)
+            {
+                chart.Invoke((Action<Chart>)UpdateTotalProfitChartDynamic, chart);
+                return;
+            }
+
+            try
+            {
+                Series series = chart.Series[0];
+                series.Points.ClearFast();
+
+                decimal max = decimal.MinValue;
+                decimal min = decimal.MaxValue;
+                List<decimal> profitsSumm = new List<decimal>();
+
+                List<Period> periods = _master.Phazes.OutOfSamplePeriods.Where(p => p.IsDefined).ToList();
+                for (int i = 0; i < periods.Count; i++)
+                {
+                    if (periods[i].Report == null || periods[i].Report.Reports.Count == 0) continue;
+                    if (i == 0)
+                    {
+                        profitsSumm.Add(periods[i].Report.Reports[0].TotalProfit);
+                    }
+                    else
+                    {
+                        profitsSumm.Add(profitsSumm.Last() + periods[i].Report.Reports[0].TotalProfit);
+                    }
+                }
+                for (int i = 0; i < profitsSumm.Count; i++)
+                {
+                    decimal open = 0;
+                    decimal close = 0;
+                    decimal low = 0;
+                    decimal high = 0;
+
+                    if (i > 0)
+                    {
+                        open = profitsSumm[i - 1];
+                    }
+                    close = profitsSumm[i];
+
+                    low = Math.Min(open, close);
+                    high = Math.Max(open, close);
+                    series.Points.AddXY(i + 1, low, high, open, close);
+                    max = Math.Max(close, max);
+                    min = Math.Min(close, min);
+                    Color color = open < close ? Color.DarkGreen : Color.DarkRed;
+                    series.Points[series.Points.Count - 1].Color = color;
+                    series.Points[series.Points.Count - 1].BorderColor = color;
+                    series.Points[series.Points.Count - 1].BackSecondaryColor = color;
+                }
+
+                if (max != decimal.MinValue &&
+                        min != decimal.MaxValue)
+                {
+                    max = Math.Round(max + max * 0.2m, 4);
+                    min = Math.Round(min, 4);
+
+                    if (max > min)
+                    {
+                        chart.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
+                        chart.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
                     }
                 }
             }

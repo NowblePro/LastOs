@@ -45,6 +45,7 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.ActivateTotalProfitChart(HostTotalProfit, ComboBoxTotalProfit);
             _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
+            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2);
             _resultsCharting.ActivateAverageProfitChart(HostAverageProfit);
             _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
             _resultsCharting.ActivateProfitFactorChart(HostProfitFactor);
