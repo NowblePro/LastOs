@@ -48,6 +48,7 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2);
             _resultsCharting.ActivateAverageProfitChart(HostAverageProfit);
             _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
+            _resultsCharting.ActivateAverageProfitChartDynamic(HostAverageProfit2);
             _resultsCharting.ActivateProfitFactorChart(HostProfitFactor);
             _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
             _resultsCharting.ActivateCSCChart(HostFRS);

@@ -214,6 +214,7 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
             _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2);
             _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
+            _resultsCharting.ActivateAverageProfitChartDynamic(HostAverageProfit2);
             _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
             _resultsCharting.ActivateCSCChart(HostFRS);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
