@@ -3,9 +3,13 @@ using OsEngine.Charts;
 using OsEngine.Entity;
 using OsEngine.Language;
 using OsEngine.Logging;
+using OsEngine.Market.Servers.Optimizer;
+using OsEngine.Market.Servers.Tester;
 using OsEngine.OsOptimizer.OptEntity;
 using OsEngine.OsTrader.Panels;
+using OsEngine.Robots;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -446,7 +450,7 @@ namespace OsEngine.OsOptimizer
                     if(periodCache.ContainsKey(p))
                     {
                         p.Report = null;
-                        periodCache.Remove(p);
+                        periodCache.TryRemove(p, out _);
                     }
                     UpdateDynamicTable(_gridDynamicTable);
                 }
@@ -874,33 +878,147 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        private void GetFazeFromPeriod(Period period)
+        {
+            if (period.Report != null) return;
+            OptimazerFazeReport fazeReport = new OptimazerFazeReport();
+            OptimizerFaze newFaze = new OptimizerFaze();
+            newFaze.TypeFaze = period == _master.Phazes.InSamplePeriod ? OptimizerFazeType.InSample : OptimizerFazeType.OutOfSample;
+            newFaze.TimeStart = (DateTime)period.Start;
+            newFaze.TimeEnd = (DateTime)period.End;
+            newFaze.Days = (int)((DateTime)period.End - (DateTime)period.Start).TotalDays;
+            fazeReport.Faze = newFaze;
+            period.Report = fazeReport;
+        }
+
         private void GetFazeFromPeriod(List<Period> periods)
         {
             for (int i = 0; i < periods.Count; i++)
             {
-                OptimazerFazeReport fazeReport = new OptimazerFazeReport();
                 Period period = periods[i];
-                if (period.Report != null) continue;
-                OptimizerFaze newFaze = new OptimizerFaze();
-                newFaze.TypeFaze = period == _master.Phazes.InSamplePeriod ? OptimizerFazeType.InSample : OptimizerFazeType.OutOfSample;
-                newFaze.TimeStart = (DateTime)period.Start;
-                newFaze.TimeEnd = (DateTime)period.End;
-                newFaze.Days = (int)((DateTime)period.End - (DateTime)period.Start).TotalDays;
-                fazeReport.Faze = newFaze;
-                period.Report = fazeReport;
+                GetFazeFromPeriod(period);
             }
         }
 
-        Dictionary<Period, BotPanel> periodCache = new Dictionary<Period, BotPanel>();
+        private void CalculateDynamicFazes()
+        {
+            dynamicReports.Clear();
+            GetFazeFromPeriod(_master.Phazes.InSamplePeriod);
+
+            Parallel.ForEach(_reports[0].Reports, new ParallelOptions() { MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1) }, (report) =>
+            {
+                try
+                {
+                    Period period = new Period();
+                    period.Start = _master.Phazes.InSamplePeriod.Start;
+                    period.End = _master.Phazes.InSamplePeriod.End;
+                    period.RobotKey = report.GetParamsToDataTable();
+                    bool containsKey = false;
+                    lock (periodCache)
+                    {
+                        containsKey = periodCache.ContainsKey(period);
+                    }
+                    if (!containsKey)
+                    {
+                        List<IIStrategyParameter> parameters = report.GetParameters();
+                        GetFazeFromPeriod(_master.Phazes.InSamplePeriod);
+                        OptimizerServer server = _master._optimizerExecutor.CreateNewServer(_master.Phazes.InSamplePeriod.Report, true);
+                        Security secToStart = _master.Storage.Securities.Find(s => s.Name == _master.TabsSimpleNamesAndTimeFrames[0].NameSecurity);
+                        server.GetDataToSecurity(secToStart, _master.TabsSimpleNamesAndTimeFrames[0].TimeFrame, (DateTime)_master.Phazes.InSamplePeriod.Start, (DateTime)_master.Phazes.InSamplePeriod.End);
+                        BotPanel bot = BotFactory.GetStrategyForName(_master.StrategyName, "", StartProgram.IsOsOptimizer, _master.IsScript);
+                        bot.SetParameters(parameters);
+                        OptimizerExecutor.InitBot(bot, _master, server);
+
+                        DateTime timeStartWaiting = DateTime.Now;
+                        while (bot.IsConnected == false)
+                        {
+                            Thread.Sleep(50);
+
+                            if (timeStartWaiting.AddSeconds(20) < DateTime.Now)
+                            {
+                                break;
+                            }
+                        }
+                        if (!bot.IsConnected)
+                        {
+                            throw new Exception(OsLocalization.Optimizer.Message10);
+                        }
+                        server.TestingStart();
+                        int countSameTime = 0;
+                        DateTime timeServerLast = DateTime.MinValue;
+
+                        timeStartWaiting = DateTime.Now;
+
+                        while (bot.TabsSimple[0].CandlesAll == null
+                               ||
+                               bot.TabsSimple[0].TimeServerCurrent.AddHours(1) < _master.Phazes.InSamplePeriod.End)
+                        {
+                            Thread.Sleep(1000);
+                            if (timeStartWaiting.AddSeconds(300) < DateTime.Now)
+                            {
+                                break;
+                            }
+
+                            if (timeServerLast == bot.TabsSimple[0].TimeServerCurrent)
+                            {
+                                countSameTime++;
+
+                                if (countSameTime >= 5)
+                                { // пять раз подряд время сервера не меняется. Тест окончен
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                timeServerLast = bot.TabsSimple[0].TimeServerCurrent;
+                                countSameTime = 0;
+                            }
+                        }
+
+                        periodCache.AddOrUpdate(period, bot, (p, b) => { return b; });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SendLogMessage(ex.Message, LogMessageType.Error);
+                }
+            });
+
+            OptimazerFazeReport faze = new OptimazerFazeReport();
+            faze.Faze = _master.Phazes.InSamplePeriod.Report.Faze;
+            foreach (BotPanel botPanel in periodCache.Where(p => p.Key.IsDefined && p.Key.Start == _master.Phazes.InSamplePeriod.Start && p.Key.End == _master.Phazes.InSamplePeriod.End).Select(p => p.Value))
+            {
+                faze.Load(botPanel);
+            }
+
+            dynamicReports = faze.Reports;
+
+            //switch ()
+            //{
+
+            //}
+
+
+            //dynamicReports.Sort(new Comparison<OptimizerReport>((rep1, rep2) => { return }))
+        }
+
+        private ConcurrentDictionary<Period, BotPanel> periodCache = new ConcurrentDictionary<Period, BotPanel>();
+        private List<OptimizerReport> dynamicReports = new List<OptimizerReport>();
 
         private void UpdateDynamicTable(DataGridView table)
         {
+            if (!_master.Phazes.InSamplePeriod.IsDefined) return;
+
             if (table.InvokeRequired)
             {
                 table.Invoke(new Action<DataGridView>(UpdateDynamicTable), table);
                 return;
             }
             table.Rows.Clear();
+
+            CalculateDynamicFazes();
+
+            // hack параметры выбирать после сортировки
             string parameters = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
@@ -929,6 +1047,7 @@ namespace OsEngine.OsOptimizer
                 if (periodCache.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
                 {
                     bot = periodCache[period];
+                    period.Report.Reports.Clear();
                     period.Report.Load(bot);
                     Change(period, bot);
                 }
@@ -940,11 +1059,8 @@ namespace OsEngine.OsOptimizer
                     {
                         if (b != null)
                         {
-                            lock (periodCache)
-                            {
-                                local.Report.Load(b);
-                                periodCache.Add(local, b);
-                            }
+                            local.Report.Load(b);
+                            periodCache.AddOrUpdate(local, b, (p, b) => { return b; });
                             Change(local, b);
                         }
                     });
@@ -1027,7 +1143,6 @@ namespace OsEngine.OsOptimizer
                 }
                 lock(table)
                 {
-                    Console.WriteLine($"ROW INDEX {rowIndex}, Period = {period.Start} -- {period.End}");
                     DataGridViewRow row = table.Rows[rowIndex];
                     for (int i = 5; i < table.Columns.Count; i++)
                     {
