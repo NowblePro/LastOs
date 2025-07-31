@@ -499,6 +499,8 @@ namespace OsEngine.OsOptimizer
                     {
                         period.Name = $"{dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value}";
                     }
+
+                    UpdateAverageProfitChartDynamic();
                 }
             }
         }
@@ -970,8 +972,7 @@ namespace OsEngine.OsOptimizer
             _master.OnPeriodsChanged();
 
             UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
-            List<OptimizerReport> reportsForAverageProfit = _master.Phazes.OutOfSamplePeriods.Where(p => p.IsDefined && p.Report != null & p.Report.Reports.Count > 0 && p.Report.Reports[0] != null).Select(p => p.Report.Reports[0]).ToList();
-            UpdateAverageProfitChart(_chartAverageProfitDynamic, reportsForAverageProfit);
+            UpdateAverageProfitChartDynamic();
             string GetCellValue(Period period, int columnIndex)
             {
                 string cellVAlue = string.Empty;
@@ -1113,6 +1114,13 @@ namespace OsEngine.OsOptimizer
                     table.Rows.Add(row);
                 }
             }
+        }
+
+        private void UpdateAverageProfitChartDynamic()
+        {
+            List<OptimazerFazeReport> reportsForAverageProfit = _master.Phazes.OutOfSamplePeriods.Where(p => p.IsDefined && p.Report != null & p.Report.Reports.Count > 0 && p.Report.Reports[0] != null).Select(p => p.Report).ToList();
+            List<string> periodNames = _master.Phazes.OutOfSamplePeriods.Where(p => p.IsDefined && p.Report != null & p.Report.Reports.Count > 0 && p.Report.Reports[0] != null).Select(p => p.Name).ToList();
+            UpdateAverageProfitChart(_chartAverageProfitDynamic, reportsForAverageProfit, periodNames);
         }
 
         private void GridDynamicStepsTable_Click(object sender, EventArgs e)
@@ -2431,7 +2439,7 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private void UpdateAverageProfitChart(Chart chartAverageProfit, List<OptimizerReport> reports)
+        private void UpdateAverageProfitChart(Chart chartAverageProfit, List<OptimazerFazeReport> reports, List<string> periodNames = null)
         {
             if (_reports == null ||
                 _reports.Count == 0)
@@ -2441,7 +2449,7 @@ namespace OsEngine.OsOptimizer
 
             if (chartAverageProfit.InvokeRequired)
             {
-                chartAverageProfit.Invoke(new Action<Chart, List<OptimizerReport>>(UpdateAverageProfitChart), chartAverageProfit, reports);
+                chartAverageProfit.Invoke(new Action<Chart, List<OptimazerFazeReport>, List<string>>(UpdateAverageProfitChart), chartAverageProfit, reports, periodNames);
                 return;
             }
 
@@ -2452,9 +2460,9 @@ namespace OsEngine.OsOptimizer
 
                 decimal averageProfitPercent = 0;
 
-                for (int i = 0; i < reports.Count; i += 2)
+                for (int i = 0; i < reports.Count; i++)
                 {
-                    OptimizerReport bot = reports[i];
+                    OptimizerReport bot = reports[i].Reports.First();
 
                     decimal value = bot.AverageProfitPercentOneContract;
 
@@ -2523,6 +2531,15 @@ namespace OsEngine.OsOptimizer
                         seriesOosValues.Points[seriesOosValues.Points.Count - 1].BorderColor = Color.DarkRed;
                         seriesOosValues.Points[seriesOosValues.Points.Count - 1].BackSecondaryColor = Color.DarkRed;
                     }
+
+                    string toolTip = "";
+                    string periodName = (periodNames != null && i < periodNames.Count) ? periodNames[i] : string.Empty;
+                    toolTip = "OOS " + (i + 1) + $"{(string.IsNullOrEmpty(periodName) ? "" : $"({periodName})")}" + "\n" +
+                        "start: " + reports[i].Faze.TimeStart.ToString(OsLocalization.ShortDateFormatString) + "\n" +
+                         "end: " + reports[i].Faze.TimeEnd.ToString(OsLocalization.ShortDateFormatString) + "\n" +
+                         "P/L % " + Math.Round(values[i], 4).ToStringWithNoEndZero();
+
+                    seriesOosValues.Points[seriesOosValues.Points.Count - 1].ToolTip = toolTip;
                 }
 
                 if (averageProfitPercent != 0)
