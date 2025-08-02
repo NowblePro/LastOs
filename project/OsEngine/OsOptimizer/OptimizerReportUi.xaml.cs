@@ -52,6 +52,7 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.ActivateProfitFactorChart(HostProfitFactor);
             _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
             _resultsCharting.ActivateCSCChart(HostFRS);
+            _resultsCharting.ActivateDynamicTableComboboxSort(ComboBoxSortResultsType2, ComboBoxSortResultsBotNumPercent2);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
             _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;

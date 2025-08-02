@@ -80,7 +80,7 @@ namespace OsEngine.OsOptimizer
             _boxTypeSortBotNum.SelectionChanged += _boxTypeSortBotNum_SelectionChanged;
 
             _boxTypeSortBotNumCSC.SelectedItem = "0";
-            _boxTypeSortBotNumCSC.SelectionChanged += _boxTypeSortBotNumCSC_SelectionChanged; ;
+            _boxTypeSortBotNumCSC.SelectionChanged += _boxTypeSortBotNumCSC_SelectionChanged;
 
             _boxTypeSortCSC = boxTypeSortCSC;
 
@@ -447,10 +447,10 @@ namespace OsEngine.OsOptimizer
             {
                 if (sender is MenuItem item && item.Parent.Tag is Period p)
                 {
-                    if(periodCache.ContainsKey(p))
+                    if(_periodCache.ContainsKey(p))
                     {
                         p.Report = null;
-                        periodCache.TryRemove(p, out _);
+                        _periodCache.TryRemove(p, out _);
                     }
                     UpdateDynamicTable(_gridDynamicTable);
                 }
@@ -902,7 +902,7 @@ namespace OsEngine.OsOptimizer
 
         private void CalculateDynamicFazes()
         {
-            dynamicReports.Clear();
+            _dynamicReports.Clear();
             GetFazeFromPeriod(_master.Phazes.InSamplePeriod);
 
             Parallel.ForEach(_reports[0].Reports, new ParallelOptions() { MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1) }, (report) =>
@@ -914,9 +914,9 @@ namespace OsEngine.OsOptimizer
                     period.End = _master.Phazes.InSamplePeriod.End;
                     period.RobotKey = report.GetParamsToDataTable();
                     bool containsKey = false;
-                    lock (periodCache)
+                    lock (_periodCache)
                     {
-                        containsKey = periodCache.ContainsKey(period);
+                        containsKey = _periodCache.ContainsKey(period);
                     }
                     if (!containsKey)
                     {
@@ -975,7 +975,7 @@ namespace OsEngine.OsOptimizer
                             }
                         }
 
-                        periodCache.AddOrUpdate(period, bot, (p, b) => { return b; });
+                        _periodCache.AddOrUpdate(period, bot, (p, b) => { return b; });
                     }
                 }
                 catch (Exception ex)
@@ -986,24 +986,34 @@ namespace OsEngine.OsOptimizer
 
             OptimazerFazeReport faze = new OptimazerFazeReport();
             faze.Faze = _master.Phazes.InSamplePeriod.Report.Faze;
-            foreach (BotPanel botPanel in periodCache.Where(p => p.Key.IsDefined && p.Key.Start == _master.Phazes.InSamplePeriod.Start && p.Key.End == _master.Phazes.InSamplePeriod.End).Select(p => p.Value))
+            foreach (BotPanel botPanel in _periodCache.Where(p => p.Key.IsDefined && p.Key.Start == _master.Phazes.InSamplePeriod.Start && p.Key.End == _master.Phazes.InSamplePeriod.End).Select(p => p.Value))
             {
                 faze.Load(botPanel);
             }
 
-            dynamicReports = faze.Reports;
+            _dynamicReports = faze.Reports;
+            Comparison<OptimizerReport> sortFunc = null;
+            switch (_sortTypeDynamicTable)
+            {
+                case SortTypeDynamicTable.TotalProfit:
+                    sortFunc = new Comparison<OptimizerReport>((rep1, rep2) => { return rep1.TotalProfit.CompareTo(rep2.TotalProfit); });
+                    break;
+                case SortTypeDynamicTable.MaxDrawDown:
+                    sortFunc = new Comparison<OptimizerReport>((rep1, rep2) => { return rep2.MaxDrowDawn.CompareTo(rep1.MaxDrowDawn); });
+                    break;
+                case SortTypeDynamicTable.AvgProfit:
+                    sortFunc = new Comparison<OptimizerReport>((rep1, rep2) => { return rep1.AverageProfit.CompareTo(rep2.AverageProfit); });
+                    break;
+            }
 
-            //switch ()
-            //{
-
-            //}
-
-
-            //dynamicReports.Sort(new Comparison<OptimizerReport>((rep1, rep2) => { return }))
+            if (sortFunc != null)
+            {
+                _dynamicReports.Sort(sortFunc);
+            }
         }
 
-        private ConcurrentDictionary<Period, BotPanel> periodCache = new ConcurrentDictionary<Period, BotPanel>();
-        private List<OptimizerReport> dynamicReports = new List<OptimizerReport>();
+        private ConcurrentDictionary<Period, BotPanel> _periodCache = new ConcurrentDictionary<Period, BotPanel>();
+        private List<OptimizerReport> _dynamicReports = new List<OptimizerReport>();
 
         private void UpdateDynamicTable(DataGridView table)
         {
@@ -1017,9 +1027,9 @@ namespace OsEngine.OsOptimizer
             table.Rows.Clear();
 
             CalculateDynamicFazes();
-
-            // hack параметры выбирать после сортировки
-            string parameters = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
+            if (_dynamicReports.Count < 1) return;
+            int botIndex = Math.Min(_dynamicReports.Count - 1, _sortTypeDynamicTableNum);
+            string parameters = _dynamicReports[botIndex].GetParamsToDataTable();
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
 
@@ -1041,12 +1051,12 @@ namespace OsEngine.OsOptimizer
 
                 if (string.IsNullOrEmpty(period.RobotKey))
                 {
-                    period.RobotKey = _reports[0].Reports[_sortBotNumberCSC].GetParamsToDataTable();
+                    period.RobotKey = _dynamicReports[botIndex].GetParamsToDataTable();
                 }
 
-                if (periodCache.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
+                if (_periodCache.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
                 {
-                    bot = periodCache[period];
+                    bot = _periodCache[period];
                     period.Report.Reports.Clear();
                     period.Report.Load(bot);
                     Change(period, bot);
@@ -1055,12 +1065,12 @@ namespace OsEngine.OsOptimizer
                 {
                     Period local = period;
 
-                    OptimizerMaster.TestSingleBot(local.Report, _reports[0].Reports[_sortBotNumberCSC].GetParameters(), _master, (b) =>
+                    OptimizerMaster.TestSingleBot(local.Report, _dynamicReports[botIndex].GetParameters(), _master, (b) =>
                     {
                         if (b != null)
                         {
                             local.Report.Load(b);
-                            periodCache.AddOrUpdate(local, b, (p, b) => { return b; });
+                            _periodCache.AddOrUpdate(local, b, (p, b) => { return b; });
                             Change(local, b);
                         }
                     });
@@ -1269,9 +1279,9 @@ namespace OsEngine.OsOptimizer
                 // График
                 Period period = GetPeriod(e.RowIndex);
                 BotPanel bot = null;
-                if (periodCache.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
+                if (_periodCache.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
                 {
-                    bot = periodCache[period];
+                    bot = _periodCache[period];
                 }
 
                 if (bot == null)
@@ -2948,6 +2958,69 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        System.Windows.Controls.ComboBox _comboBoxSortResultsDynamicTable;
+        System.Windows.Controls.ComboBox _comboBoxSortResultsDynamicTableNum;
+        private SortTypeDynamicTable _sortTypeDynamicTable = SortTypeDynamicTable.TotalProfit;
+        private int _sortTypeDynamicTableNum = 0;
+
+        internal void ActivateDynamicTableComboboxSort(System.Windows.Controls.ComboBox comboBoxSortResultsType2, System.Windows.Controls.ComboBox comboBoxSortResultsBotNumPercent2)
+        {
+            _comboBoxSortResultsDynamicTable = comboBoxSortResultsType2;
+            string[] sortTypes = Enum.GetNames(typeof(SortTypeDynamicTable));
+            foreach (string sortType in sortTypes)
+            {
+                _comboBoxSortResultsDynamicTable.Items.Add(sortType);
+            }
+
+            _comboBoxSortResultsDynamicTable.SelectedItem = SortTypeDynamicTable.TotalProfit.ToString();
+            _comboBoxSortResultsDynamicTable.SelectionChanged += _comboBoxSortResultsDynamicTable_SelectionChanged;
+
+            _comboBoxSortResultsDynamicTableNum = comboBoxSortResultsBotNumPercent2;
+            for (int i = 0; i < 99; i++)
+            {
+                _comboBoxSortResultsDynamicTableNum.Items.Add(i.ToString());
+            }
+
+            _comboBoxSortResultsDynamicTableNum.SelectedItem = "0";
+            _comboBoxSortResultsDynamicTableNum.SelectionChanged += _comboBoxSortResultsDynamicTableNum_SelectionChanged;
+        }
+
+        private void _comboBoxSortResultsDynamicTable_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (Enum.TryParse(_comboBoxSortResultsDynamicTable.SelectedItem.ToString(), out SortTypeDynamicTable sortType))
+                {
+                    _sortTypeDynamicTable = sortType;
+                }
+
+                if (_reports != null)
+                {
+                    UpdateDynamicTable(_gridDynamicTable);
+                }
+            }
+            catch
+            {
+
+            }
+        }
+
+        private void _comboBoxSortResultsDynamicTableNum_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            try
+            {
+                _sortTypeDynamicTableNum = Convert.ToInt32(_comboBoxSortResultsDynamicTableNum.SelectedItem.ToString());
+
+                if (_reports != null)
+                {
+                    UpdateDynamicTable(_gridDynamicTable);
+                }
+            }
+            catch
+            {
+
+            }
+        }
 
         /// <summary>
         /// event: new message for log

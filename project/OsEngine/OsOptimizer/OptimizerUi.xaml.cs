@@ -3471,4 +3471,11 @@ namespace OsEngine.OsOptimizer
         MaxDrawDown,
         ProfitToDrawDown
     }
+
+    public enum SortTypeDynamicTable
+    {
+        TotalProfit,
+        MaxDrawDown,
+        AvgProfit
+    }
 }
