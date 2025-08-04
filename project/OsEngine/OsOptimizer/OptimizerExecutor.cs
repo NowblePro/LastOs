@@ -19,6 +19,7 @@ using System.IO;
 using Newtonsoft.Json;
 using System.Windows.Shapes;
 using Path = System.IO.Path;
+using System.Linq;
 
 namespace OsEngine.OsOptimizer
 {
@@ -794,11 +795,11 @@ namespace OsEngine.OsOptimizer
         {
             // 1. Create a new server for optimization. And one thread respectively
             // 1. создаём новый сервер для оптимизации. И один поток соответственно
-            OptimizerServer server = ServerMaster.CreateNextOptimizerServer(_master.Storage, _serverNum,
-                _master.StartDepozit);
-
-            lock(_serverRemoveLocker)
+            OptimizerServer server;
+            lock (_serverRemoveLocker)
             {
+                server = ServerMaster.CreateNextOptimizerServer(_master.Storage, _serverNum,
+                _master.StartDepozit);
                 _serverNum++;
                 _servers.Add(server);
             }
@@ -1316,7 +1317,6 @@ namespace OsEngine.OsOptimizer
             PrimeProgressChangeEvent?.Invoke(serverNum, _countAllServersMax);
 
             BotPanel bot = null;
-            OptimizerServer server = null;
 
             lock (_serverRemoveLocker)
             {
@@ -1340,16 +1340,21 @@ namespace OsEngine.OsOptimizer
                     ReportsToFazes[ReportsToFazes.Count - 1].Load(bot);
                 }
 
-                for (int i = 0; i < _servers.Count; i++)
+                OptimizerServer server = _servers.Where(s => s.NumberServer == serverNum).Single();
+
+                int index = _servers.IndexOf(server);
+                if (index > -1)
                 {
-                    if (_servers[i].NumberServer == serverNum)
-                    {
-                        _servers[i].TestingEndEvent -= server_TestingEndEvent;
-                        _servers[i].TestintProgressChangeEvent -= server_TestintProgressChangeEvent;
-                        server = _servers[i];
-                        _servers.RemoveAt(i);
-                        break;
-                    }
+                    server.TestingEndEvent -= server_TestingEndEvent;
+                    server.TestintProgressChangeEvent -= server_TestintProgressChangeEvent;
+                    _servers.Remove(server);
+                }
+
+                if (server != null)
+                {
+                    // hack
+                    int counter = server.dataCounter;
+                    ServerMaster.RemoveOptimizerServer(server);
                 }
             }
 
@@ -1363,11 +1368,6 @@ namespace OsEngine.OsOptimizer
                 // уничтожаем робота
                 bot.Clear();
                 bot.Delete();
-            }
-
-            if(server != null)
-            {
-                ServerMaster.RemoveOptimizerServer(server);
             }
         }
 

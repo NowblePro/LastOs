@@ -305,7 +305,7 @@ namespace OsEngine.OsOptimizer
             ProgressBarStatus status;
             try
             {
-                status = ProgressBarStatuses.Find(st => st.Num == numServer);
+                status = ProgressBarStatuses.Find(st => st != null && st.Num == numServer);
             }
             catch
             {
