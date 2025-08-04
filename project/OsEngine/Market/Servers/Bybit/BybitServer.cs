@@ -3252,8 +3252,8 @@ namespace OsEngine.Market.Servers.Bybit
             result += order.NumberUser.ToString();
             result += "@";
             result += order.NameBot;
-            result += order.PortfolioNumber;
-            result += order.SecurityNameCode.Replace(".P", "");
+            //result += order.PortfolioNumber;
+            //result += order.SecurityNameCode.Replace(".P", "");
 
             return result;
         }
