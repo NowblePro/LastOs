@@ -7,15 +7,14 @@ using OsEngine.Entity;
 
 namespace OsEngine.Indicators
 {
-    [Indicator("ZigZagChannelCustom")]
-    public class ZigZagChannelCustom : Aindicator
+    [Indicator("ZigZagChannelCustomExtrems")]
+    public class ZigZagChannelCustomExtrems : Aindicator
     {
         private IndicatorParameterInt _depth;
         private IndicatorParameterDecimal _deviation;
         private IndicatorParameterInt _backstep;
 
         private IndicatorParameterInt _channels_length;
-        private IndicatorParameterInt _channels_mean_point;
 
         private IndicatorParameterBool _hasHighCh;
         private IndicatorParameterBool _hasLowCh;
@@ -47,7 +46,6 @@ namespace OsEngine.Indicators
                 _backstep = CreateParameterInt("Back Step", 3);
 
                 _channels_length = CreateParameterInt("Channels Length", 3);
-                _channels_mean_point = CreateParameterInt("Channels Mean Point", 2);
 
                 _hasHighCh = CreateParameterBool("Has High Channel", false); // Do not change externaly!
                 _hasLowCh = CreateParameterBool("Has Low Channel", false); // Do not change externaly!
@@ -113,7 +111,7 @@ namespace OsEngine.Indicators
                     }
                     setHigh(index, candles[index].High);
                 }
-                    _trendDir = 1;
+                _trendDir = 1;
             }
 
             if (isLow(candles, index))
@@ -131,14 +129,6 @@ namespace OsEngine.Indicators
                     setLow(index, candles[index].Low);
                 }
                 _trendDir = -1;
-            }
-
-            if (_channels_mean_point.ValueInt < 2
-                || _channels_mean_point.ValueInt > _channels_length.ValueInt)
-            {
-                _seriesZZHighChannel.IsPaint = false;
-                _seriesZZLowChannel.IsPaint = false;
-                return;
             }
 
             if (_ZZHighs.Count >= _channels_length.ValueInt)
@@ -287,17 +277,9 @@ namespace OsEngine.Indicators
             }
 
             ZZPoint start = extrems[extrems.Count - _channels_length.ValueInt];
+            ZZPoint end = extrems[extrems.Count - 1];
 
-            ZZPoint mean = new ZZPoint(0, 0);
-            mean.index = extrems[(extrems.Count - _channels_length.ValueInt) + (_channels_mean_point.ValueInt - 1)].index;
-            //mean.index = extrems[extrems.Count - _channels_mean_point.ValueInt].index;
-            for (int i = 0; i < _channels_length.ValueInt; ++i)
-            {
-                mean.value += extrems[extrems.Count - i - 1].value;
-            }
-            mean.value /= _channels_length.ValueInt;
-
-            decimal y = ((mean.value - start.value) / (mean.index - start.index))
+            decimal y = ((end.value - start.value) / (end.index - start.index))
                 * (index - start.index) + start.value;
 
             series.Values[index] = y;
