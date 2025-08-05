@@ -52,6 +52,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         public StrategyParameterBool _rsiFilterIsOn;
         // RSI
 
+        public StrategyParameterBool _fixTpIsOn;
+        public StrategyParameterDecimal _fixTpPercent;
+
         private decimal _lastPrice;
         private decimal _lastSma;
         private decimal _prewSma;
@@ -109,6 +112,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.Save();
             // RSI
+
+            _fixTpIsOn = CreateParameter("Fix Take Profit Is On", false, "Fix Take Profit");
+            _fixTpPercent = CreateParameter("Fix Take Profit Percent", 1.0m, 0.1m, 2.0m, 0.2m, "Fix Take Profit");
 
             _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Filter", canDelete: false);
             _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
@@ -372,6 +378,19 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     if (positions[i].State != PositionStateType.Open)
                     {
                         continue;
+                    }
+
+                    if (_fixTpIsOn.ValueBool)
+                    {
+                        decimal lastPrice = candles[candles.Count - 1].Close;
+                        if (positions[i].Direction == Side.Buy)
+                        {
+                            _tab.CloseAtProfitMarket(positions[i], lastPrice + (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                        }
+                        else if (positions[i].Direction == Side.Sell)
+                        {
+                            _tab.CloseAtProfitMarket(positions[i], lastPrice - (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                        }
                     }
 
                     decimal stop_level = 0;
