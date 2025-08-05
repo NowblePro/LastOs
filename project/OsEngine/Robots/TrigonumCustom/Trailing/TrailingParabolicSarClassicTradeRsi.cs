@@ -344,7 +344,7 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
                     _tab.BuyAtStopCancel();
                     Position pos = positions[0];
 
-                    if (_fixTpIsOn.ValueBool)
+                    if (_fixTpIsOn.ValueBool && !pos.ProfitOrderIsActiv)
                     {
                         decimal lastPrice = candles[candles.Count - 1].Close;
                         if (pos.Direction == Side.Buy)

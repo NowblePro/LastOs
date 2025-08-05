@@ -356,7 +356,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
                 Position pos = positions[0];
 
-                if (_fixTpIsOn.ValueBool)
+                if (_fixTpIsOn.ValueBool && !pos.ProfitOrderIsActiv)
                 {
                     decimal lastPrice = candles[candles.Count - 1].Close;
                     if (pos.Direction == Side.Buy)

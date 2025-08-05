@@ -183,20 +183,20 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             }
             // RSI
 
-            if (SmaPositionFilterIsOn.ValueBool == false
-               && SmaSlopeFilterIsOn.ValueBool == false
-               && _smaFilter.IsOn == true)
-            {
-                _smaFilter.IsOn = false;
-                _smaFilter.Reload();
-            }
-            else if ((SmaPositionFilterIsOn.ValueBool == true
-                || SmaSlopeFilterIsOn.ValueBool == true)
-                && _smaFilter.IsOn == false)
-            {
-                _smaFilter.IsOn = true;
-                _smaFilter.Reload();
-            }
+            //if (SmaPositionFilterIsOn.ValueBool == false
+            //   && SmaSlopeFilterIsOn.ValueBool == false
+            //   && _smaFilter.IsOn == true)
+            //{
+            //    _smaFilter.IsOn = false;
+            //    _smaFilter.Reload();
+            //}
+            //else if ((SmaPositionFilterIsOn.ValueBool == true
+            //    || SmaSlopeFilterIsOn.ValueBool == true)
+            //    && _smaFilter.IsOn == false)
+            //{
+            //    _smaFilter.IsOn = true;
+            //    _smaFilter.Reload();
+            //}
         }
 
         public override string GetNameStrategyType()
@@ -318,7 +318,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                         continue;
                     }
 
-                    if (_fixTpIsOn.ValueBool)
+                    if (_fixTpIsOn.ValueBool && !positions[i].ProfitOrderIsActiv)
                     {
                         decimal lastPrice = candles[candles.Count - 1].Close;
                         if (positions[i].Direction == Side.Buy)

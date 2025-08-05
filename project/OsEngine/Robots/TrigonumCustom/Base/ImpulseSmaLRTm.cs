@@ -321,7 +321,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         continue;
                     }
 
-                    if (_fixTpIsOn.ValueBool)
+                    if (_fixTpIsOn.ValueBool && !positions[i].ProfitOrderIsActiv)
                     {
                         if (positions[i].Direction == Side.Buy)
                         {
