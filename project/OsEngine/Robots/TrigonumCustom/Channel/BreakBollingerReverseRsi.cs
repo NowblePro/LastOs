@@ -50,6 +50,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterBool _rsiFilterIsOn;
         // RSI
 
+        public StrategyParameterBool _fixTpIsOn;
+        public StrategyParameterDecimal _fixTpPercent;
+
         public BreakBollingerReverseRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
@@ -88,6 +91,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.Save();
             // RSI
+
+            _fixTpIsOn = CreateParameter("Fix Take Profit Is On", false, "Fix Take Profit");
+            _fixTpPercent = CreateParameter("Fix Take Profit Percent", 1.0m, 0.1m, 2.0m, 0.2m, "Fix Take Profit");
 
             // Create indicator Bollinger
             _Bollinger = IndicatorsFactory.CreateIndicatorByName("Bollinger", name + "Bollinger", false);
@@ -301,6 +307,18 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 if (pos.State != PositionStateType.Open)
                 {
                     continue;
+                }
+
+                if (_fixTpIsOn.ValueBool)
+                {
+                    if (pos.Direction == Side.Buy)
+                    {
+                        _tab.CloseAtProfitMarket(pos, lastPrice + (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                    }
+                    else if (pos.Direction == Side.Sell)
+                    {
+                        _tab.CloseAtProfitMarket(pos, lastPrice - (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                    }
                 }
 
                 if (pos.Direction == Side.Buy) // If the direction of the position is purchase
