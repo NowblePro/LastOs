@@ -346,7 +346,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 return;
             }
 
-            if (_fixTpIsOn.ValueBool)
+            if (_fixTpIsOn.ValueBool && !position.ProfitOrderIsActiv)
             {
                 decimal lastPrice = candles[candles.Count - 1].Close;
                 if (position.Direction == Side.Buy)

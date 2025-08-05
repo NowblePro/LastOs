@@ -308,7 +308,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                     continue;
                 }
 
-                if (_fixTpIsOn.ValueBool)
+                if (_fixTpIsOn.ValueBool && !pos.ProfitOrderIsActiv)
                 {
                     if (pos.Direction == Side.Buy)
                     {

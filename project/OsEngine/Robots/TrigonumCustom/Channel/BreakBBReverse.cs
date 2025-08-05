@@ -394,7 +394,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                         _tab.CloseAtMarket(positions[i], positions[i].OpenVolume);
                     }
 
-                    if (_fixTpIsOn.ValueBool)
+                    if (_fixTpIsOn.ValueBool && !positions[i].ProfitOrderIsActiv)
                     {
                         decimal lastPrice = candles[candles.Count - 1].Close;
                         if (positions[i].Direction == Side.Buy)
