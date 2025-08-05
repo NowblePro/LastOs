@@ -46,6 +46,8 @@ namespace OsEngine.Robots.Error
         private bool _needUpdateIterator;
         private int _iterator = 1;
 
+        private StrategyParameterBool _saveJson;
+
         public ParabolicSarClassicTradeWithAtr(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
@@ -56,6 +58,8 @@ namespace OsEngine.Robots.Error
             VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
 
             Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
 
             TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -104,6 +108,8 @@ namespace OsEngine.Robots.Error
 
         private void ParabolicSarClassicTrade_ParametrsChangeByUser()
         {
+            _tab.setSaveData(_saveJson.ValueBool);
+
             if (_PS.ParametersDigit[0].Value != _Step.ValueDecimal ||
                _PS.ParametersDigit[1].Value != _MaxStep.ValueDecimal)
             {
