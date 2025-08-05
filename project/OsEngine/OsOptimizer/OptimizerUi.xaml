@@ -146,8 +146,26 @@
                                     <ComboBox x:Name="ComboBoxSortResultsBotNumPercent1" HorizontalAlignment="Left" Margin="407,10,0,0" VerticalAlignment="Top" Width="67" Height="22"/>
                                 </Grid>
                             </TabItem>
+                            <TabItem Name="TabControlResultsOutOfSampleResults2" Header="Фазы">
+                                <Grid Name="PrimeGrid2">
+                                    <Grid Name="BottomGrid2" Height="218" VerticalAlignment="Bottom" Margin="0,0,0,0" >
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="63*"/>
+                                            <ColumnDefinition Width="37*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <WindowsFormsHost x:Name="HostTotalProfit2"  Foreground="Black" Height="190" Margin="1,28,0,0" VerticalAlignment="Top" Grid.Column="0"/>
+                                        <Label x:Name="LabelTotalProfit2" Content="Total profit summ" VerticalAlignment="Top" Height="23" HorizontalAlignment="Left" Width="143" Grid.Column="0"/>
+                                        <ComboBox Name="ComboBoxTotalProfit2" Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="126" Margin="163,0,0,0"/>
+                                    </Grid>
+                                    <WindowsFormsHost x:Name="HostStepsOfOptimizationTable2"  Foreground="Black" Margin="0,37,0,229"/>
+                                    <ComboBox Name="ComboBoxSortResultsType2" HorizontalAlignment="Left" Margin="220,10,0,0" VerticalAlignment="Top" Width="214" Height="22"/>
+                                    <Label Name="LabelSortBy2" Content="Sort by" HorizontalAlignment="Left" Margin="28,10,0,0" VerticalAlignment="Top"/>
+                                    <ComboBox x:Name="ComboBoxSortResultsBotNumPercent2" HorizontalAlignment="Left" Margin="150,10,0,0" VerticalAlignment="Top" Width="67" Height="22"/>
+                                </Grid>
+                            </TabItem>
                         </TabControl>
                         <CheckBox Name="CheckBoxDataCapture" Content="Data capture on charts" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom"/>
+                        <Button Name="ButtonCalculate" Content="Calculate" Margin="200,0,0,10" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="142" Click="ButtonCalculate_Click"/>
                     </Grid>
                 </TabItem>
 

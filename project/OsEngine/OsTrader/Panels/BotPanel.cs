@@ -2157,6 +2157,58 @@ position => position.State != PositionStateType.OpeningFail
             }
         }
 
+        internal void SetParameters(List<IIStrategyParameter> parameters)
+        {
+            if (parameters.Count != Parameters.Count)
+            {
+                throw new ArgumentException("Неверное количество параметров");
+            }
+
+
+            foreach (var parameter in parameters)
+            {
+                if (!_parameters.Where(p => p.Name == parameter.Name).Any())
+                {
+                    throw new ArgumentException($"Параметр \"{parameter.Name}\" не найден");
+                }
+            }
+
+            foreach (var parameter in parameters)
+            {
+                IIStrategyParameter par = Parameters.Where(p => p.Name == parameter.Name).Single();
+
+                if (par is StrategyParameterBool boolPar && parameter is StrategyParameterBool newBoolPar)
+                {
+                    boolPar.ValueBool = newBoolPar.ValueBool;
+                }
+                else if (par is StrategyParameterString stringPar && parameter is StrategyParameterString newStringPar)
+                {
+                    stringPar.ValueString = newStringPar.ValueString;
+                }
+                else if (par is StrategyParameterTimeOfDay timePar && parameter is StrategyParameterTimeOfDay newTimPar)
+                {
+                    timePar.Value = newTimPar.Value;
+                }
+                else if (par is StrategyParameterCheckBox checkBoxPar && parameter is StrategyParameterCheckBox newCheckBoxPar)
+                {
+                    checkBoxPar.CheckState = newCheckBoxPar.CheckState;
+                }
+                else if (par is StrategyParameterInt intPar && parameter is StrategyParameterInt newIntPar)
+                {
+                    intPar.ValueInt = newIntPar.ValueInt;
+                }
+                else if (par is StrategyParameterDecimal decimalPar && parameter is StrategyParameterDecimal newDecimalPar)
+                {
+                    decimalPar.ValueDecimal = newDecimalPar.ValueDecimal;
+                }
+                else if (par is StrategyParameterDecimalCheckBox decimalCheckPar && parameter is StrategyParameterDecimalCheckBox newDecimalCheckPar)
+                {
+                    decimalCheckPar.ValueDecimal = newDecimalCheckPar.ValueDecimal;
+                    decimalCheckPar.CheckState = newDecimalCheckPar.CheckState;
+                }
+            }
+        }
+
         /// <summary>
         /// log message event
         /// </summary>

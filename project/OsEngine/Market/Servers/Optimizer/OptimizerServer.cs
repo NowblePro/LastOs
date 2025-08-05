@@ -508,7 +508,7 @@ namespace OsEngine.Market.Servers.Optimizer
         {
             for(int i = 0;i < _storages.Count;i++)
             {
-                if (TimeNow > _storages[i].TimeEndAddDay)
+                if (TimeNow > _storages[i].TimeEnd)
                 {
                     _testerRegime = TesterRegime.Pause;
 

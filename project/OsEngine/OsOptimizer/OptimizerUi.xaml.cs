@@ -201,15 +201,18 @@ namespace OsEngine.OsOptimizer
                 HostStepsOfOptimizationTable,
                 HostRobustness,
                 HostStepsOfOptimizationTable1,
+                HostStepsOfOptimizationTable2,
                 ComboBoxSortResultsType, 
                 LabelRobustnessMetricValue,
                 ComboBoxSortResultsBotNumPercent,
                 ComboBoxSortResultsType1,
-                ComboBoxSortResultsBotNumPercent1
+                ComboBoxSortResultsBotNumPercent1,
+                _master
                 );
 
             _resultsCharting.ActivateTotalProfitChart(WindowsFormsHostTotalProfit, ComboBoxTotalProfit);
             _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
+            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2);
             _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
             _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
             _resultsCharting.ActivateCSCChart(HostFRS);
@@ -3222,7 +3225,7 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], _captureData);
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex].GetParameters(), _captureData);
 
             bot.ShowChartDialog();
         }
@@ -3282,7 +3285,7 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex], _captureData);
+            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex].GetParameters(), _captureData);
 
             if (bot == null)
             {
@@ -3297,7 +3300,7 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, report, _captureData);
+            BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
 
             if (bot == null)
             {
@@ -3426,6 +3429,11 @@ namespace OsEngine.OsOptimizer
         {
             _resultsCharting.Updateweights();
         }
+
+        private void ButtonCalculate_Click(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.CalculateDynamicTable();
+        }
     }
 
     /// <summary>
@@ -3466,5 +3474,12 @@ namespace OsEngine.OsOptimizer
         TotalProfit,
         MaxDrawDown,
         ProfitToDrawDown
+    }
+
+    public enum SortTypeDynamicTable
+    {
+        TotalProfit,
+        MaxDrawDown,
+        AvgProfit
     }
 }
