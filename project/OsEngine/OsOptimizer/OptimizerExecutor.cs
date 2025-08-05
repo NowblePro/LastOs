@@ -1352,8 +1352,6 @@ namespace OsEngine.OsOptimizer
 
                 if (server != null)
                 {
-                    // hack
-                    int counter = server.dataCounter;
                     ServerMaster.RemoveOptimizerServer(server);
                 }
             }

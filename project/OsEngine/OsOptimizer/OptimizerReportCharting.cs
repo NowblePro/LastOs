@@ -294,7 +294,6 @@ namespace OsEngine.OsOptimizer
                 UpdateAverageProfitChart(_hostAverageProfitChartCSC, _chartAverageProfitCSC, _sortBotNumberCSC);
                 UpdateProfitFactorChart(_hostProfitFactorCSC, _chartProfitFactorCSC);
                 UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
-                UpdateDynamicTable(_gridDynamicTable);
             }
             catch (Exception e)
             {
@@ -431,7 +430,6 @@ namespace OsEngine.OsOptimizer
                 DataGridViewAutoSizeRowsMode.None, false);
             gridDynamicStepsTable.CellClick += DynamicTable_CellClick;
             gridDynamicStepsTable.Click += GridDynamicStepsTable_Click;
-            gridDynamicStepsTable.CellValueChanged += GridDynamicStepsTable_CellValueChanged;
             ContextMenu menu = new ContextMenu();
             MenuItem deleteMenuItem = new MenuItem("Удалить", (sender, e) => 
             {
@@ -489,23 +487,6 @@ namespace OsEngine.OsOptimizer
             if (sender is ContextMenu menu && menu.Tag is Period p)
             {
                 menu.MenuItems[0].Visible = p != _master.Phazes.InSamplePeriod;
-            }
-        }
-
-        private void GridDynamicStepsTable_CellValueChanged(object sender, DataGridViewCellEventArgs e)
-        {
-            if (sender is DataGridView dgv)
-            {
-                if (e.ColumnIndex == 3)
-                {
-                    Period period = GetPeriod(e.RowIndex);
-                    if (period != null)
-                    {
-                        period.Name = $"{dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value}";
-                    }
-
-                    UpdateAverageProfitChartDynamic();
-                }
             }
         }
 
@@ -1098,7 +1079,6 @@ namespace OsEngine.OsOptimizer
             _master.OnPeriodsChanged();
 
             UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
-            UpdateAverageProfitChartDynamic();
             string GetCellValue(Period period, int columnIndex)
             {
                 string cellVAlue = string.Empty;
@@ -1239,13 +1219,6 @@ namespace OsEngine.OsOptimizer
                     table.Rows.Add(row);
                 }
             }
-        }
-
-        private void UpdateAverageProfitChartDynamic()
-        {
-            List<OptimazerFazeReport> reportsForAverageProfit = _master.Phazes.OutOfSamplePeriods.Where(p => p.IsDefined && p.Report != null & p.Report.Reports.Count > 0 && p.Report.Reports[0] != null).Select(p => p.Report).ToList();
-            List<string> periodNames = _master.Phazes.OutOfSamplePeriods.Where(p => p.IsDefined && p.Report != null & p.Report.Reports.Count > 0 && p.Report.Reports[0] != null).Select(p => p.Name).ToList();
-            UpdateAverageProfitChart(_chartAverageProfitDynamic, reportsForAverageProfit, periodNames);
         }
 
         private void GridDynamicStepsTable_Click(object sender, EventArgs e)
@@ -2349,16 +2322,6 @@ namespace OsEngine.OsOptimizer
             ReLoadCSC(_reports, true);
         }
 
-        private Chart _chartAverageProfitDynamic;
-
-        public void ActivateAverageProfitChartDynamic(WindowsFormsHost hostAverageProfit)
-        {
-            _chartAverageProfitDynamic = GetAverageProfitChart();
-            hostAverageProfit.Child = _chartAverageProfitDynamic;
-            _chartAverageProfitDynamic.SuppressExceptions = true;
-            ReLoadCSC(_reports, true);
-        }
-
         private Chart GetAverageProfitChart()
         {
             Chart chartAverageProfit = new Chart();
@@ -3047,6 +3010,27 @@ namespace OsEngine.OsOptimizer
             catch
             {
 
+            }
+        }
+
+        internal void CalculateDynamicTable()
+        {
+            try
+            {
+                AwaitObject awaitUiBotsInfoLoading = new AwaitObject("Рассчёт", 100, 0, true);
+                AwaitUi ui = new AwaitUi(awaitUiBotsInfoLoading);
+                Task.Factory.StartNew(() =>
+                {
+                    _periodCache.Clear();
+                    _periodCacheTable.Clear();
+                    UpdateDynamicTable(_gridDynamicTable);
+                    awaitUiBotsInfoLoading?.Dispose();
+                });
+                ui.ShowDialog();
+            }
+            catch (Exception ex) 
+            {
+                SendLogMessage(ex.ToString(), LogMessageType.Error);
             }
         }
 

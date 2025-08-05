@@ -92,27 +92,16 @@
                             </TabItem>
                             <TabItem Name="TabControlResultsOutOfSampleResults2" Header="Фазы">
                                 <Grid Name="PrimeGrid2">
-                                    <Grid Name="BottomGrid2" Height="218" VerticalAlignment="Bottom" Margin="0,0,284,0" >
+                                    <Grid Name="BottomGrid2" Height="218" VerticalAlignment="Bottom" Margin="0,0,0,0" >
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="63*"/>
                                             <ColumnDefinition Width="37*"/>
                                         </Grid.ColumnDefinitions>
-                                        <WindowsFormsHost x:Name="HostTotalProfit2"  Foreground="Black" Height="190" Margin="1,28,0,0" VerticalAlignment="Top" Grid.Column="1"/>
-                                        <Label x:Name="LabelTotalProfit2" Content="Total profit summ" VerticalAlignment="Top" Height="23" HorizontalAlignment="Left" Width="143" Grid.Column="1"/>
-                                        <ComboBox Name="ComboBoxTotalProfit2" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Top" Width="155" Margin="163,0,0,0"/>
+                                        <WindowsFormsHost x:Name="HostTotalProfit2"  Foreground="Black" Height="190" Margin="1,28,0,0" VerticalAlignment="Top" Grid.Column="0"/>
+                                        <Label x:Name="LabelTotalProfit2" Content="Total profit summ" VerticalAlignment="Top" Height="23" HorizontalAlignment="Left" Width="143" Grid.Column="0"/>
+                                        <ComboBox Name="ComboBoxTotalProfit2" Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="126" Margin="163,0,0,0"/>
                                     </Grid>
-                                    <Grid Name="LeftGrid2"  HorizontalAlignment="Right" Width="279" >
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="200*"/>
-                                            <RowDefinition Height="200*"/>
-                                        </Grid.RowDefinitions>
-                                        <WindowsFormsHost x:Name="HostAverageProfit2"  Foreground="Black" Margin="0,25,0,0"/>
-                                        <Label x:Name="LabelAverageProfitPersent2" Content="P/L % 1 contract" VerticalAlignment="Top" HorizontalAlignment="Left" Width="198" Height="23"/>
-                                        <WindowsFormsHost x:Name="HostProfitFactor2"  Foreground="Black" Margin="0,33,0,0" Grid.Row="1"/>
-
-                                        <Label x:Name="LabelAverageProfitFactor2" Content="Profit Factor" VerticalAlignment="Top" HorizontalAlignment="Left" Width="149" Height="23" Grid.Row="1" Margin="0,6,0,0"/>
-                                    </Grid>
-                                    <WindowsFormsHost x:Name="HostStepsOfOptimizationTable2"  Foreground="Black" Margin="0,37,287,229"/>
+                                    <WindowsFormsHost x:Name="HostStepsOfOptimizationTable2"  Foreground="Black" Margin="0,37,0,229"/>
                                     <ComboBox Name="ComboBoxSortResultsType2" HorizontalAlignment="Left" Margin="220,10,0,0" VerticalAlignment="Top" Width="214" Height="22"/>
                                     <Label Name="LabelSortBy2" Content="Sort by" HorizontalAlignment="Left" Margin="28,10,0,0" VerticalAlignment="Top"/>
                                     <ComboBox x:Name="ComboBoxSortResultsBotNumPercent2" HorizontalAlignment="Left" Margin="150,10,0,0" VerticalAlignment="Top" Width="67" Height="22"/>
@@ -146,6 +135,7 @@
             <CheckBox Name="CheckBoxDataCapture" Content="Data capture on charts" Margin="0,0,320,10" VerticalAlignment="Bottom" HorizontalAlignment="Right"/>
             <Button Name="ButtonLoadFromFile" Content="Load" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="142" Click="ButtonLoadFromFile_Click"/>
             <Button Name="ButtonSaveInFile" Content="Save" Margin="0,0,157,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="142" Click="ButtonSaveInFile_Click"/>
+            <Button Name="ButtonCalculate" Content="Calculate" Margin="0,0,500,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="142" Click="ButtonCalculate_Click"/>
         </Grid>
     </Grid>
 </Window>
