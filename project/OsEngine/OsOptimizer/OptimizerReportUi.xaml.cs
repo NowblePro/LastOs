@@ -106,6 +106,11 @@ namespace OsEngine.OsOptimizer
             {
                 _resultsCharting.ReLoad(_reports);
             }
+
+            if (sender is System.Windows.Controls.TabControl tab)
+            {
+                ButtonCalculate.Visibility = e.AddedItems[0] == TabControlResultsOutOfSampleResults2 ? Visibility.Visible : Visibility.Hidden;
+            }
         }
 
         public void Paint(List<OptimazerFazeReport> reports)
