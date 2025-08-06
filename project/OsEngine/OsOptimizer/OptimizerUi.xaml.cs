@@ -3434,6 +3434,14 @@ namespace OsEngine.OsOptimizer
         {
             _resultsCharting.CalculateDynamicTable();
         }
+
+        private void TabControlResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.TabControl tab)
+            {
+                ButtonCalculate.Visibility = e.AddedItems[0] == TabControlResultsOutOfSampleResults2 ? Visibility.Visible : Visibility.Hidden;
+            }
+        }
     }
 
     /// <summary>
