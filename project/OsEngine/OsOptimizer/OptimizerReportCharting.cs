@@ -95,6 +95,7 @@ namespace OsEngine.OsOptimizer
 
             CreateStepsOfOptimization();
             CreateRobustnessChart();
+            FillDynamicTable(_gridDynamicTable);
         }
 
         private void BoxTypeSortCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -881,10 +882,14 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private void CalculateDynamicFazes()
+        private void CalculateDynamicFazes(AwaitObject await)
         {
+            if (!_master.Phazes.InSamplePeriod.IsDefined) return;
+            await.Label = "Рассчёт In Sample";
             _dynamicReports.Clear();
             GetFazeFromPeriod(_master.Phazes.InSamplePeriod);
+            int total = _reports[0].Reports.Count;
+            int count = 0;
             Parallel.ForEach(_reports[0].Reports, new ParallelOptions() { MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1) }, (report) =>
             {
                 try
@@ -962,6 +967,12 @@ namespace OsEngine.OsOptimizer
                 {
                     SendLogMessage(ex.Message, LogMessageType.Error);
                 }
+                Interlocked.Increment(ref count);
+                decimal progress = (decimal)count/ (decimal)total * 100;
+                lock (await)
+                {
+                    await.ValueCurrent = Math.Max(progress, await.ValueCurrent);
+                }
             });
 
             OptimazerFazeReport faze = new OptimazerFazeReport();
@@ -970,6 +981,8 @@ namespace OsEngine.OsOptimizer
             {
                 faze.Load(botPanel);
             }
+
+            await.Label = "Сортировка";
 
             _dynamicReports = faze.Reports;
             Comparison<OptimizerReport> sortFunc = null;
@@ -991,20 +1004,23 @@ namespace OsEngine.OsOptimizer
                 _dynamicReports.Sort(sortFunc);
             }
 
-            CalculateCacheForDynamicTable();
+            CalculateCacheForDynamicTable(await);
         }
 
         private ConcurrentDictionary<Period, BotPanel> _periodCache = new ConcurrentDictionary<Period, BotPanel>();
         private ConcurrentDictionary<Period, BotPanel> _periodCacheTable = new ConcurrentDictionary<Period, BotPanel>();
         private List<OptimizerReport> _dynamicReports = new List<OptimizerReport>();
 
-        private void CalculateCacheForDynamicTable()
+        private void CalculateCacheForDynamicTable(AwaitObject await)
         {
             if (_dynamicReports.Count < 1) return;
+            await.Label = "Рассчёт Out Of Sample выбранного робота";
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
             List<Period> definedPeriods = periods.Where(p => p.IsDefined).ToList();
             int botIndex = Math.Min(_dynamicReports.Count - 1, _sortTypeDynamicTableNum);
+            int count = 0;
+            int total = definedPeriods.Count;
             foreach (Period period in definedPeriods)
             {
                 GetFazeFromPeriod(definedPeriods);
@@ -1016,17 +1032,17 @@ namespace OsEngine.OsOptimizer
 
                 if (!(_periodCacheTable.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0 && _periodCacheTable[period].StartProgram == StartProgram.IsTester))
                 {
-                    Period local = period;
-
-                    OptimizerMaster.TestSingleBot(local.Report, _dynamicReports[botIndex].GetParameters(), _master, (b) =>
+                    OptimizerMaster.TestSingleBot(period.Report, _dynamicReports[botIndex].GetParameters(), _master, (b) =>
                     {
                         if (b != null)
                         {
-                            local.Report.Load(b);
-                            _periodCacheTable.AddOrUpdate(local, b, (p, bo) => { return b; });
+                            period.Report.Load(b);
+                            _periodCacheTable.AddOrUpdate(period, b, (p, bo) => { return b; });
                         }
                     });
                 }
+                count++;
+                await.ValueCurrent = (decimal) count / (decimal) total * 100;
             }
         }
 
@@ -1038,13 +1054,18 @@ namespace OsEngine.OsOptimizer
                 return;
             }
             table.Rows.Clear();
-
-            if (_dynamicReports.Count < 1) return;
-            int botIndex = Math.Min(_dynamicReports.Count - 1, _sortTypeDynamicTableNum);
-            string parameters = _dynamicReports[botIndex].GetParamsToDataTable();
+            
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
 
+            int botIndex = -1;
+            string parameters = string.Empty;
+            if (_dynamicReports.Count > 0)
+            {
+                botIndex = Math.Min(_dynamicReports.Count - 1, _sortTypeDynamicTableNum);
+                parameters = _dynamicReports[botIndex].GetParamsToDataTable();
+            }
+            
             FillPeriod(_master.Phazes.InSamplePeriod, "In Sample");
 
             // Заполнение Out Of Sample периодов
@@ -1061,7 +1082,7 @@ namespace OsEngine.OsOptimizer
 
                 BotPanel bot;
 
-                if (string.IsNullOrEmpty(period.RobotKey))
+                if (string.IsNullOrEmpty(period.RobotKey) && botIndex > -1)
                 {
                     period.RobotKey = _dynamicReports[botIndex].GetParamsToDataTable();
                 }
@@ -1071,14 +1092,10 @@ namespace OsEngine.OsOptimizer
                     bot = _periodCacheTable[period];
                     period.Report.Reports.Clear();
                     period.Report.Load(bot);
-                    Change(period, bot);
-                }
-                else
-                {
-                    throw new Exception("Период не просчитан, что то пошло нет так.");
+                    Change(period);
                 }
 
-                void Change(Period p, BotPanel panel)
+                void Change(Period p)
                 {
                     if (p == _master.Phazes.InSamplePeriod)
                     {
@@ -1241,16 +1258,14 @@ namespace OsEngine.OsOptimizer
 
         private void CalculateAndUpdateDynamicTable(DataGridView table)
         {
-            if (!_master.Phazes.InSamplePeriod.IsDefined) return;
-
-            AwaitObject awaitUiBotsInfoLoading = new AwaitObject("Рассчёт", 100, 0, true);
+            AwaitObject awaitUiBotsInfoLoading = new AwaitObject("Рассчёт", 100, 0, false);
             AwaitUi ui = new AwaitUi(awaitUiBotsInfoLoading);
 
             Task.Run(() =>
             {
                 // Первая задача рассчёт
                 Thread.CurrentThread.IsBackground = true;
-                CalculateDynamicFazes();
+                CalculateDynamicFazes(awaitUiBotsInfoLoading);
             }).ContinueWith((t) => 
             {
                 // Вторая задача заполнение таблицы
@@ -3029,16 +3044,7 @@ namespace OsEngine.OsOptimizer
                     {
                         p.Report?.Reports?.Clear();
                     }
-
-                    AwaitObject awaitUiBotsInfoLoading = new AwaitObject("Рассчёт", 100, 0, true);
-                    AwaitUi ui = new AwaitUi(awaitUiBotsInfoLoading);
-                    Task.Factory.StartNew(() =>
-                    {
-                        Thread.CurrentThread.IsBackground = true;
-                        CalculateAndUpdateDynamicTable(_gridDynamicTable);
-                        awaitUiBotsInfoLoading?.Dispose();
-                    });
-                    ui.ShowDialog();
+                    CalculateAndUpdateDynamicTable(_gridDynamicTable);
                 }
             }
             catch
