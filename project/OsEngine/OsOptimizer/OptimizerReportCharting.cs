@@ -1030,6 +1030,14 @@ namespace OsEngine.OsOptimizer
                     period.RobotKey = _dynamicReports[botIndex].GetParamsToDataTable();
                 }
 
+                bool contains = _periodCacheTable.ContainsKey(period);
+                bool NULL = period.Report == null;
+                bool moreZero = false;
+                if (!NULL)
+                {
+                    moreZero = period.Report.Reports.Count > 0;
+                }
+                
                 if (!(_periodCacheTable.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0 && _periodCacheTable[period].StartProgram == StartProgram.IsTester))
                 {
                     OptimizerMaster.TestSingleBot(period.Report, _dynamicReports[botIndex].GetParameters(), _master, (b) =>
@@ -1268,7 +1276,7 @@ namespace OsEngine.OsOptimizer
                 CalculateDynamicFazes(awaitUiBotsInfoLoading);
             }).ContinueWith((t) => 
             {
-                // Вторая задача заполнение таблицы
+                // Вторая задача заполнение таблицы и графика
                 FillDynamicTable(table);
                 UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
                 _master.OnPeriodsChanged();
@@ -1302,91 +1310,99 @@ namespace OsEngine.OsOptimizer
 
         private void DynamicTable_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0) return;
-
-            if (e.ColumnIndex == 10 && sender is DataGridView gridView)
+            try
             {
-                // График
-                Period period = GetPeriod(e.RowIndex);
-                BotPanel bot = null;
-                if (_periodCacheTable.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
-                {
-                    bot = _periodCacheTable[period];
-                }
+                if (e.RowIndex < 0) return;
 
-                if (bot == null || bot.StartProgram != StartProgram.IsTester)
+                if (e.ColumnIndex == 10 && sender is DataGridView gridView)
                 {
-                    OptimazerFazeReport fazeReport = period.Report;
-                    if (fazeReport == null)
+                    // График
+                    Period period = GetPeriod(e.RowIndex);
+                    if (period == null) return;
+                    BotPanel bot = null;
+                    if (_periodCacheTable.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
+                    {
+                        bot = _periodCacheTable[period];
+                    }
+
+                    if (bot == null || bot.StartProgram != StartProgram.IsTester)
+                    {
+                        OptimazerFazeReport fazeReport = period.Report;
+                        if (fazeReport == null)
+                        {
+                            return;
+                        }
+
+                        OptimizerReport report = fazeReport.Reports.FirstOrDefault();
+
+                        if (report == null)
+                        {
+                            return;
+                        }
+
+                        bot = _master.TestBot(fazeReport, fazeReport.Reports[0].GetParameters(), false);
+                        _periodCacheTable.AddOrUpdate(period, bot, (p, b) => { return bot; });
+                    }
+
+                    if (bot == null)
                     {
                         return;
                     }
 
-                    OptimizerReport report = fazeReport.Reports.FirstOrDefault();
-
-                    if (report == null)
-                    {
-                        return;
-                    }
-
-                    bot = _master.TestBot(fazeReport, fazeReport.Reports[0].GetParameters(), false);
-                    _periodCacheTable.AddOrUpdate(period, bot, (p, b) => { return bot; });
-                }
-
-                if (bot == null)
-                {
+                    bot.ShowChartDialog();
                     return;
                 }
 
-                bot.ShowChartDialog();
-                return;
+                if (sender is DataGridView dgv)
+                {
+                    bool changed = false;
+
+                    Period prevPeriod = GetPeriod(e.RowIndex - 1);
+                    Period period = GetPeriod(e.RowIndex);
+                    Period nextPeriod = GetPeriod(e.RowIndex + 1);
+
+                    if (period == null)
+                    {
+                        if (e.ColumnIndex == 0)
+                        {
+                            _master.Phazes.OutOfSamplePeriods.Add(new Period());
+                            changed = true;
+                        }
+                    }
+                    else
+                    {
+                        if (e.ColumnIndex == 1)
+                        {
+                            DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.Start ?? prevPeriod?.End ?? (DateTime)TotalPeriod.Start);
+                            dialog.ShowDialog();
+                            if (dialog.IsSaved)
+                            {
+                                period.Start = dialog.Time;
+                                changed = true;
+                            }
+                        }
+
+                        if (e.ColumnIndex == 2)
+                        {
+                            DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.End ?? nextPeriod?.Start ?? period.Start ?? (DateTime)TotalPeriod.End);
+                            dialog.ShowDialog();
+                            if (dialog.IsSaved)
+                            {
+                                period.End = dialog.Time;
+                                changed = true;
+                            }
+                        }
+                    }
+
+                    if (changed)
+                    {
+                        CalculateAndUpdateDynamicTable(dgv);
+                    }
+                }
             }
-
-            if (sender is DataGridView dgv)
+            catch (Exception ex)
             {
-                bool changed = false;
-
-                Period prevPeriod = GetPeriod(e.RowIndex - 1);
-                Period period = GetPeriod(e.RowIndex);
-                Period nextPeriod = GetPeriod(e.RowIndex + 1);
-
-                if (period == null)
-                {
-                    if (e.ColumnIndex == 0)
-                    {
-                        _master.Phazes.OutOfSamplePeriods.Add(new Period());
-                        changed = true;
-                    }
-                }
-                else
-                {
-                    if (e.ColumnIndex == 1)
-                    {
-                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.Start ?? prevPeriod?.End ?? (DateTime)TotalPeriod.Start);
-                        dialog.ShowDialog();
-                        if (dialog.IsSaved)
-                        {
-                            period.Start = dialog.Time;
-                            changed = true;
-                        }
-                    }
-
-                    if (e.ColumnIndex == 2)
-                    {
-                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.End ?? nextPeriod?.Start ?? period.Start ?? (DateTime)TotalPeriod.End);
-                        dialog.ShowDialog();
-                        if (dialog.IsSaved)
-                        {
-                            period.End = dialog.Time;
-                            changed = true;
-                        }
-                    }
-                }
-                
-                if (changed)
-                {
-                    CalculateAndUpdateDynamicTable(dgv);
-                }
+                SendLogMessage(ex.ToString(), LogMessageType.Error);
             }
         }
 
