@@ -93,9 +93,17 @@ namespace OsEngine.OsOptimizer
             boxTypeSortCSC.SelectedItem = CSCSortType.FRS.ToString();
             boxTypeSortCSC.SelectionChanged += BoxTypeSortCSC_SelectionChanged;
 
+            GetTotalPeriod();
+            _master.DateTimeStartEndChange += _master_DateTimeStartEndChange;
+
             CreateStepsOfOptimization();
             CreateRobustnessChart();
             FillDynamicTable(_gridDynamicTable);
+        }
+
+        private void _master_DateTimeStartEndChange()
+        {
+            GetTotalPeriod();
         }
 
         private void BoxTypeSortCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -236,7 +244,7 @@ namespace OsEngine.OsOptimizer
                 {
                     return;
                 }
-                GetTotalPeriod(reports);
+
                 for (int i = 0; i < reports.Count; i++)
                 {
                     OptimazerFazeReport.SortResults(reports[i].Reports, _sortBotsType);
@@ -283,7 +291,7 @@ namespace OsEngine.OsOptimizer
                 {
                     return;
                 }
-                GetTotalPeriod(reports);
+
                 if (calculate || calculateFRS)
                 {
                     CalculateCSCResults(reports, !calculate);
@@ -345,10 +353,10 @@ namespace OsEngine.OsOptimizer
 
 
 
-        private void GetTotalPeriod(List<OptimazerFazeReport> reports)
+        private void GetTotalPeriod()
         {
-            TotalPeriod.Start = reports.Min(f => f.Faze.TimeStart);
-            TotalPeriod.End = reports.Max(f => f.Faze.TimeEnd);
+            TotalPeriod.Start = _master.TimeStart;
+            TotalPeriod.End = _master.TimeEnd;
         }
 
         private void GetBestBotNum(List<OptimizerReport> reports)
