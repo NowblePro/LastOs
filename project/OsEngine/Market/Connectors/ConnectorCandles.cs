@@ -824,15 +824,6 @@ namespace OsEngine.Market.Connectors
                         else
                         {
                             _myServer = servers.Find(server => server.ServerType == ServerType);
-
-                            if (_myServer == null)
-                            {
-                                WriteToDebugLog($"_myServer found, null");
-                            }
-                            else
-                            {
-                                WriteToDebugLog($"_myServer found, number: {((OptimizerServer)_myServer).NumberServer}");
-                            }
                         }
                     }
                     catch
