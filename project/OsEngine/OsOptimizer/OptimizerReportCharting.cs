@@ -16,6 +16,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -1022,6 +1023,7 @@ namespace OsEngine.OsOptimizer
         private void CalculateCacheForDynamicTable(AwaitObject await)
         {
             if (_dynamicReports.Count < 1) return;
+            await.ValueCurrent = 0;
             await.Label = "Рассчёт Out Of Sample выбранного робота";
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
@@ -3089,6 +3091,19 @@ namespace OsEngine.OsOptimizer
             {
                 SendLogMessage(ex.ToString(), LogMessageType.Error);
             }
+        }
+
+        internal void ClearCache()
+        {
+            _periodCache.Clear();
+            _periodCacheTable.Clear();
+            _master.Phazes.InSamplePeriod.Report.Reports.Clear();
+            foreach (Period p in _master.Phazes.OutOfSamplePeriods)
+            {
+                p.Report.Reports.Clear();
+            }
+            FillDynamicTable(_gridDynamicTable);
+            UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
         }
 
         /// <summary>

@@ -69,6 +69,7 @@ using OsEngine.Market.Servers.KiteConnect;
 using OsEngine.Market.Servers.YahooFinance;
 using OsEngine.Market.Servers.Atp;
 using OsEngine.Market.Servers.Polygon;
+using System.Linq;
 
 
 namespace OsEngine.Market
@@ -862,6 +863,16 @@ namespace OsEngine.Market
                     }
                 }
             }
+        }
+
+        public static OptimizerServer GetOptimizerServer(int num)
+        {
+            OptimizerServer result = null;
+            lock (_optimizerGeneratorLocker)
+            {
+                result = _servers.Where(s => s is OptimizerServer opt && opt.NumberServer == num).SingleOrDefault() as OptimizerServer;
+            }
+            return result;
         }
 
         /// <summary>
