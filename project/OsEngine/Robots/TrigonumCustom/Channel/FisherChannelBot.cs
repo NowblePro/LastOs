@@ -1,17 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using OsEngine.Charts.CandleChart.Indicators;
+﻿using OsEngine.Charts.CandleChart.Indicators;
 using OsEngine.Entity;
 using OsEngine.Indicators;
 using OsEngine.Market.Servers.Bitfinex.BitfitnexEntity;
-using OsEngine.Market.Servers.YahooFinance.Entity;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.Robots.Classes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace OsEngine.Robots.TrigonumCustom.Channel
 {
@@ -80,13 +81,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private FisherTransformIndicator fisher;
         private Aindicator ps;
 
-        private List<decimal> currentFisher = new List<decimal>();
-        private List<decimal> currentFisherSma = new List<decimal>();
-        private List<decimal> currentMaximums = new List<decimal>();
-        private List<decimal> currentMinimums = new List<decimal>();
-        private List<decimal> currentMaxPrices = new List<decimal>();
-        private List<decimal> currentMinPrices = new List<decimal>();
-        private List<Candle> currentLastCandles = new List<Candle>();
+        private FisherData fisherData = new FisherData();
 
         private decimal lastSar;
         private decimal lastPrice;
@@ -95,6 +90,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         {
             TabCreate(BotTabType.Simple);
             tab = TabsSimple[0];
+
+            tab.GetChartMaster().ChartClickEvent += FisherChannelBot_ChartClickEvent;
 
             Regime = CreateParameter("Regime", "Off", new[] { OFF, ON, ONLY_LONG, ONLY_SHORT, ONLY_CLOSE_POSITION }, "Base");
             slippage = CreateParameter("Slippage", 0.1m, 0.1m, 5, 0.1m, "Base");
@@ -150,6 +147,74 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             tab.CandleFinishedEvent += Tab_CandleFinishedEvent;
             tab.PositionOpeningSuccesEvent += Tab_PositionOpeningSuccesEvent;
             ParametrsChangeByUser += Stoch_ParametrsChangeByUser;
+        }
+
+        private Series additionalLines = null;
+
+        private void FisherChannelBot_ChartClickEvent(object sender, MouseEventArgs e)
+        {
+            if (sender is Chart chart)
+            {
+                // Получаем координаты клика в пикселях
+                MouseEventArgs me = (MouseEventArgs)e;
+                System.Drawing.Point points = me.Location;
+
+                if (additionalLines == null)
+                {
+                    additionalLines = new Series();
+                    additionalLines.ChartType = SeriesChartType.Line;
+                    chart.Series.Add(additionalLines);
+                }
+
+                additionalLines.Points.Clear();
+
+                // Преобразуем координаты в значения графика
+                try
+                {
+                    var result = chart.HitTest(points.X, points.Y);
+
+                    // Проверяем, был ли клик по точке данных
+                    if (result.ChartElementType == ChartElementType.DataPoint && result.Series.ChartType == SeriesChartType.Candlestick)
+                    {
+                        //int candleAreaIndex = chart.Series.IndexOf(result.Series);
+                        //int addAreaIndex = chart.Series.IndexOf(additionalLines);
+                        //chart.ChartAreas[addAreaIndex].AxisY.Minimum = chart.ChartAreas[candleAreaIndex].AxisY.Minimum;
+                        //chart.ChartAreas[addAreaIndex].AxisY.Maximum = chart.ChartAreas[candleAreaIndex].AxisY.Maximum;
+                        // Получаем индекс серии и точку данных
+                        //int seriesIndex = result.Series.Index;
+                        //int seriesIndex = ;
+                        int pointIndex = result.PointIndex;
+                        //fisher.ValuesToChart
+                        // Получаем значение точки данных
+                        double value = result.Series.Points[pointIndex].YValues[0];
+                        //tab.
+                        FisherData fish = new FisherData();
+                        
+                        int skip = pointIndex - period.ValueInt;
+                        int take = period.ValueInt;
+                        IEnumerable<decimal> fisherValues = fisher.ValuesToChart[0].Skip(skip).Take(take);
+                        IEnumerable<decimal> fisherSma = fisher.ValuesToChart[1].Skip(skip).Take(take);
+                        IEnumerable<Candle> candles = tab.GetChartMaster().Candles.Skip(skip).Take(take);
+                        fish.UpdateExtremums(fisherValues, fisherSma, candles, topLine.ValueDecimal, bottomLine.ValueDecimal);
+                        decimal[] line = new decimal[skip];
+                        for (int i = 0; i < skip; i++)
+                        {
+                            line[i] = (decimal)value;
+                        }
+                        foreach (var i in line)
+                        {
+                            additionalLines.Points.AddY(i);
+                        }
+
+                        chart.ChartAreas[0].AxisY.Minimum = chart.ChartAreas[0].AxisY2.Minimum;
+                        chart.ChartAreas[0].AxisY.Maximum = chart.ChartAreas[0].AxisY2.Maximum;
+                    }
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
         }
 
         private void Stoch_ParametrsChangeByUser()
@@ -213,7 +278,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             IEnumerable<decimal> fisherSma = fisher.ValuesToChart[1].Skip(skip);
             List<Position> positions = tab.PositionsOpenAll;
 
-            UpdateExtremums(fisherValues, fisherSma, lastCandles);
+            fisherData.UpdateExtremums(fisherValues, fisherSma, lastCandles, topLine.ValueDecimal, bottomLine.ValueDecimal);
 
             if (Regime.ValueString == OFF) return;
 
@@ -227,96 +292,144 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             }
         }
 
-        /// <summary>
-        /// Обновить максимумы и минимумы за последние <see cref="period"/> свечей
-        /// </summary>
-        /// <param name="fisherValues"></param>
-        /// <param name="fisherSma"></param>
-        /// <param name="candles"></param>
-        private void UpdateExtremums(IEnumerable<decimal> fisherValues, IEnumerable<decimal> fisherSma, IEnumerable<Candle> candles)
+        class FisherData
         {
-            currentFisher.Clear();
-            currentFisher.AddRange(fisherValues);
-            currentFisherSma.Clear();
-            currentFisherSma.AddRange(fisherSma);
+            private List<decimal> currentFisher = new List<decimal>();
+            private List<decimal> currentFisherSma = new List<decimal>();
+            private List<decimal> currentMaximums = new List<decimal>();
+            private List<decimal> currentMinimums = new List<decimal>();
+            private List<decimal> currentMaxPrices = new List<decimal>();
+            private List<decimal> currentMinPrices = new List<decimal>();
+            private List<Candle> currentLastCandles = new List<Candle>();
 
-            currentMaximums.Clear();
-            currentMinimums.Clear();
-            currentMaxPrices.Clear();
-            currentMinPrices.Clear();
-            currentLastCandles.Clear();
-            currentLastCandles.AddRange(candles);
+            public List<decimal> CurrentMaximums => currentMaximums;
+            public List<decimal> CurrentMinimums => currentMinimums;
+            public List<decimal> CurrentMaxPrices => currentMaxPrices;
+            public List<decimal> CurrentMinPrices => currentMinPrices;
 
-            decimal prevFish = 0;
-            decimal prevSma = 0;
-            decimal top = topLine.ValueDecimal;
-            decimal bot = bottomLine.ValueDecimal;
-
-            for (int i = 0; i < currentFisher.Count; i++)
+            public void Clear()
             {
-                decimal curFish = currentFisher[i];
-                decimal curSma = currentFisherSma[i];
+                currentFisher.Clear();
+                currentFisherSma.Clear();
 
-                if (curFish > top && curSma > top && prevFish > top && prevSma > top)
+                currentMaximums.Clear();
+                currentMinimums.Clear();
+                currentMaxPrices.Clear();
+                currentMinPrices.Clear();
+                currentLastCandles.Clear();
+            }
+
+            public void UpdateFisherValues(IEnumerable<decimal> fisherValues)
+            {
+                if (currentFisher.Any())
                 {
-                    // Поиск максимумов
-                    if (prevFish > prevSma && curFish < curSma)
+                    currentFisher.Clear();
+                }
+                currentFisher.AddRange(fisherValues);
+            }
+
+            public void UpdateFisherSma(IEnumerable<decimal> fisherSma)
+            {
+                if (currentFisherSma.Any())
+                {
+                    currentFisherSma.Clear();
+                }
+                currentFisherSma.AddRange(fisherSma);
+            }
+
+            public void UpdateLastCandles(IEnumerable<Candle> candles)
+            {
+                if (currentLastCandles.Any())
+                {
+                    currentLastCandles.Clear();
+                }
+                currentLastCandles.AddRange(candles);
+            }
+
+            /// <summary>
+            /// Обновить максимумы и минимумы за последние <see cref="period"/> свечей
+            /// </summary>
+            /// <param name="fisherValues"></param>
+            /// <param name="fisherSma"></param>
+            /// <param name="candles"></param>
+            public void UpdateExtremums(IEnumerable<decimal> fisherValues, IEnumerable<decimal> fisherSma, IEnumerable<Candle> candles, decimal topLine, decimal bottomLine)
+            {
+                Clear();
+                UpdateFisherValues(fisherValues);
+                UpdateFisherSma(fisherSma);
+                UpdateLastCandles(candles);
+
+                decimal prevFish = 0;
+                decimal prevSma = 0;
+                decimal top = topLine;
+                decimal bot = bottomLine;
+
+                for (int i = 0; i < currentFisher.Count; i++)
+                {
+                    decimal curFish = currentFisher[i];
+                    decimal curSma = currentFisherSma[i];
+
+                    if (curFish > top && curSma > top && prevFish > top && prevSma > top)
                     {
-                        currentMaximums.Add(curSma);
+                        // Поиск максимумов
+                        if (prevFish > prevSma && curFish < curSma)
+                        {
+                            currentMaximums.Add(curSma);
+                        }
+                        else
+                        {
+                            currentMaximums.Add(0);
+                        }
                     }
                     else
                     {
                         currentMaximums.Add(0);
                     }
-                }
-                else
-                {
-                    currentMaximums.Add(0);
-                }
 
-                if (curFish < bot && curSma < bot && prevFish < bot && prevSma < bot)
-                {
-                    // Поиск минимумов
-                    if (prevSma > prevFish && curSma < curFish)
+                    if (curFish < bot && curSma < bot && prevFish < bot && prevSma < bot)
                     {
-                        currentMinimums.Add(curSma);
+                        // Поиск минимумов
+                        if (prevSma > prevFish && curSma < curFish)
+                        {
+                            currentMinimums.Add(curSma);
+                        }
+                        else
+                        {
+                            currentMinimums.Add(0);
+                        }
                     }
                     else
                     {
                         currentMinimums.Add(0);
                     }
-                }
-                else
-                {
-                    currentMinimums.Add(0);
+
+                    prevFish = curFish;
+                    prevSma = curSma;
                 }
 
-                prevFish = curFish;
-                prevSma = curSma;
-            }
+                // После поиска экстремумов, проверить цену во время этих экстремумов
+                for (int i = 0; i < currentMaximums.Count; i++)
+                {
+                    if (currentMaximums[i] != 0)
+                    {
+                        currentMaxPrices.Add(currentLastCandles[i].High);
+                    }
+                    else
+                    {
+                        currentMaxPrices.Add(0);
+                    }
+                }
 
-            // После поиска экстремумов, проверить цену во время этих экстремумов
-            for (int i = 0; i < currentMaximums.Count; i++)
-            {
-                if (currentMaximums[i] != 0)
+                for (int i = 0; i < currentMinimums.Count; i++)
                 {
-                    currentMaxPrices.Add(currentLastCandles[i].High);
-                }
-                else
-                {
-                    currentMaxPrices.Add(0);
-                }
-            }
-
-            for (int i = 0; i < currentMinimums.Count; i++)
-            {
-                if (currentMinimums[i] != 0)
-                {
-                    currentMinPrices.Add(currentLastCandles[i].Low);
-                }
-                else
-                {
-                    currentMinPrices.Add(0);
+                    if (currentMinimums[i] != 0)
+                    {
+                        currentMinPrices.Add(currentLastCandles[i].Low);
+                    }
+                    else
+                    {
+                        currentMinPrices.Add(0);
+                    }
                 }
             }
         }
@@ -325,6 +438,10 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         {
             //Оставить 2 последних максимума
             int lastExtremumsCount = 2;
+            List<decimal> currentMaximums = fisherData.CurrentMaximums;
+            List<decimal> currentMinimums = fisherData.CurrentMinimums;
+            List<decimal> currentMaxPrices = fisherData.CurrentMaxPrices;
+            List<decimal> currentMinPrices = fisherData.CurrentMinPrices;
             int maxCount = currentMaximums.Where(i => i != 0).Count();
 
             if (Regime.ValueString != ONLY_LONG && maxCount > 1 && currentMaximums.Last() != 0)
@@ -378,6 +495,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                     return;
                 }
             }
+
+            List<decimal> currentMaximums = fisherData.CurrentMaximums;
+            List<decimal> currentMinimums = fisherData.CurrentMinimums;
 
             for (int i = 0; i < positions.Count; i++)
             {

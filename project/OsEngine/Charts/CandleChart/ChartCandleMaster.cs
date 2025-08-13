@@ -629,13 +629,13 @@ namespace OsEngine.Charts.CandleChart
         /// user clicked on chart
         /// Пользователь кликнул по чарту
         /// </summary>
-        private void ChartCandle_ChartClickEvent(ChartClickType buttonType)
+        private void ChartCandle_ChartClickEvent(object sender, MouseEventArgs e)
         {
             try
             {
-                ChartClickEvent?.Invoke(buttonType);
+                ChartClickEvent?.Invoke(sender, e);
 
-                if (buttonType != ChartClickType.RightButton)
+                if (e.Button != MouseButtons.Right)
                 {
                     return;
                 }
@@ -647,7 +647,7 @@ namespace OsEngine.Charts.CandleChart
             }
         }
 
-        public event Action<ChartClickType> ChartClickEvent;
+        public event EventHandler<MouseEventArgs> ChartClickEvent;
 
         /// <summary>
         /// Reassemble the context menu for chart
@@ -1415,6 +1415,8 @@ namespace OsEngine.Charts.CandleChart
         /// свечи доступные на чарте
         /// </summary>
         private List<Candle> _myCandles;
+
+        public List<Candle> Candles => _myCandles;
 
         /// <summary>
         /// last price
