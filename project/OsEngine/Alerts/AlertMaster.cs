@@ -759,7 +759,7 @@ namespace OsEngine.Alerts
         /// cursor position on chart has changed
         /// изменилась позиция курсора на чарте
         /// </summary>
-        private void ChartMaster_ChartClickEvent(ChartClickType clickType)
+        private void ChartMaster_ChartClickEvent(object sender, MouseEventArgs e)
         {
             // check to see if you need to download information from cursor to alert window
             // проверить, не надо ли сейчас загрузить информацию с курсора в окно Алерта
