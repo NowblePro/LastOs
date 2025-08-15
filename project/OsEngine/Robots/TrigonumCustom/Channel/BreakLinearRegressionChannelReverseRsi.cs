@@ -369,7 +369,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void TryClosePosition(Position position)
         {
             decimal upChannel = _LinearRegression.DataSeries[0].Last;
+            upChannel = Math.Max(upChannel, _smaFilter.DataSeries[0].Last);
             decimal downChannel = _LinearRegression.DataSeries[2].Last;
+            downChannel = Math.Max(downChannel, _smaFilter.DataSeries[0].Last);
 
             if (upChannel == 0 ||
                 downChannel == 0)
