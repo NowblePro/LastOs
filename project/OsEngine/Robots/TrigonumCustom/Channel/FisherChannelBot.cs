@@ -263,7 +263,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                         topFisherLine.Points.Clear();
                         bottomFisherLine.Points.Clear();
                         // Получаем индекс серии и точку данных
-                        //int seriesIndex = result.Series.Index;
                         int pointIndex = result.PointIndex;
                         // Получаем значение точки данных
                         double value = result.Series.Points[pointIndex].YValues[0];
@@ -276,8 +275,17 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                         IEnumerable<Candle> candles = tab.GetChartMaster().Candles.Skip(skip).Take(take);
                         fish.UpdateExtremums(fisherValues, fisherSma, candles, topLine.ValueDecimal, bottomLine.ValueDecimal);
 
-                        StringBuilder report = new StringBuilder();
-                        CheckEnterPosition(fish, out bool @long, out bool @short, report);
+                        StringBuilder reportLong = new StringBuilder();
+                        StringBuilder reportShort = new StringBuilder();
+                        CheckEnterPosition(fish, out bool @long, out bool @short, reportLong, reportShort);
+
+                        if (reportShort.Length > 0)
+                        {
+                            int x = points.X * 100 / chart.Width;
+                            int y = points.Y * 100 / chart.Height;
+
+                            EditTextAnnotation(chart,$"Short: {reportShort}\r\nLong: {reportLong}", x, y);
+                        }
 
                         ApproximatingExtremums(fish.CurrentMaxPrices);
                         ApproximatingExtremums(fish.CurrentMaximums);
@@ -372,6 +380,21 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
                 }
             }
+        }
+
+        private TextAnnotation annotation = new TextAnnotation();
+
+        private void EditTextAnnotation(Chart chart, string text, float x, float y)
+        {
+            annotation.Text = text;
+            annotation.X = x;
+            annotation.Y = y;
+            annotation.AnchorX = x;
+            annotation.AnchorY = y;
+            annotation.ForeColor = System.Drawing.Color.Yellow; // Цвет текста
+            annotation.Font = new System.Drawing.Font("Arial", 10); // Шрифт
+            chart.Annotations.Remove(annotation);
+            chart.Annotations.Add(annotation);
         }
 
         private void Stoch_ParametrsChangeByUser()
@@ -737,10 +760,10 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             return result;
         }
 
-        private void CheckEnterPosition(FisherData fisherData, out bool @long, out bool @short, StringBuilder report = null)
+        private void CheckEnterPosition(FisherData fisherData, out bool @long, out bool @short, StringBuilder reportLong = null, StringBuilder reportShort = null)
         {
-            @long = CheckEnterLong(fisherData, report);
-            @short = CheckEnterShort(fisherData, report);
+            @long = CheckEnterLong(fisherData, reportLong);
+            @short = CheckEnterShort(fisherData, reportShort);
         }
 
         private void CheckStop(List<Position> positions, List<Candle> candles)
