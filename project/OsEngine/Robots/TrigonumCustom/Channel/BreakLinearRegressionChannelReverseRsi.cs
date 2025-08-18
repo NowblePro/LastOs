@@ -369,9 +369,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void TryClosePosition(Position position)
         {
             decimal upChannel = _LinearRegression.DataSeries[0].Last;
-            upChannel = Math.Max(upChannel, _smaFilter.DataSeries[0].Last);
             decimal downChannel = _LinearRegression.DataSeries[2].Last;
-            downChannel = Math.Max(downChannel, _smaFilter.DataSeries[0].Last);
+            decimal stopLine = _smaFilter.DataSeries[0].Last;
 
             if (upChannel == 0 ||
                 downChannel == 0)
@@ -383,10 +382,12 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             {
                 if (ReverseLogic.ValueBool)
                 {
+                    _tab.CloseAtStop(position, stopLine, stopLine - GetSlippage(stopLine));
                     _tab.CloseAtProfit(position, upChannel, upChannel - GetSlippage(upChannel));
                 }
                 else
                 {
+                    _tab.CloseAtProfit(position, stopLine, stopLine - GetSlippage(stopLine));
                     _tab.CloseAtStop(position, downChannel, downChannel - GetSlippage(downChannel));
                 }
             }
@@ -394,10 +395,12 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             {
                 if (ReverseLogic.ValueBool)
                 {
+                    _tab.CloseAtStop(position, stopLine, stopLine + GetSlippage(stopLine));
                     _tab.CloseAtProfit(position, downChannel, downChannel + GetSlippage(downChannel));
                 }
                 else
                 {
+                    _tab.CloseAtProfit(position, stopLine, stopLine + GetSlippage(stopLine));
                     _tab.CloseAtStop(position, upChannel, upChannel + GetSlippage(upChannel));
                 }
             }
