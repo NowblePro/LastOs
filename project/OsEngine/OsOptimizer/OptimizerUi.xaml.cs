@@ -224,6 +224,8 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.UpdateWeights( _master.PPRWeight,
                                             _master.TRWeight,
                                             _master.GPRWeight);
+            _customPhazeEditor = new OptimizerCustomPhazesEditor(HostCustomPhazes, _master);
+
             this.Closing += Ui_Closing;
             this.Activate();
             this.Focus();
@@ -3434,6 +3436,8 @@ namespace OsEngine.OsOptimizer
         {
             _resultsCharting.CalculateDynamicTable();
         }
+
+        OptimizerCustomPhazesEditor _customPhazeEditor;
     }
 
     /// <summary>

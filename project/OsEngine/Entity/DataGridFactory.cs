@@ -15,6 +15,25 @@ namespace OsEngine.Entity
 {
     public class DataGridFactory
     {
+        private static DataGridViewCellStyle cellStyle;
+        public static DataGridViewCellStyle CellStyle 
+        {
+            get
+            {
+                if (cellStyle == null) 
+                {
+                    DataGridViewCellStyle style = new DataGridViewCellStyle();
+                    style.Alignment = DataGridViewContentAlignment.TopLeft;
+                    style.WrapMode = DataGridViewTriState.True;
+                    style.BackColor = Color.FromArgb(21, 26, 30);
+                    style.SelectionBackColor = Color.FromArgb(17, 18, 23);
+                    style.ForeColor = Color.FromArgb(154, 156, 158);
+                    cellStyle = style;
+                }
+                return cellStyle;
+            }
+        }
+
         public static DataGridView GetDataGridView(DataGridViewSelectionMode selectionMode, DataGridViewAutoSizeRowsMode rowsSizeMode, bool createSaveMenu = false)
         {
             DataGridView grid = new DoubleBufferedDataGridView();
@@ -36,13 +55,7 @@ namespace OsEngine.Entity
             grid.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             grid.BorderStyle = BorderStyle.None;
 
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            style.BackColor =  Color.FromArgb(21, 26, 30);
-            style.SelectionBackColor = Color.FromArgb(17, 18, 23);
-            style.ForeColor = Color.FromArgb(154, 156, 158);
-            grid.DefaultCellStyle = style;
+            grid.DefaultCellStyle = CellStyle;
 
             DataGridViewCellStyle headerStyle = new DataGridViewCellStyle();
             headerStyle.Alignment = DataGridViewContentAlignment.TopLeft;
@@ -949,5 +962,23 @@ positionOpener.LifeTimeType
             return myGridView;
         }
 
+        public static DataGridViewTextBoxCell AddTextBoxCell(DataGridViewRow row, object value, bool readOnly = true)
+        {
+            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
+            cell.Value = value;
+            row.Cells.Add(cell);
+            cell.ReadOnly = readOnly;
+            return cell;
+        }
+
+        public static DataGridViewTextBoxCell AddTextBoxCell(DataGridViewRow row, decimal value, bool readOnly = true)
+        {
+            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
+            cell.Value = Math.Round(value, 3);
+            cell.ToolTipText = $"{value}";
+            row.Cells.Add(cell);
+            cell.ReadOnly = readOnly;
+            return cell;
+        }
     }
 }

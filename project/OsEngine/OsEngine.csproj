@@ -1062,6 +1062,7 @@
       <DependentUpon>OptimizerBotParametersSimpleUi.xaml</DependentUpon>
     </Compile>
     <Compile Include="OsOptimizer\OptEntity\WalkForwardPeriodsPainter.cs" />
+    <Compile Include="OsOptimizer\OptimizerCustomPhazesEditor.cs" />
     <Compile Include="OsOptimizer\OptimizerExecutor.cs" />
     <Compile Include="OsOptimizer\OptimizerMaster.cs" />
     <Compile Include="OsOptimizer\OptimizerReport.cs" />

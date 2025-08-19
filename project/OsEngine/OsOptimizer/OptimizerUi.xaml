@@ -75,6 +75,7 @@
                                 </Grid>
                             </TabItem>
                             <TabItem Name="TabItemFazes2" Header="Ручная настройка" FontSize="14" Width="130">
+                                <WindowsFormsHost x:Name="HostCustomPhazes"  Foreground="Black" Margin="0,37,0,229"/>
                             </TabItem>
                         </TabControl>
                     </Grid>

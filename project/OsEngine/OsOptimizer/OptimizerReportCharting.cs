@@ -234,9 +234,7 @@ namespace OsEngine.OsOptimizer
                     || _reports.Count <= 1)
                 {
                     return;
-                }
-                GetTotalPeriod(reports);
-                for (int i = 0; i < reports.Count; i++)
+                }                for (int i = 0; i < reports.Count; i++)
                 {
                     OptimazerFazeReport.SortResults(reports[i].Reports, _sortBotsType);
                 }
@@ -282,7 +280,6 @@ namespace OsEngine.OsOptimizer
                 {
                     return;
                 }
-                GetTotalPeriod(reports);
                 if (calculate || calculateFRS)
                 {
                     CalculateCSCResults(reports, !calculate);
@@ -340,14 +337,6 @@ namespace OsEngine.OsOptimizer
             {
                 SendLogMessage(e.ToString(), LogMessageType.Error);
             }
-        }
-
-
-
-        private void GetTotalPeriod(List<OptimazerFazeReport> reports)
-        {
-            TotalPeriod.Start = reports.Min(f => f.Faze.TimeStart);
-            TotalPeriod.End = reports.Max(f => f.Faze.TimeEnd);
         }
 
         private void GetBestBotNum(List<OptimizerReport> reports)
@@ -422,24 +411,11 @@ namespace OsEngine.OsOptimizer
             return gridStepsOfOptimization;
         }
 
-        private Period TotalPeriod { get; set; } = new Period();
-
         private DataGridView GetDynamicDGV()
         {
             DataGridView gridDynamicStepsTable = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
                 DataGridViewAutoSizeRowsMode.None, false);
-            gridDynamicStepsTable.CellClick += DynamicTable_CellClick;
-            gridDynamicStepsTable.Click += GridDynamicStepsTable_Click;
             ContextMenu menu = new ContextMenu();
-            MenuItem deleteMenuItem = new MenuItem("Удалить", (sender, e) => 
-            {
-                if (sender is MenuItem item && item.Parent.Tag is Period p)
-                {
-                    _master.Phazes.OutOfSamplePeriods.Remove(p);
-                    UpdateDynamicTable(_gridDynamicTable);
-                }
-            });
-            menu.MenuItems.Add(deleteMenuItem);
 
             MenuItem reCalcMenuItem = new MenuItem("Пересчитать", (sender, e) =>
             {
@@ -456,9 +432,7 @@ namespace OsEngine.OsOptimizer
             menu.MenuItems.Add(reCalcMenuItem);
 
             gridDynamicStepsTable.ContextMenu = menu;
-            menu.Popup += DynamicTableMenu_Popup;
             cell0.Style = gridDynamicStepsTable.DefaultCellStyle;
-
             gridDynamicStepsTable.ScrollBars = ScrollBars.Vertical;
 
             gridDynamicStepsTable.Columns.Add(GetColumn("Period"));
@@ -480,14 +454,6 @@ namespace OsEngine.OsOptimizer
 
             gridDynamicStepsTable.Rows.Add(null, null);
             return gridDynamicStepsTable;
-        }
-
-        private void DynamicTableMenu_Popup(object sender, EventArgs e)
-        {
-            if (sender is ContextMenu menu && menu.Tag is Period p)
-            {
-                menu.MenuItems[0].Visible = p != _master.Phazes.InSamplePeriod;
-            }
         }
 
         private void CreateStepsOfOptimization()
@@ -620,28 +586,28 @@ namespace OsEngine.OsOptimizer
                 DataGridViewRow row0 = new DataGridViewRow();
                 row0.Height = 30;
 
-                AddCell(row0, "Robot");
-                AddCell(row0, bot.FRS);
-                AddCell(row0, bot.PPR);
-                AddCell(row0, bot.TR);
-                AddCell(row0, bot.GPR);
-                AddCell(row0, bot.TotalProfitAllPeriod);
-                AddCell(row0, bot.MaxDrawDownAllPeriod);
-                AddCell(row0, bot.ProfitToDrawDownAllPeriod);
+                DataGridFactory.AddTextBoxCell(row0, "Robot");
+                DataGridFactory.AddTextBoxCell(row0, bot.FRS);
+                DataGridFactory.AddTextBoxCell(row0, bot.PPR);
+                DataGridFactory.AddTextBoxCell(row0, bot.TR);
+                DataGridFactory.AddTextBoxCell(row0, bot.GPR);
+                DataGridFactory.AddTextBoxCell(row0, bot.TotalProfitAllPeriod);
+                DataGridFactory.AddTextBoxCell(row0, bot.MaxDrawDownAllPeriod);
+                DataGridFactory.AddTextBoxCell(row0, bot.ProfitToDrawDownAllPeriod);
 
                 _gridFRS.Rows.Add(row0);
 
                 DataGridViewRow row1 = new DataGridViewRow();
                 row1.Height = 30;
 
-                AddCell(row1, "Strategy");
-                AddCell(row1, _strategyFRS);
-                AddCell(row1, _strategyPPR);
-                AddCell(row1, _strategyTR);
-                AddCell(row1, _strategyGPR);
-                AddCell(row1, "-");
-                AddCell(row1, "-");
-                AddCell(row1, "-");
+                DataGridFactory.AddTextBoxCell(row1, "Strategy");
+                DataGridFactory.AddTextBoxCell(row1, _strategyFRS);
+                DataGridFactory.AddTextBoxCell(row1, _strategyPPR);
+                DataGridFactory.AddTextBoxCell(row1, _strategyTR);
+                DataGridFactory.AddTextBoxCell(row1, _strategyGPR);
+                DataGridFactory.AddTextBoxCell(row1, "-");
+                DataGridFactory.AddTextBoxCell(row1, "-");
+                DataGridFactory.AddTextBoxCell(row1, "-");
 
                 _gridFRS.Rows.Add(row1);
 
@@ -649,14 +615,14 @@ namespace OsEngine.OsOptimizer
                 row2.Height = 30;
                 row2.ReadOnly = false;
 
-                AddCell(row2, "FRS weights");
-                AddCell(row2, "-");
-                AddCell(row2, _pprWeight, false);
-                AddCell(row2, _trWeight, false);
-                AddCell(row2, _gprWeight, false);
-                AddCell(row2, "-");
-                AddCell(row2, "-");
-                AddCell(row2, "-");
+                DataGridFactory.AddTextBoxCell(row2, "FRS weights");
+                DataGridFactory.AddTextBoxCell(row2, "-");
+                DataGridFactory.AddTextBoxCell(row2, _pprWeight, false);
+                DataGridFactory.AddTextBoxCell(row2, _trWeight, false);
+                DataGridFactory.AddTextBoxCell(row2, _gprWeight, false);
+                DataGridFactory.AddTextBoxCell(row2, "-");
+                DataGridFactory.AddTextBoxCell(row2, "-");
+                DataGridFactory.AddTextBoxCell(row2, "-");
 
                 _gridFRS.Rows.Add(row2);
 
@@ -664,36 +630,17 @@ namespace OsEngine.OsOptimizer
                 row3.Height = 30;
                 row3.ReadOnly = false;
 
-                AddCell(row3, "Rank");
-                AddCell(row3, $"{bot.FRSRank}/{botCount}");
-                AddCell(row3, $"{bot.PPRRank}/{botCount}");
-                AddCell(row3, $"{bot.TRRank}/{botCount}");
-                AddCell(row3, $"{bot.GPRRank}/{botCount}");
-                AddCell(row3, $"{bot.TotalProfitAllPeriodRank}/{botCount}");
-                AddCell(row3, $"{bot.MaxDrawDownAllPeriodRank}/{botCount}");
-                AddCell(row3, $"{bot.ProfitToDrawDownAllPeriodRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, "Rank");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.FRSRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.PPRRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.TRRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.GPRRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.TotalProfitAllPeriodRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.MaxDrawDownAllPeriodRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.ProfitToDrawDownAllPeriodRank}/{botCount}");
                 _gridFRS.Rows.Add(row3);
             }
             catch { }
-        }
-
-        private DataGridViewTextBoxCell AddCell(DataGridViewRow row, decimal value, bool readOnly = true)
-        {
-            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
-            cell.Value = Math.Round(value, 3);
-            cell.ToolTipText = $"{value}";
-            row.Cells.Add(cell);
-            cell.ReadOnly = readOnly;
-            return cell;
-        }
-
-        private DataGridViewTextBoxCell AddCell(DataGridViewRow row, object value, bool readOnly = true)
-        {
-            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
-            cell.Value = value;
-            row.Cells.Add(cell);
-            cell.ReadOnly = readOnly;
-            return cell;
         }
 
         private DataGridViewColumn GetColumn(string name, int width = 0, bool readOnly = true)
@@ -1151,7 +1098,7 @@ namespace OsEngine.OsOptimizer
                 {
                     DataGridViewRow row = new DataGridViewRow() { Height = 30 };
 
-                    AddCell(row, periodName, true);
+                    DataGridFactory.AddTextBoxCell(row, periodName, true);
 
                     for (int i = 1; i < table.Columns.Count; i++)
                     {
@@ -1165,7 +1112,7 @@ namespace OsEngine.OsOptimizer
                             }
                             else
                             {
-                                DataGridViewTextBoxCell cell = AddCell(row, period.Start.Value.ToString("dd.MM.yyyy"));
+                                DataGridViewTextBoxCell cell = DataGridFactory.AddTextBoxCell(row, period.Start.Value.ToString("dd.MM.yyyy"));
                                 cell.ToolTipText = period.Start.Value.ToString();
                             }
                         }
@@ -1179,7 +1126,7 @@ namespace OsEngine.OsOptimizer
                             }
                             else
                             {
-                                DataGridViewTextBoxCell cell = AddCell(row, period.End.Value.ToString("dd.MM.yyyy"));
+                                DataGridViewTextBoxCell cell = DataGridFactory.AddTextBoxCell(row, period.End.Value.ToString("dd.MM.yyyy"));
                                 cell.ToolTipText = period.End.Value.ToString();
                             }
                         }
@@ -1190,12 +1137,12 @@ namespace OsEngine.OsOptimizer
                                 if (i == 3)
                                 {
                                     // Название периода (опционально)
-                                    AddCell(row, period.Name, false);
+                                    DataGridFactory.AddTextBoxCell(row, period.Name, false);
                                 }
                                 else if (i == 4)
                                 {
                                     // Параметры
-                                    AddCell(row, parameters);
+                                    DataGridFactory.AddTextBoxCell(row, parameters);
                                 }
                                 else if (i == 10)
                                 {
@@ -1207,147 +1154,16 @@ namespace OsEngine.OsOptimizer
                                 }
                                 else
                                 {
-                                    AddCell(row, GetCellValue(period, i), true);
+                                    DataGridFactory.AddTextBoxCell(row, GetCellValue(period, i), true);
                                 }
                             }
                             else
                             {
-                                AddCell(row, "-", true);
+                                DataGridFactory.AddTextBoxCell(row, "-", true);
                             }
                         }
                     }
                     table.Rows.Add(row);
-                }
-            }
-        }
-
-        private void GridDynamicStepsTable_Click(object sender, EventArgs e)
-        {
-            if (sender is DataGridView dgv && e is MouseEventArgs mouse)
-            {
-                var info = dgv.HitTest(mouse.X, mouse.Y);
-                if (mouse.Button != MouseButtons.Right || info.Type != DataGridViewHitTestType.Cell || info.RowIndex < 0 || info.RowIndex > _master.Phazes.OutOfSamplePeriods.Count)
-                {
-                    return;
-                }
-                if (info.RowIndex == 0)
-                {
-                    dgv.ContextMenu.Tag = _master.Phazes.InSamplePeriod;
-                }
-                else
-                {
-                    dgv.ContextMenu.Tag = _master.Phazes.OutOfSamplePeriods[info.RowIndex - 1];
-                }
-                    
-                dgv.ContextMenu.Show(dgv, new Point(mouse.X, mouse.Y));
-            }
-        }
-
-        private void DynamicTable_CellClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0) return;
-
-            if (e.ColumnIndex == 10 && sender is DataGridView gridView)
-            {
-                // График
-                Period period = GetPeriod(e.RowIndex);
-                BotPanel bot = null;
-                if (_periodCacheTable.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
-                {
-                    bot = _periodCacheTable[period];
-                }
-
-                if (bot == null || bot.StartProgram != StartProgram.IsTester)
-                {
-                    OptimazerFazeReport fazeReport = period.Report;
-                    if (fazeReport == null)
-                    {
-                        return;
-                    }
-
-                    OptimizerReport report = fazeReport.Reports.FirstOrDefault();
-
-                    if (report == null)
-                    {
-                        return;
-                    }
-
-                    bot = _master.TestBot(fazeReport, fazeReport.Reports[0].GetParameters(), false);
-                    _periodCacheTable.AddOrUpdate(period, bot, (p, b) => { return bot; });
-                }
-
-                if (bot == null)
-                {
-                    return;
-                }
-
-                bot.ShowChartDialog();
-                return;
-            }
-
-            if (sender is DataGridView dgv)
-            {
-                bool changed = false;
-
-                Period prevPeriod = GetPeriod(e.RowIndex - 1);
-                Period period = GetPeriod(e.RowIndex);
-                Period nextPeriod = GetPeriod(e.RowIndex + 1);
-
-                if (period == null)
-                {
-                    if (e.ColumnIndex == 0)
-                    {
-                        _master.Phazes.OutOfSamplePeriods.Add(new Period());
-                        changed = true;
-                    }
-                }
-                else
-                {
-                    if (e.ColumnIndex == 1)
-                    {
-                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.Start ?? prevPeriod?.End ?? (DateTime)TotalPeriod.Start);
-                        dialog.ShowDialog();
-                        if (dialog.IsSaved)
-                        {
-                            period.Start = dialog.Time;
-                            changed = true;
-                        }
-                    }
-
-                    if (e.ColumnIndex == 2)
-                    {
-                        DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.End ?? nextPeriod?.Start ?? period.Start ?? (DateTime)TotalPeriod.End);
-                        dialog.ShowDialog();
-                        if (dialog.IsSaved)
-                        {
-                            period.End = dialog.Time;
-                            changed = true;
-                        }
-                    }
-                }
-                
-                if (changed)
-                {
-                    UpdateDynamicTable(dgv);
-                }
-            }
-        }
-
-        Period GetPeriod(int rowIndex)
-        {
-            if (rowIndex == 0)
-            {
-                return _master.Phazes.InSamplePeriod;
-            }
-            else
-            {
-                if (rowIndex - 1 < _master.Phazes.OutOfSamplePeriods.Count && rowIndex > 0)
-                {
-                    return _master.Phazes.OutOfSamplePeriods[rowIndex - 1];
-                }
-                else
-                {
-                    return null;
                 }
             }
         }
