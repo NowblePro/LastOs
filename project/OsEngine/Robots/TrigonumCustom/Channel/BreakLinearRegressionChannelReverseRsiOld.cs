@@ -187,7 +187,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         public override string GetNameStrategyType()
         {
-            return "BreakLinearRegressionChannelReverseRsi";
+            return "BreakLinearRegressionChannelReverseRsiOld";
         }
 
         public override void ShowIndividualSettingsDialog()
