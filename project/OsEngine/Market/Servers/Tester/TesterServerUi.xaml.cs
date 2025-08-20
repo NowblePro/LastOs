@@ -1841,5 +1841,10 @@ namespace OsEngine.Market.Servers.Tester
         }
 
         #endregion
+
+        private void SecuritiesSettings_Click(object sender, RoutedEventArgs e)
+        {
+            _server.ShowSecuritiesDialog();
+        }
     }
 }
