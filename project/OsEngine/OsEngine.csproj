@@ -1383,8 +1383,8 @@
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakBollingerReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakKeltnerChannelsReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsiTM.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsi.cs" />
-    <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsiOld.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakNadarayaWatsonReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakZZChannelReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakBollingerReverseRsiCG.cs" />
