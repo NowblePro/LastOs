@@ -8,8 +8,8 @@ using OsEngine.OsTrader.Panels.Tab;
 
 namespace OsEngine.Robots.TrigonumCustom.Channel
 {
-    [Bot("BreakLinearRegressionChannelReverseRsiOld")]
-    public class BreakLinearRegressionChannelReverseRsiOld : BotPanel
+    [Bot("BreakLinearRegressionChannelReverseRsiTM")]
+    public class BreakLinearRegressionChannelReverseRsiTM : BotPanel
     {
         private BotTabSimple _tab;
 
@@ -44,12 +44,14 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         public StrategyParameterBool _fixTpIsOn;
         public StrategyParameterDecimal _fixTpPercent;
 
-        public BreakLinearRegressionChannelReverseRsiOld(string name, StartProgram startProgram)
+        private bool _stoppedByRSI = false;
+
+        public BreakLinearRegressionChannelReverseRsiTM(string name, StartProgram startProgram)
             : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
             _tab = TabsSimple[0];
-
+            _tab.PositionClosingSuccesEvent += _tab_PositionClosingSuccesEvent;
             Regime = CreateParameter("Regime", "Off", new[] { "Off", "On", "OnlyLong", "OnlyShort", "OnlyClosePosition" }, "Base");
             ReverseLogic = CreateParameter("Reverse logic", false, "Base");
             VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
@@ -187,7 +189,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         public override string GetNameStrategyType()
         {
-            return "BreakLinearRegressionChannelReverseRsiOld";
+            return nameof(BreakLinearRegressionChannelReverseRsiTM);
         }
 
         public override void ShowIndividualSettingsDialog()
@@ -244,6 +246,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         private bool BuySignalIsFiltered(List<Candle> candles)
         {
+            decimal upChannel = _LinearRegression.DataSeries[0].Last;
+            decimal downChannel = _LinearRegression.DataSeries[2].Last;
+
             decimal lastPrice = candles[candles.Count - 1].Close;
             decimal lastSma = _smaFilter.DataSeries[0].Last;
             // фильтр для покупок
@@ -253,6 +258,11 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             {
                 return true;
                 //если режим работы робота не соответсвует направлению позиции
+            }
+
+            if (_stoppedByRSI && (lastPrice > upChannel || lastPrice < downChannel))
+            {
+                return true;
             }
 
             // RSI
@@ -285,6 +295,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         private bool SellSignalIsFiltered(List<Candle> candles)
         {
+            decimal upChannel = _LinearRegression.DataSeries[0].Last;
+            decimal downChannel = _LinearRegression.DataSeries[2].Last;
+
             decimal lastPrice = candles[candles.Count - 1].Close;
             decimal lastSma = _smaFilter.DataSeries[0].Last;
             // фильтр для продаж
@@ -294,6 +307,11 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             {
                 return true;
                 //если режим работы робота не соответсвует направлению позиции
+            }
+
+            if (_stoppedByRSI && (lastPrice > upChannel || lastPrice < downChannel))
+            {
+                return true;
             }
 
             // RSI
@@ -337,6 +355,11 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             bool signalUpLine = candles[candles.Count - 1].Close > upChannel;
             bool signalDownLine = candles[candles.Count - 1].Close < downChannel;
+            decimal lastPrice = candles[candles.Count - 1].Close;
+            if (_stoppedByRSI && lastPrice <= upChannel && lastPrice >= downChannel)
+            {
+                _stoppedByRSI = false;
+            }
 
             if (signalUpLine) // При пересечении верхней линии канала
             {
@@ -370,7 +393,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         {
             decimal upChannel = _LinearRegression.DataSeries[0].Last;
             decimal downChannel = _LinearRegression.DataSeries[2].Last;
-
+            decimal stopLine = _smaFilter.DataSeries[0].Last;
+            stopPrice = stopLine;
             if (upChannel == 0 ||
                 downChannel == 0)
             {
@@ -381,10 +405,12 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             {
                 if (ReverseLogic.ValueBool)
                 {
+                    _tab.CloseAtStop(position, stopLine, stopLine - GetSlippage(stopLine));
                     _tab.CloseAtProfit(position, upChannel, upChannel - GetSlippage(upChannel));
                 }
                 else
                 {
+                    _tab.CloseAtProfit(position, stopLine, stopLine - GetSlippage(stopLine));
                     _tab.CloseAtStop(position, downChannel, downChannel - GetSlippage(downChannel));
                 }
             }
@@ -392,12 +418,24 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             {
                 if (ReverseLogic.ValueBool)
                 {
+                    _tab.CloseAtStop(position, stopLine, stopLine + GetSlippage(stopLine));
                     _tab.CloseAtProfit(position, downChannel, downChannel + GetSlippage(downChannel));
                 }
                 else
                 {
+                    _tab.CloseAtProfit(position, stopLine, stopLine + GetSlippage(stopLine));
                     _tab.CloseAtStop(position, upChannel, upChannel + GetSlippage(upChannel));
                 }
+            }
+        }
+
+        private decimal stopPrice = 0;
+        private void _tab_PositionClosingSuccesEvent(Position position)
+        {
+            // Позиция закрылась по стопу от RSI
+            if (stopPrice == position.StopOrderRedLine)
+            {
+                _stoppedByRSI = true;
             }
         }
 
