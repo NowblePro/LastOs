@@ -475,6 +475,7 @@
     </Compile>
     <Compile Include="Market\CustomConnectors\Coinglass\CoinglassConnector.cs" />
     <Compile Include="Market\CustomConnectors\Coinglass\Entity\Entity.cs" />
+    <Compile Include="Market\ISecurityStorage.cs" />
     <Compile Include="Market\Servers\Atp\AtpServer.cs" />
     <Compile Include="Market\Servers\Atp\AtpServerPermission.cs" />
     <Compile Include="Market\Servers\Atp\SecuritiesAtpUi.xaml.cs">
@@ -1384,6 +1385,7 @@
     <Compile Include="Robots\TrigonumCustom\Channel\BreakBollingerReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakKeltnerChannelsReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsiOld.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakNadarayaWatsonReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakZZChannelReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\CoinGlass\BreakBollingerReverseRsiCG.cs" />

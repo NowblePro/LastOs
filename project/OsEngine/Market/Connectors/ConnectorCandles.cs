@@ -13,6 +13,7 @@ using OsEngine.Market.Servers;
 using OsEngine.Market.Servers.Optimizer;
 using OsEngine.Market.Servers.Tester;
 using System.Threading.Tasks;
+using System.Text;
 
 namespace OsEngine.Market.Connectors
 {
@@ -188,6 +189,7 @@ namespace OsEngine.Market.Connectors
                 {
                     _myServer.StopThisSecurity(_mySeries);
                 }
+                WriteToDebugLog($"Delete");
                 _mySeries = null;
             }
 
@@ -282,6 +284,33 @@ namespace OsEngine.Market.Connectors
                 return false;
             }
         }
+
+        private StringBuilder _debugLog = new StringBuilder();
+
+        private bool log = false;
+
+        private void WriteToDebugLog(string text)
+        {
+            if (log)
+            {
+                StringBuilder serverSB = new StringBuilder();
+                if (_myServer is OptimizerServer server)
+                {
+                    serverSB.AppendLine($"Num: {server.NumberServer}, timeNow: {server.TimeNow}, last start: {server.LastStartServerTime}, status: {server.ServerStatus}, serverTime: {server.ServerTime}");
+                }
+                else if (_myServer == null)
+                {
+                    serverSB.AppendLine("null");
+                }
+                else
+                {
+                    serverSB.AppendLine("Unknown");
+                }
+                _debugLog.AppendLine($"{DateTime.Now}: Server = {serverSB}; {text}");
+            }
+        }
+
+        public string DebugLog => _debugLog.ToString();
 
         /// <summary>
         /// connector is ready to send Orders it true
@@ -720,8 +749,9 @@ namespace OsEngine.Market.Connectors
         {
             try
             {
+                WriteToDebugLog("Subscribe Start");
                 _alreadyCheckedInAliveTasksArray = false;
-
+                
                 while (true)
                 {
                     if (ServerType == ServerType.Optimizer)
@@ -749,18 +779,19 @@ namespace OsEngine.Market.Connectors
                                 millisecondsToDelay = 500;
                             }
                         }
-
                         await Task.Delay(millisecondsToDelay);
                     }
 
                     if (_needToStopThread)
                     {
+                        WriteToDebugLog("Need to stop thread");
                         lock (_aliveTasksArrayLocker)
                         {
                             if (_aliveTasks > 0)
                             {
                                 _aliveTasks--;
                             }
+                            WriteToDebugLog($"Alive tasks {_aliveTasks}");
                         }
                         return;
                     }
@@ -777,6 +808,7 @@ namespace OsEngine.Market.Connectors
                     {
                         if (ServerType != ServerType.None)
                         {
+                            WriteToDebugLog($"servers == null, Set Server To AutoConnection {ServerType}");
                             ServerMaster.SetServerToAutoConnection(ServerType);
                         }
                         continue;
@@ -787,21 +819,7 @@ namespace OsEngine.Market.Connectors
                         if (ServerType == ServerType.Optimizer &&
                             this.ServerUid != 0)
                         {
-                            for (int i = 0; i < servers.Count; i++)
-                            {
-                                if (servers[i] == null)
-                                {
-                                    servers.RemoveAt(i);
-                                    i--;
-                                    continue;
-                                }
-                                if (servers[i].ServerType == ServerType.Optimizer &&
-                                    ((OptimizerServer)servers[i]).NumberServer == this.ServerUid)
-                                {
-                                    _myServer = servers[i];
-                                    break;
-                                }
-                            }
+                            _myServer = ServerMaster.GetOptimizerServer(ServerUid);
                         }
                         else
                         {
@@ -840,16 +858,19 @@ namespace OsEngine.Market.Connectors
 
                     if (_mySeries == null)
                     {
+                        WriteToDebugLog($"_mySeries == null, while start");
                         while (_mySeries == null)
                         {
                             if (_needToStopThread)
                             {
+                                WriteToDebugLog($"_mySeries == null, while: Need To Stop Thread");
                                 lock (_aliveTasksArrayLocker)
                                 {
                                     if (_aliveTasks > 0)
                                     {
                                         _aliveTasks--;
                                     }
+                                    WriteToDebugLog($"_mySeries == null, while, _aliveTasks = {_aliveTasks}");
                                 }
                                 return;
                             }
@@ -890,31 +911,13 @@ namespace OsEngine.Market.Connectors
                                 if (_myServer != null)
                                 {
                                     _mySeries = _myServer.StartThisSecurity(_securityName, TimeFrameBuilder, _securityClass);
+                                    WriteToDebugLog($"_mySeries == null, while: _mySeries set");
                                 }
                             }
 
                             lock (_tasksCountLocker)
                             {
                                 _tasksCountOnSubscribe--;
-                            }
-
-                            OptimizerServer myOptimizerServer = _myServer as OptimizerServer;
-                            if (_mySeries == null &&
-                                myOptimizerServer != null &&
-                                myOptimizerServer.ServerType == ServerType.Optimizer &&
-                                myOptimizerServer.NumberServer != ServerUid)
-                            {
-                                for (int i = 0; i < servers.Count; i++)
-                                {
-                                    if (servers[i].ServerType == ServerType.Optimizer &&
-                                        ((OptimizerServer)servers[i]).NumberServer == this.ServerUid)
-                                    {
-                                        UnSubscribeOnServer(_myServer);
-                                        _myServer = servers[i];
-                                        SubscribeOnServer(_myServer);
-                                        break;
-                                    }
-                                }
                             }
                         }
 
@@ -945,6 +948,7 @@ namespace OsEngine.Market.Connectors
             catch (Exception error)
             {
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                WriteToDebugLog($"Exception: {error}");
             }
         }
 
@@ -962,6 +966,11 @@ namespace OsEngine.Market.Connectors
 
         private void SubscribeOnServer(IServer server)
         {
+            if (server is OptimizerServer opServer)
+            {
+                WriteToDebugLog($"SubscribeOnServer {opServer.NumberServer}");
+            }
+            
             server.NewBidAscIncomeEvent -= ConnectorBotNewBidAscIncomeEvent;
             server.NewMyTradeEvent -= ConnectorBot_NewMyTradeEvent;
             server.NewOrderIncomeEvent -= ConnectorBot_NewOrderIncomeEvent;

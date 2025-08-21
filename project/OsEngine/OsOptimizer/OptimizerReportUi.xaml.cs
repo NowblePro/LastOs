@@ -106,6 +106,12 @@ namespace OsEngine.OsOptimizer
             {
                 _resultsCharting.ReLoad(_reports);
             }
+
+            if (sender is System.Windows.Controls.TabControl tab)
+            {
+                ButtonCalculate.Visibility = e.AddedItems[0] == TabControlResultsOutOfSampleResults2 ? Visibility.Visible : Visibility.Hidden;
+                ButtonClearCache.Visibility = e.AddedItems[0] == TabControlResultsOutOfSampleResults2 ? Visibility.Visible : Visibility.Hidden;
+            }
         }
 
         public void Paint(List<OptimazerFazeReport> reports)
@@ -993,6 +999,11 @@ namespace OsEngine.OsOptimizer
         private void ButtonCalculate_Click(object sender, RoutedEventArgs e)
         {
             _resultsCharting.CalculateDynamicTable();
+        }
+
+        private void ButtonClearCache_Click(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.ClearCache();
         }
     }
 }

@@ -24,9 +24,9 @@ namespace OsEngine.Entity
         /// <summary>
         /// the server that owns the securities
         /// </summary>
-        private IServer _server;
+        private ISecurityStorage _server;
 
-        public SecuritiesUi(IServer server)
+        public SecuritiesUi(ISecurityStorage server)
         {
             InitializeComponent();
             OsEngine.Layout.StickyBorders.Listen(this);
@@ -518,10 +518,10 @@ namespace OsEngine.Entity
             DataGridViewRow row = _gridSecurities.Rows[rowIndex];
 
             string secName = row.Cells[1].Value.ToString();
-            string secFullName = row.Cells[2].Value.ToString();
-            string secId = row.Cells[3].Value.ToString();
-            string secClass = row.Cells[4].Value.ToString();
-            string secType = row.Cells[5].Value.ToString();
+            string secFullName = row.Cells[2].Value?.ToString();
+            string secId = row.Cells[3].Value?.ToString();
+            string secClass = row.Cells[4].Value?.ToString();
+            string secType = row.Cells[5].Value?.ToString();
             decimal lot = row.Cells[6].Value.ToString().ToDecimal();
             decimal priceStep = row.Cells[7].Value.ToString().ToDecimal();
             decimal priceStepCost = row.Cells[8].Value.ToString().ToDecimal();

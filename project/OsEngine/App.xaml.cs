@@ -14,7 +14,7 @@ namespace OsEngine
         public static App app;
 
         protected override void OnStartup(StartupEventArgs e)
-        {
+      {
             app = this;
 
             base.OnActivated(e);

@@ -14,16 +14,9 @@ namespace OsEngine.Market.Servers
     /// standard server interface to connect to the exchange
     /// стандартный интерфейс сервера для подключения к бирже
     /// </summary>
-    public interface IServer
+    public interface IServer : ISecurityStorage
     {
         #region Service
-
-        /// <summary>
-        /// take server type
-        /// взять тип сервера. 
-        /// </summary>
-        /// <returns></returns>
-        ServerType ServerType { get;}
 
         /// <summary>
         /// show settings
@@ -108,28 +101,6 @@ namespace OsEngine.Market.Servers
         /// изменились портфели
         /// </summary>
         event Action<List<Portfolio>> PortfoliosChangeEvent;
-
-        #endregion
-
-        #region Securities
-
-        /// <summary>
-        /// take securities
-        /// взять инструменты
-        /// </summary>
-        List<Security> Securities { get; }
-
-        /// <summary>
-        /// take the security by the short name
-        /// взять инструмент по короткому имени инструмента
-        /// </summary>
-        Security GetSecurityForName(string securityName,string securityClass);
-
-        /// <summary>
-        /// securities changed
-        /// изменились инструменты
-        /// </summary>
-        event Action<List<Security>> SecuritiesChangeEvent;
 
         #endregion
 

@@ -60,6 +60,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         public StrategyParameterBool _rsiExitIsOn;
         // RSI
 
+        public StrategyParameterBool _fixTpIsOn;
+        public StrategyParameterDecimal _fixTpPercent;
+
         public ZZChannelCustomExtrems(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
@@ -130,6 +133,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.Save();
             // RSI
+
+            _fixTpIsOn = CreateParameter("Fix Take Profit Is On", false, "Fix Take Profit");
+            _fixTpPercent = CreateParameter("Fix Take Profit Percent", 1.0m, 0.1m, 2.0m, 0.2m, "Fix Take Profit");
 
             StopOrActivateIndicators();
             ParametrsChangeByUser += ZZCh_ParametrsChangeByUser;
@@ -349,6 +355,19 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 //--------------------------------------
 
                 Position pos = positions[0];
+
+                if (_fixTpIsOn.ValueBool && !pos.ProfitOrderIsActiv)
+                {
+                    decimal lastPrice = candles[candles.Count - 1].Close;
+                    if (pos.Direction == Side.Buy)
+                    {
+                        _tab.CloseAtProfitMarket(pos, lastPrice + (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                    }
+                    else if (pos.Direction == Side.Sell)
+                    {
+                        _tab.CloseAtProfitMarket(pos, lastPrice - (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                    }
+                }
 
                 if (pos.Direction == Side.Buy)
                 {

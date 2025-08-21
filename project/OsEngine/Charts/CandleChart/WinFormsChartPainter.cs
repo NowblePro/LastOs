@@ -65,23 +65,10 @@ namespace OsEngine.Charts.CandleChart
 
         private void _chart_Click1(object sender, EventArgs e)
         {
-            if (((MouseEventArgs)e).Button == MouseButtons.Right)
-            {
-                if (ChartClickEvent != null)
-                {
-                    ChartClickEvent(ChartClickType.RightButton);
-                }
-            }
-            if (((MouseEventArgs)e).Button == MouseButtons.Left)
-            {
-                if (ChartClickEvent != null)
-                {
-                    ChartClickEvent(ChartClickType.LeftButton);
-                }
-            }
+            ChartClickEvent?.Invoke(sender, ((MouseEventArgs)e));
         }
 
-        public event Action<ChartClickType> ChartClickEvent;
+        public event EventHandler<MouseEventArgs> ChartClickEvent;
 
         /// <summary>
         /// program that creates a class object

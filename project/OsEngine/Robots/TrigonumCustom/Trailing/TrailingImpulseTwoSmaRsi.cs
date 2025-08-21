@@ -58,6 +58,9 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
         public StrategyParameterBool _rsiFilterIsOn;
         // RSI
 
+        public StrategyParameterBool _fixTpIsOn;
+        public StrategyParameterDecimal _fixTpPercent;
+
         public TrailingImpulseTwoSmaRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
@@ -110,6 +113,9 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             _rsi.DataSeries[2].IsPaint = _drawRsiChannel.ValueBool;
             _rsi.Save();
             // RSI
+
+            _fixTpIsOn = CreateParameter("Fix Take Profit Is On", false, "Fix Take Profit");
+            _fixTpPercent = CreateParameter("Fix Take Profit Percent", 1.0m, 0.1m, 2.0m, 0.2m, "Fix Take Profit");
 
             _smaFilter = IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma_Filter", canDelete: false);
             _smaFilter = (Aindicator)_tab.CreateCandleIndicator(_smaFilter, nameArea: "Prime");
@@ -387,6 +393,19 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
                     }
 
                     if (positions[i].State != PositionStateType.Open) { continue; }
+
+                    if (_fixTpIsOn.ValueBool && !positions[i].ProfitOrderIsActiv)
+                    {
+                        decimal lastPrice = candles[candles.Count - 1].Close;
+                        if (positions[i].Direction == Side.Buy)
+                        {
+                            _tab.CloseAtProfitMarket(positions[i], lastPrice + (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                        }
+                        else if (positions[i].Direction == Side.Sell)
+                        {
+                            _tab.CloseAtProfitMarket(positions[i], lastPrice - (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                        }
+                    }
 
                     // logic to reverse long position
                     if (positions[i].Direction == Side.Buy && (sigDown || sigUpClose))

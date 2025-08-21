@@ -97,7 +97,7 @@
                 </TabItem>
                 <TabItem Name="TabItemResults" Header="Results" FontSize="14"  Width="120">
                     <Grid>
-                        <TabControl  Name="TabControlResults" Margin="0,0,0,35">
+                        <TabControl  Name="TabControlResults" Margin="0,0,0,35" SelectionChanged="TabControlResults_SelectionChanged">
                             <TabItem Name="TabControlResultsSeries"  Header="Series and Results">
                                 <Grid >
                                     <WindowsFormsHost x:Name="WindowsFormsHostFazeNumOnTubResult"  Foreground="Black" Height="92" Margin="0,34,8,0" VerticalAlignment="Top"/>

@@ -2689,6 +2689,7 @@ namespace OsEngine.Market.Servers.Tester
                 LoadMarketDepthFromFolder(_pathToFolder);
                 _dataIsReady = true;
             }
+            UpdateSecuritiesFromDopSettings();
         }
 
         private void LoadSecurity(string path)
@@ -3896,6 +3897,48 @@ namespace OsEngine.Market.Servers.Tester
         public event Action LoadSecurityEvent;
 
         #endregion
+
+        public void UpdateSecuritiesFromDopSettings()
+        {
+            foreach (Security security in Securities)
+            {
+                try
+                {
+                    string fileName = security.Name.RemoveExcessFromSecurityName();
+
+                    if (string.IsNullOrEmpty(security.NameId) == false)
+                    {
+                        fileName += "_" + security.NameId.RemoveExcessFromSecurityName();
+                    }
+
+                    if (string.IsNullOrEmpty(security.NameClass) == false)
+                    {
+                        fileName += "_" + security.NameClass.RemoveExcessFromSecurityName();
+                    }
+
+                    fileName += "_" + security.SecurityType.ToString().RemoveExcessFromSecurityName();
+                    string path = @"Engine\ServerDopSettings\" + ServerType + "\\" + fileName + ".txt";
+                    if (File.Exists(path))
+                    {
+                        string str = File.ReadAllText(path);
+                        Security newSecurity = new Security();
+                        newSecurity.LoadFromString(str);
+                        security.SecurityType = newSecurity.SecurityType;
+                        security.Lot = newSecurity.Lot;
+                        security.PriceStep = newSecurity.PriceStep;
+                        security.PriceStepCost = newSecurity.PriceStepCost;
+                        security.Decimals = newSecurity.Decimals;
+                        security.DecimalsVolume = newSecurity.DecimalsVolume;
+                        security.MinTradeAmount = newSecurity.MinTradeAmount;
+                        security.PriceLimitHigh = newSecurity.PriceLimitHigh;
+                        security.PriceLimitLow = newSecurity.PriceLimitLow;
+                        security.Go = newSecurity.Go;
+                        security.Strike = newSecurity.Strike;
+                    }
+                }
+                catch { }
+            }
+        }
 
         #region Synchronizer 
 

@@ -57,6 +57,9 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
         public StrategyParameterBool _rsiFilterIsOn;
         // RSI
 
+        public StrategyParameterBool _fixTpIsOn;
+        public StrategyParameterDecimal _fixTpPercent;
+
         public TrailingParabolicSarClassicTradeRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
@@ -121,6 +124,9 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
             _PS.ParametersDigit[0].Value = _Step.ValueDecimal;
             _PS.ParametersDigit[1].Value = _MaxStep.ValueDecimal;
             _PS.Save();
+
+            _fixTpIsOn = CreateParameter("Fix Take Profit Is On", false, "Fix Take Profit");
+            _fixTpPercent = CreateParameter("Fix Take Profit Percent", 1.0m, 0.1m, 2.0m, 0.2m, "Fix Take Profit");
 
             StopOrActivateIndicators();
 
@@ -337,6 +343,19 @@ namespace OsEngine.Robots.TrigonumCustom.Trailing
                     _tab.SellAtStopCancel();
                     _tab.BuyAtStopCancel();
                     Position pos = positions[0];
+
+                    if (_fixTpIsOn.ValueBool && !pos.ProfitOrderIsActiv)
+                    {
+                        decimal lastPrice = candles[candles.Count - 1].Close;
+                        if (pos.Direction == Side.Buy)
+                        {
+                            _tab.CloseAtProfitMarket(pos, lastPrice + (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                        }
+                        else if (pos.Direction == Side.Sell)
+                        {
+                            _tab.CloseAtProfitMarket(pos, lastPrice - (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                        }
+                    }
 
                     if (pos.CloseActiv == true && pos.CloseOrders != null && pos.CloseOrders.Count > 0)
                     {

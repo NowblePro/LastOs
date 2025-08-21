@@ -280,7 +280,7 @@ namespace OsEngine.Charts.CandleChart
         /// </summary>
         event Action<int> LastXIndexChangeEvent;
 
-        event Action<ChartClickType> ChartClickEvent;
+        event EventHandler<MouseEventArgs> ChartClickEvent;
 
     }
 

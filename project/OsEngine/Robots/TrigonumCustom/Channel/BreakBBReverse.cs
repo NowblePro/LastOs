@@ -44,6 +44,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterBool SmaPositionFilterIsOn;
         private StrategyParameterBool SmaSlopeFilterIsOn;
 
+        public StrategyParameterBool _fixTpIsOn;
+        public StrategyParameterDecimal _fixTpPercent;
+
         public BreakBBReverse(string name, StartProgram startProgram) : base(name, startProgram)
         {
             TabCreate(BotTabType.Simple);
@@ -102,6 +105,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _sma_short = (Aindicator)_tab.CreateCandleIndicator(_sma_short, nameArea: "Prime");
             _sma_short.ParametersDigit[0].Value = _periodSma_short.ValueInt;
             _sma_short.Save();
+
+            _fixTpIsOn = CreateParameter("Fix Take Profit Is On", false, "Fix Take Profit");
+            _fixTpPercent = CreateParameter("Fix Take Profit Percent", 1.0m, 0.1m, 2.0m, 0.2m, "Fix Take Profit");
 
             StopOrActivateIndicators();
             ParametrsChangeByUser += LRegBot_ParametrsChangeByUser;
@@ -386,6 +392,19 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                     if (positions[i].State == PositionStateType.ClosingFail)
                     {
                         _tab.CloseAtMarket(positions[i], positions[i].OpenVolume);
+                    }
+
+                    if (_fixTpIsOn.ValueBool && !positions[i].ProfitOrderIsActiv)
+                    {
+                        decimal lastPrice = candles[candles.Count - 1].Close;
+                        if (positions[i].Direction == Side.Buy)
+                        {
+                            _tab.CloseAtProfitMarket(positions[i], lastPrice + (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                        }
+                        else if (positions[i].Direction == Side.Sell)
+                        {
+                            _tab.CloseAtProfitMarket(positions[i], lastPrice - (lastPrice * _fixTpPercent.ValueDecimal / 100));
+                        }
                     }
 
                     decimal stop_level = 0;
