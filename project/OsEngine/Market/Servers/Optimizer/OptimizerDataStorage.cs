@@ -1,12 +1,12 @@
-﻿using System;
+﻿using OsEngine.Entity;
+using OsEngine.Language;
+using OsEngine.Logging;
+using OsEngine.Market.Servers.Tester;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading;
-using OsEngine.Entity;
-using OsEngine.Language;
-using OsEngine.Logging;
-using OsEngine.Market.Servers.Tester;
 
 namespace OsEngine.Market.Servers.Optimizer
 {
@@ -14,7 +14,7 @@ namespace OsEngine.Market.Servers.Optimizer
 	/// data storage for Optimizer
     /// хранилище данных для оптимизатора
     /// </summary>
-    public class OptimizerDataStorage
+    public class OptimizerDataStorage : ISecurityStorage
     {
 
         private string Name;
@@ -138,6 +138,48 @@ namespace OsEngine.Market.Servers.Optimizer
             }
         }
         private TesterDataType _typeTesterData;
+
+        public void UpdateSecuritiesFromDopSettings()
+        {
+            foreach (Security security in Securities)
+            {
+                try
+                {
+                    string fileName = security.Name.RemoveExcessFromSecurityName();
+
+                    if (string.IsNullOrEmpty(security.NameId) == false)
+                    {
+                        fileName += "_" + security.NameId.RemoveExcessFromSecurityName();
+                    }
+
+                    if (string.IsNullOrEmpty(security.NameClass) == false)
+                    {
+                        fileName += "_" + security.NameClass.RemoveExcessFromSecurityName();
+                    }
+
+                    fileName += "_" + security.SecurityType.ToString().RemoveExcessFromSecurityName();
+                    string path = @"Engine\ServerDopSettings\" + ServerType + "\\" + fileName + ".txt";
+                    if (File.Exists(path))
+                    {
+                        string str = File.ReadAllText(path);
+                        Security newSecurity = new Security();
+                        newSecurity.LoadFromString(str);
+                        security.SecurityType = newSecurity.SecurityType;
+                        security.Lot = newSecurity.Lot;
+                        security.PriceStep = newSecurity.PriceStep;
+                        security.PriceStepCost = newSecurity.PriceStepCost;
+                        security.Decimals = newSecurity.Decimals;
+                        security.DecimalsVolume = newSecurity.DecimalsVolume;
+                        security.MinTradeAmount = newSecurity.MinTradeAmount;
+                        security.PriceLimitHigh = newSecurity.PriceLimitHigh;
+                        security.PriceLimitLow = newSecurity.PriceLimitLow;
+                        security.Go = newSecurity.Go;
+                        security.Strike = newSecurity.Strike;
+                    }
+                }
+                catch { }
+            }
+        }
 
         /// <summary>
 		/// load settings from file
@@ -417,10 +459,12 @@ namespace OsEngine.Market.Servers.Optimizer
 		/// securities available for downloading
         /// бумаги доступные для скачивания
         /// </summary>
-        public List<Security> Securities; 
+        public List<Security> Securities { get; private set; }
+
+        public ServerType ServerType => ServerType.Optimizer;
 
         /// <summary>
-		/// event: changed list of available securities
+        /// event: changed list of available securities
         /// событие: изменился список доступных бумаг
         /// </summary>
         public event Action<List<Security>> SecuritiesChangeEvent;
@@ -482,8 +526,9 @@ namespace OsEngine.Market.Servers.Optimizer
                     {
                         LoadMarketDepthFromFolder(_pathToFolder);
                     }
-
                 }
+
+                UpdateSecuritiesFromDopSettings();
 
                 if (SecuritiesChangeEvent != null)
                 {
@@ -1959,8 +2004,18 @@ DateTime timeEnd)
             }
         }
 
+        public Security GetSecurityForName(string securityName, string securityClass)
+        {
+            if (Securities == null)
+            {
+                return null;
+            }
+
+            return Securities.Find(security => security.Name == securityName && security.NameClass == securityClass);
+        }
+
         /// <summary>
-		/// log manager
+        /// log manager
         /// лог менеджер
         /// </summary>
         /// 

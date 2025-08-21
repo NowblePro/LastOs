@@ -475,6 +475,7 @@
     </Compile>
     <Compile Include="Market\CustomConnectors\Coinglass\CoinglassConnector.cs" />
     <Compile Include="Market\CustomConnectors\Coinglass\Entity\Entity.cs" />
+    <Compile Include="Market\ISecurityStorage.cs" />
     <Compile Include="Market\Servers\Atp\AtpServer.cs" />
     <Compile Include="Market\Servers\Atp\AtpServerPermission.cs" />
     <Compile Include="Market\Servers\Atp\SecuritiesAtpUi.xaml.cs">
