@@ -308,5 +308,10 @@ namespace OsEngine.Market.Servers.Optimizer
             TextBoxDataPath.Text = _server.PathToFolder;
         }
 
+        private void ButtonSecuritySettings_Click(object sender, RoutedEventArgs e)
+        {
+            SecuritiesUi ui = new SecuritiesUi(_server);
+            ui.ShowDialog();
+        }
     }
 }

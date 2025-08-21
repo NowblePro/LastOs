@@ -24,9 +24,9 @@ namespace OsEngine.Entity
         /// <summary>
         /// the server that owns the securities
         /// </summary>
-        private IServer _server;
+        private ISecurityStorage _server;
 
-        public SecuritiesUi(IServer server)
+        public SecuritiesUi(ISecurityStorage server)
         {
             InitializeComponent();
             OsEngine.Layout.StickyBorders.Listen(this);
