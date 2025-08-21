@@ -1494,18 +1494,27 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         private void ButtonCreateOptimizeFazes_Click(object sender, RoutedEventArgs e)
         {
-            _master.ReloadFazes();
-            PaintTableOptimizeFazes();
-
-            if(_master.Fazes == null ||
-                _master.Fazes.Count == 0)
+            // hack
+            try
             {
-                return;
+                //_master.ReloadFazes();
+                _master.LoadCustomFazes(_customPhazeEditor.GetFazes());
+                PaintTableOptimizeFazes();
+
+                if (_master.Fazes == null ||
+                    _master.Fazes.Count == 0)
+                {
+                    return;
+                }
+
+                WolkForwardPeriodsPainter.PaintForwards(HostWalkForwardPeriods, _master.Fazes);
+
+                PaintCountBotsInOptimization();
             }
-
-            WolkForwardPeriodsPainter.PaintForwards(HostWalkForwardPeriods, _master.Fazes);
-
-            PaintCountBotsInOptimization();
+            catch (Exception ex)
+            {
+                _master.SendLogMessage(ex.Message, LogMessageType.Error);
+            }
         }
 
         /// <summary>

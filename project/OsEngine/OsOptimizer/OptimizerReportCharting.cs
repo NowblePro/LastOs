@@ -1068,12 +1068,6 @@ namespace OsEngine.OsOptimizer
                 }
             }
 
-            DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
-            DataGridViewButtonCell cellEnd = new DataGridViewButtonCell();
-            cellEnd.Value = "Добавить Out Of Sample";
-            endRow.Cells.Add(cellEnd);
-            table.Rows.Add(endRow);
-
             string GetCellValue(Period period, int columnIndex)
             {
                 string cellVAlue = string.Empty;
@@ -1284,7 +1278,7 @@ namespace OsEngine.OsOptimizer
                     pairs.Add(@is, oos);
                 }
             }
-            
+            if (pairs.Count == 0) return;
             // Для каждого бота, который отличается по строковому ключу, генерирующегося из его параметров, составляется словарь из переиодов insample и соответствующим им out of sample
             Dictionary<string, Dictionary<OptimizerReport, OptimizerReport>> allReports = new Dictionary<string, Dictionary<OptimizerReport, OptimizerReport>>();
             Parallel.ForEach(pairs, pair =>

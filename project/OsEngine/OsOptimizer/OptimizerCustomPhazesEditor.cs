@@ -3,12 +3,13 @@ using OsEngine.Entity;
 using OsEngine.OsTrader.Panels;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
-using System.Drawing;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace OsEngine.OsOptimizer
 {
@@ -25,10 +26,10 @@ namespace OsEngine.OsOptimizer
 
         private DataGridView GetDynamicDGV()
         {
-            DataGridView gridDynamicStepsTable = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
+            _dgv = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
                 DataGridViewAutoSizeRowsMode.None, false);
-            gridDynamicStepsTable.CellClick += DynamicTable_CellClick;
-            gridDynamicStepsTable.Click += GridDynamicStepsTable_Click;
+            _dgv.CellClick += DynamicTable_CellClick;
+            _dgv.Click += GridDynamicStepsTable_Click;
             ContextMenu menu = new ContextMenu();
             MenuItem deleteMenuItem = new MenuItem("Удалить", (sender, e) =>
             {
@@ -49,24 +50,19 @@ namespace OsEngine.OsOptimizer
             });
             menu.MenuItems.Add(reCalcMenuItem);
 
-            gridDynamicStepsTable.ContextMenu = menu;
+            _dgv.ContextMenu = menu;
             menu.Popup += DynamicTableMenu_Popup;
 
-            gridDynamicStepsTable.ScrollBars = ScrollBars.Vertical;
+            _dgv.ScrollBars = ScrollBars.Vertical;
 
-            gridDynamicStepsTable.Columns.Add(GetColumn("Period"));
-            gridDynamicStepsTable.Columns.Add(GetColumn("Start", readOnly: false));
-            gridDynamicStepsTable.Columns.Add(GetColumn("End", readOnly: false));
-            gridDynamicStepsTable.Columns.Add(GetColumn("Period name", readOnly: false));
+            _dgv.Columns.Add(GetColumn("Period"));
+            _dgv.Columns.Add(GetColumn("Start", readOnly: false));
+            _dgv.Columns.Add(GetColumn("End", readOnly: false));
+            _dgv.Columns.Add(GetColumn("Period name", readOnly: false));
 
-            DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
-            column11.CellTemplate = new DataGridViewButtonCell();
-            column11.ReadOnly = true;
-            column11.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-            gridDynamicStepsTable.Columns.Add(column11);
-
-            gridDynamicStepsTable.Rows.Add(null, null);
-            return gridDynamicStepsTable;
+            _dgv.Rows.Add(null, null);
+            UpdateDynamicTable(_dgv);
+            return _dgv;
         }
 
         private void DynamicTableMenu_Popup(object sender, EventArgs e)
@@ -79,13 +75,12 @@ namespace OsEngine.OsOptimizer
 
         private void UpdateDynamicTable(DataGridView table)
         {
-            if (!_master.Phazes.InSamplePeriod.IsDefined) return;
-
             if (table.InvokeRequired)
             {
                 table.Invoke(new Action<DataGridView>(UpdateDynamicTable), table);
                 return;
             }
+
             table.Rows.Clear();
 
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
@@ -98,8 +93,6 @@ namespace OsEngine.OsOptimizer
             {
                 FillPeriod(_master.Phazes.OutOfSamplePeriods[i], "Out Of Sample");
             }
-
-            List<Period> definedPeriods = periods.Where(p => p.IsDefined).ToList();
 
             DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
             DataGridViewButtonCell cellEnd = new DataGridViewButtonCell();
@@ -220,7 +213,7 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        Period GetPeriod(int rowIndex)
+        private Period GetPeriod(int rowIndex)
         {
             if (rowIndex == 0)
             {
@@ -277,6 +270,56 @@ namespace OsEngine.OsOptimizer
                 }
 
                 dgv.ContextMenu.Show(dgv, new Point(mouse.X, mouse.Y));
+            }
+        }
+
+        internal List<OptimizerFaze> GetFazes()
+        {
+            List<OptimizerFaze> result = new List<OptimizerFaze>();
+
+            List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
+            periods.AddRange(_master.Phazes.OutOfSamplePeriods);
+
+            if (periods.Any(p=> !p.IsDefined))
+            {
+                throw new ArgumentException("Не все периоды заполнены");
+            }
+
+            GetFazeFromPeriod(periods);
+
+            for (int i = 0; i < periods.Count; i++)
+            {
+                Period period = periods[i];
+                OptimizerFaze newFaze = new OptimizerFaze();
+                newFaze.TypeFaze = period.Report.Faze.TypeFaze;
+                newFaze.TimeStart = (DateTime)period.Start;
+                newFaze.TimeEnd = (DateTime)period.End;
+                newFaze.Days = (int)(period.End - period.Start).Value.TotalDays;
+                result.Add(newFaze);
+            }
+
+            return result;
+        }
+
+        private void GetFazeFromPeriod(Period period)
+        {
+            if (period.Report != null) return;
+            OptimazerFazeReport fazeReport = new OptimazerFazeReport();
+            OptimizerFaze newFaze = new OptimizerFaze();
+            newFaze.TypeFaze = period == _master.Phazes.InSamplePeriod ? OptimizerFazeType.InSample : OptimizerFazeType.OutOfSample;
+            newFaze.TimeStart = (DateTime)period.Start;
+            newFaze.TimeEnd = (DateTime)period.End;
+            newFaze.Days = (int)((DateTime)period.End - (DateTime)period.Start).TotalDays;
+            fazeReport.Faze = newFaze;
+            period.Report = fazeReport;
+        }
+
+        private void GetFazeFromPeriod(List<Period> periods)
+        {
+            for (int i = 0; i < periods.Count; i++)
+            {
+                Period period = periods[i];
+                GetFazeFromPeriod(period);
             }
         }
     }

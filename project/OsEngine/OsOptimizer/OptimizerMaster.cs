@@ -990,6 +990,20 @@ namespace OsEngine.OsOptimizer
             }*/
         }
 
+        public void LoadCustomFazes(List<OptimizerFaze> fazes)
+        {
+            Fazes = fazes;
+            for (int i = 0; i < Fazes.Count; i++)
+            {
+                if (Fazes[i].Days <= 0)
+                {
+                    SendLogMessage(OsLocalization.Optimizer.Label50, LogMessageType.Error);
+                    Fazes = new List<OptimizerFaze>();
+                    return;
+                }
+            }
+        }
+
         private int DaysInFazes(List<OptimizerFaze> fazes)
         {
             int result = 0;
