@@ -387,9 +387,9 @@ namespace OsEngine.OsTrader.Gui
                                     if (bot == null) continue;
                                     if (decimal.TryParse($"{volume}".Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalVolume))
                                     {
-                                        IIStrategyParameter parameter = bot.Parameters.Where(p => p.Name == "Volume").SingleOrDefault();
+                                        IIStrategyParameter parameter = bot.Parameters.Where(p => p.Name.ToLower() == "volume").SingleOrDefault();
                                         if (parameter == null) throw new Exception("Не найден параметр Volume");
-                                        IIStrategyParameter parameterVolumeType = bot.Parameters.Where(p => p.Name == "Volume type").SingleOrDefault();
+                                        IIStrategyParameter parameterVolumeType = bot.Parameters.Where(p => p.Name.ToLower() == "volume type").SingleOrDefault();
                                         if (parameterVolumeType == null) throw new Exception("Не найден параметр Volume type");
                                         if (parameter is StrategyParameterDecimal p && parameterVolumeType is StrategyParameterString pType)
                                         {
