@@ -58,26 +58,26 @@
                 </TabItem>
                 <TabItem Name="TabItemFazes" Header="Fazes" FontSize="14" Width="120">
                     <Grid Name="GridFazes" >
-                        <TabControl Name="TabControlFazes" Margin="0,0,0,35">
+                        <TabControl Name="TabControlFazes" Margin="0,0,467,10">
                             <TabItem Name="TabItemFazes1" Header="Авто" FontSize="14" Width="120">
                                 <Grid>
-                                    <Button Name="ButtonCreateOptimizeFazes" Content="Create optimization scheme" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="256" Height="42" Click="ButtonCreateOptimizeFazes_Click"/>
-                                    <WindowsFormsHost Name="HostStepsOptimize"  Foreground="Black" Margin="10,72,0,10" HorizontalAlignment="Left" Width="723"/>
-                                    <DatePicker Name="DatePickerStart" HorizontalAlignment="Left" Margin="284,27,0,0" VerticalAlignment="Top" Width="131"/>
-                                    <DatePicker Name="DatePickerEnd" HorizontalAlignment="Left" Margin="420,27,0,0" VerticalAlignment="Top" Width="120"/>
-                                    <Label Name="Label20" Content="Test period" HorizontalAlignment="Left" Margin="377,4,0,0" VerticalAlignment="Top"/>
-                                    <TextBox Name="TextBoxPercentFiltration" Height="23" Margin="0,29,10,0" TextWrapping="Wrap"  VerticalAlignment="Top" HorizontalAlignment="Right" Width="144"/>
-                                    <Label Name="Label21" Content="% of time OutOfSample" HorizontalAlignment="Right" Margin="0,4,10,0" VerticalAlignment="Top"/>
-                                    <TextBox x:Name="TextBoxIterationCount" Height="23" Margin="0,29,181,0" TextWrapping="Wrap"  VerticalAlignment="Top" HorizontalAlignment="Right" Width="144"/>
-                                    <Label x:Name="Label23" Content="Iteration count" HorizontalAlignment="Right" Margin="0,4,204,0" VerticalAlignment="Top"/>
-                                    <CheckBox Name="CheckBoxLastInSample" Content="Last inSample" HorizontalAlignment="Left" Margin="625,27,0,0" VerticalAlignment="Top"/>
-                                    <WindowsFormsHost x:Name="HostWalkForwardPeriods"  Foreground="Black" Margin="738,72,10,10"/>
+                                    <WindowsFormsHost Name="HostStepsOptimize"  Foreground="Black" Margin="6,97,11,0"/>
+                                    <DatePicker Name="DatePickerStart" HorizontalAlignment="Left" Margin="187,4,0,0" VerticalAlignment="Top" Width="131"/>
+                                    <DatePicker Name="DatePickerEnd" HorizontalAlignment="Left" Margin="323,4,0,0" VerticalAlignment="Top" Width="120"/>
+                                    <Label Name="Label20" Content="Test period" HorizontalAlignment="Left" Margin="10,4,0,0" VerticalAlignment="Top"/>
+                                    <TextBox Name="TextBoxPercentFiltration" Height="23" Margin="296,64,0,0" TextWrapping="Wrap"  VerticalAlignment="Top" HorizontalAlignment="Left" Width="144"/>
+                                    <Label Name="Label21" Content="% of time OutOfSample" HorizontalAlignment="Left" Margin="10,64,0,0" VerticalAlignment="Top"/>
+                                    <TextBox x:Name="TextBoxIterationCount" Height="22" Margin="296,34,0,0" TextWrapping="Wrap"  VerticalAlignment="Top" HorizontalAlignment="Left" Width="144"/>
+                                    <Label x:Name="Label23" Content="Iteration count" HorizontalAlignment="Left" Margin="10,36,0,0" VerticalAlignment="Top"/>
+                                    <CheckBox Name="CheckBoxLastInSample" Content="Last inSample" HorizontalAlignment="Left" Margin="448,4,0,0" VerticalAlignment="Top"/>
                                 </Grid>
                             </TabItem>
                             <TabItem Name="TabItemFazes2" Header="Ручная настройка" FontSize="14" Width="130">
-                                <WindowsFormsHost x:Name="HostCustomPhazes"  Foreground="Black" Margin="0,37,0,229"/>
+                                <WindowsFormsHost x:Name="HostCustomPhazes"  Foreground="Black" Height="431"/>
                             </TabItem>
                         </TabControl>
+                        <Button Name="ButtonCreateOptimizeFazes" Content="Create optimization scheme" HorizontalAlignment="Right" Margin="810,34,0,0" VerticalAlignment="Top" Width="256" Height="42" Click="ButtonCreateOptimizeFazes_Click"/>
+                        <WindowsFormsHost x:Name="HostWalkForwardPeriods" Foreground="Black" Margin="0,95,10,10" HorizontalAlignment="Right" Width="452" />
                     </Grid>
                 </TabItem>
                 <TabItem Name="TabItemFilters" Header="Filters" FontSize="14" Width="120">
@@ -97,7 +97,7 @@
                 </TabItem>
                 <TabItem Name="TabItemResults" Header="Results" FontSize="14"  Width="120">
                     <Grid>
-                        <TabControl  Name="TabControlResults" Margin="0,0,0,35" SelectionChanged="TabControlResults_SelectionChanged">
+                        <TabControl  Name="TabControlResults" Margin="0,0,0,35">
                             <TabItem Name="TabControlResultsSeries"  Header="Series and Results">
                                 <Grid >
                                     <WindowsFormsHost x:Name="WindowsFormsHostFazeNumOnTubResult"  Foreground="Black" Height="92" Margin="0,34,8,0" VerticalAlignment="Top"/>
@@ -168,7 +168,6 @@
                             </TabItem>
                         </TabControl>
                         <CheckBox Name="CheckBoxDataCapture" Content="Data capture on charts" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom"/>
-                        <Button Name="ButtonCalculate" Content="Calculate" Margin="200,0,0,10" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="142" Click="ButtonCalculate_Click"/>
                     </Grid>
                 </TabItem>
 

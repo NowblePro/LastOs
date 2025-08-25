@@ -351,7 +351,22 @@ namespace OsEngine.OsOptimizer
                 ShowResultDialog();
                 _testIsEnd = true;
 
+                CheckTabVisibility();
             }
+        }
+
+        private void CheckTabVisibility()
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(CheckTabVisibility);
+                return;
+            }
+
+            TabControlResultsSeries.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults1.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults2.Visibility = _master.CustomFazes ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private bool _testIsEnd;
@@ -374,28 +389,37 @@ namespace OsEngine.OsOptimizer
                 }
 
                 PaintEndOnAllProgressBars();
-                PaintTableFazes();
 
-                if (_gridFazesEnd.Rows.Count > 0)
+                if (_master.CustomFazes)
                 {
-                    _gridFazesEnd.Rows[0].Selected = true;
-                    _gridFazesEnd.Rows[0].Cells[0].Selected = true;
-                    _gridFazesEnd.CurrentCell = _gridFazes.Rows[0].Cells[0];
-                }
-
-                PaintTableResults();
-
-                StartUserActivity();
-
-                if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
-                {
-                    _resultsCharting.ReLoadCSC(_reports, true);
-                    _resultsCharting.ReLoad(_reports);
+                    _resultsCharting.PaintDynamicTable(_reports);
+                    StartUserActivity();
                 }
                 else
                 {
-                    _resultsCharting.ReLoad(_reports);
-                    _resultsCharting.ReLoadCSC(_reports, true);
+                    PaintTableFazes();
+
+                    if (_gridFazesEnd.Rows.Count > 0)
+                    {
+                        _gridFazesEnd.Rows[0].Selected = true;
+                        _gridFazesEnd.Rows[0].Cells[0].Selected = true;
+                        _gridFazesEnd.CurrentCell = _gridFazes.Rows[0].Cells[0];
+                    }
+
+                    PaintTableResults();
+
+                    StartUserActivity();
+
+                    if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
+                    {
+                        _resultsCharting.ReLoadCSC(_reports, true);
+                        _resultsCharting.ReLoad(_reports);
+                    }
+                    else
+                    {
+                        _resultsCharting.ReLoad(_reports);
+                        _resultsCharting.ReLoadCSC(_reports, true);
+                    }
                 }
             }
             catch (Exception error)
@@ -1494,11 +1518,17 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         private void ButtonCreateOptimizeFazes_Click(object sender, RoutedEventArgs e)
         {
-            // hack
             try
             {
-                //_master.ReloadFazes();
-                _master.LoadCustomFazes(_customPhazeEditor.GetFazes());
+                if (TabControlFazes.SelectedItem == TabItemFazes1)
+                {
+                    _master.ReloadFazes();
+                }
+                else if (TabControlFazes.SelectedItem == TabItemFazes2)
+                {
+                    _master.LoadCustomFazes(_customPhazeEditor.GetFazes());
+                }
+                    
                 PaintTableOptimizeFazes();
 
                 if (_master.Fazes == null ||
@@ -3441,19 +3471,6 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.Updateweights();
         }
 
-        private void ButtonCalculate_Click(object sender, RoutedEventArgs e)
-        {
-            _resultsCharting.CalculateDynamicTable();
-        }
-
-        private void TabControlResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (sender is System.Windows.Controls.TabControl tab)
-            {
-                ButtonCalculate.Visibility = e.AddedItems[0] == TabControlResultsOutOfSampleResults2 ? Visibility.Visible : Visibility.Hidden;
-            }
-        }
-
         OptimizerCustomPhazesEditor _customPhazeEditor;
     }
 
@@ -3495,12 +3512,5 @@ namespace OsEngine.OsOptimizer
         TotalProfit,
         MaxDrawDown,
         ProfitToDrawDown
-    }
-
-    public enum SortTypeDynamicTable
-    {
-        TotalProfit,
-        MaxDrawDown,
-        AvgProfit
     }
 }

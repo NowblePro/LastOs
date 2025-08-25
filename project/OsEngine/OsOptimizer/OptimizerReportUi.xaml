@@ -135,8 +135,6 @@
             <CheckBox Name="CheckBoxDataCapture" Content="Data capture on charts" Margin="0,0,320,10" VerticalAlignment="Bottom" HorizontalAlignment="Right"/>
             <Button Name="ButtonLoadFromFile" Content="Load" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="142" Click="ButtonLoadFromFile_Click"/>
             <Button Name="ButtonSaveInFile" Content="Save" Margin="0,0,157,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="142" Click="ButtonSaveInFile_Click"/>
-            <Button Name="ButtonCalculate" Content="Calculate" Margin="0,0,500,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="142" Click="ButtonCalculate_Click"/>
-            <Button Name="ButtonClearCache" Content="Clear cache" Margin="0,0,700,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="142" Click="ButtonClearCache_Click"/>
         </Grid>
     </Grid>
 </Window>

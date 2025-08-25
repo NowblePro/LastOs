@@ -20,19 +20,16 @@ namespace OsEngine.Entity
         public OptimazerFazeReport Report { get; set; } = null;
 
         [JsonIgnore]
-        public string RobotKey { get; set; } = string.Empty;
-
-        [JsonIgnore]
         public bool IsDefined => Start != null && End != null && Start < End;
 
         public override bool Equals(object obj)
         {
-            return obj is Period period && period.Start == Start && period.End == End && period.RobotKey == RobotKey;
+            return obj is Period period && period.Start == Start && period.End == End;
         }
 
         public override int GetHashCode()
         {
-            return Start?.GetHashCode() ?? 0 + End?.GetHashCode() ?? 0 + RobotKey.GetHashCode();
+            return Start?.GetHashCode() ?? 0 + End?.GetHashCode() ?? 0;
         }
     }
 
