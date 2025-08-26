@@ -229,6 +229,7 @@ namespace OsEngine.OsOptimizer
         {
             try
             {
+                if (_master.CustomFazes) return;
                 _reports = reports;
 
                 if (_reports == null
@@ -292,6 +293,7 @@ namespace OsEngine.OsOptimizer
         {
             try
             {
+                if (_master.CustomFazes) return;
                 _reports = reports;
 
                 if (_reports == null
@@ -442,6 +444,8 @@ namespace OsEngine.OsOptimizer
             cell0.Style = gridDynamicStepsTable.DefaultCellStyle;
             gridDynamicStepsTable.ScrollBars = ScrollBars.Vertical;
 
+            gridDynamicStepsTable.CellMouseClick += GridDynamicStepsTable_CellMouseClick;
+
             gridDynamicStepsTable.Columns.Add(GetColumn("Period"));
             gridDynamicStepsTable.Columns.Add(GetColumn("Start", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("End", readOnly: false));
@@ -453,6 +457,12 @@ namespace OsEngine.OsOptimizer
             gridDynamicStepsTable.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Max DrawDown", readOnly: false));
 
+            DataGridViewButtonColumn column10 = new DataGridViewButtonColumn();
+            column10.CellTemplate = new DataGridViewButtonCell();
+            column10.ReadOnly = true;
+            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            gridDynamicStepsTable.Columns.Add(column10);
+
             DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
             column11.CellTemplate = new DataGridViewButtonCell();
             column11.ReadOnly = true;
@@ -461,6 +471,60 @@ namespace OsEngine.OsOptimizer
 
             gridDynamicStepsTable.Rows.Add(null, null);
             return gridDynamicStepsTable;
+        }
+
+        private void GridDynamicStepsTable_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.RowIndex < 0)
+            {
+                return;
+            }
+
+            if (_reports == null || _master.Phazes.OutOfSamplePeriods.Count + 1 < e.RowIndex + 1)
+            {
+                return;
+            }
+
+            if (sender is DataGridView dgv)
+            {
+                if (e.ColumnIndex == 10)
+                {
+                    OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
+
+                    string parameterString = $"{dgv.Rows[e.RowIndex].Cells[4].Value}";
+
+                    OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == parameterString).SingleOrDefault();
+
+                    if (report == null)
+                    {
+                        return;
+                    }
+
+                    if (ChartButtonClickEvent != null)
+                    {
+                        ChartButtonClickEvent(fazeReport, report);
+                    }
+                }
+
+                if (e.ColumnIndex == 11)
+                {
+                    OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
+
+                    string parameterString = $"{dgv.Rows[e.RowIndex].Cells[4].Value}";
+
+                    OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == parameterString).SingleOrDefault();
+
+                    if (report == null)
+                    {
+                        return;
+                    }
+
+                    if (FullChartButtonClickEvent != null)
+                    {
+                        FullChartButtonClickEvent(fazeReport, report);
+                    }
+                }
+            }
         }
 
         private void CreateStepsOfOptimization()
@@ -914,6 +978,12 @@ namespace OsEngine.OsOptimizer
                             // График
                             cellVAlue = $"График";
                         }
+
+                        if (columnIndex == 11)
+                        {
+                            // График
+                            cellVAlue = $"Полный график";
+                        }
                     }
                 }
                 return cellVAlue;
@@ -992,7 +1062,7 @@ namespace OsEngine.OsOptimizer
                                     // Параметры
                                     DataGridFactory.AddTextBoxCell(row, parameters);
                                 }
-                                else if (i == 10)
+                                else if (i == 10 || i == 11)
                                 {
                                     // График
                                     DataGridViewButtonCell cellChart = new DataGridViewButtonCell();
@@ -1020,7 +1090,7 @@ namespace OsEngine.OsOptimizer
         {
             SortDynamicResults(_reports);
             FillDynamicTable(table);
-            UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
             _master.OnPeriodsChanged();
         }
 
@@ -1372,9 +1442,9 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            if (ChartButtonClickEvent != null)
+            if (FullChartButtonClickEvent != null)
             {
-                ChartButtonClickEvent(fazeReport, report);
+                FullChartButtonClickEvent(fazeReport, report);
             }
         }
 
@@ -1653,14 +1723,25 @@ namespace OsEngine.OsOptimizer
         }
 
         private Chart _chartTotalProfitDynamic;
+        private System.Windows.Controls.ComboBox _comboBoxProfitTypeCustomPhazes;
 
-        public void ActivateTotalProfitChartDynamic(WindowsFormsHost hostTotalProfit)
+        public void ActivateTotalProfitChartDynamic(WindowsFormsHost hostTotalProfit, System.Windows.Controls.ComboBox comboBoxProfitType)
         {
+            _comboBoxProfitTypeCustomPhazes = comboBoxProfitType;
+            _comboBoxProfitTypeCustomPhazes.Items.Add("Absolute");
+            _comboBoxProfitTypeCustomPhazes.Items.Add("Persent");
+            _comboBoxProfitTypeCustomPhazes.SelectedItem = "Absolute";
             _chartTotalProfitDynamic = GetTotalProfitChart();
             hostTotalProfit.Child = _chartTotalProfitDynamic;
-            UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
+
+            _comboBoxProfitTypeCustomPhazes.SelectionChanged += _comboBoxProfitTypeCustomPhazes_SelectionChanged;
         }
 
+        private void _comboBoxProfitTypeCustomPhazes_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
+        }
 
         private void _comboBoxprofitType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
@@ -1705,7 +1786,7 @@ namespace OsEngine.OsOptimizer
             return result;
         }
 
-        private void UpdateTotalProfitChart(DataGridView gridStepsOfOptimization, Chart chartTotalProfit, System.Windows.Controls.ComboBox comboBoxTotalProfitEquityType, int sortBotNumber)
+        private void UpdateTotalProfitChart(DataGridView gridStepsOfOptimization, Chart chartTotalProfit, System.Windows.Controls.ComboBox comboBoxTotalProfitEquityType, int sortBotNumber, bool includeInSample = false)
         {
             if (chartTotalProfit == null)
             {
@@ -1714,7 +1795,7 @@ namespace OsEngine.OsOptimizer
 
             if (gridStepsOfOptimization.InvokeRequired)
             {
-                gridStepsOfOptimization.Invoke(new Action<DataGridView, Chart, System.Windows.Controls.ComboBox, int>(UpdateTotalProfitChart), gridStepsOfOptimization, chartTotalProfit, comboBoxTotalProfitEquityType, sortBotNumber);
+                gridStepsOfOptimization.Invoke(new Action<DataGridView, Chart, System.Windows.Controls.ComboBox, int, bool>(UpdateTotalProfitChart), gridStepsOfOptimization, chartTotalProfit, comboBoxTotalProfitEquityType, sortBotNumber, includeInSample);
                 return;
             }
 
@@ -1757,10 +1838,8 @@ namespace OsEngine.OsOptimizer
                         inSampleReport = curReport.Reports[sortBotNumber];
                     }
 
-                    if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
+                    if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample || includeInSample)
                     {
-
-
                         string botName = inSampleReport.BotName.Replace(" InSample", "");
                         // reportToPaint = curReport.Reports.Find(rep => rep.BotName.StartsWith(botName));
 
@@ -1892,80 +1971,7 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private void UpdateTotalProfitChartDynamic(Chart chart)
-        {
-            if (chart.InvokeRequired)
-            {
-                chart.Invoke((Action<Chart>)UpdateTotalProfitChartDynamic, chart);
-                return;
-            }
-
-            try
-            {
-                Series series = chart.Series[0];
-                series.Points.ClearFast();
-
-                decimal max = decimal.MinValue;
-                decimal min = decimal.MaxValue;
-                List<decimal> profitsSumm = new List<decimal>();
-
-                List<Period> periods = _master.Phazes.OutOfSamplePeriods.Where(p => p.IsDefined).ToList();
-                for (int i = 0; i < periods.Count; i++)
-                {
-                    if (periods[i].Report == null || periods[i].Report.Reports.Count == 0) continue;
-                    if (i == 0)
-                    {
-                        profitsSumm.Add(periods[i].Report.Reports[_sortTypeDynamicTableNum].TotalProfit);
-                    }
-                    else
-                    {
-                        profitsSumm.Add(profitsSumm.Last() + periods[i].Report.Reports[_sortTypeDynamicTableNum].TotalProfit);
-                    }
-                }
-                for (int i = 0; i < profitsSumm.Count; i++)
-                {
-                    decimal open = 0;
-                    decimal close = 0;
-                    decimal low = 0;
-                    decimal high = 0;
-
-                    if (i > 0)
-                    {
-                        open = profitsSumm[i - 1];
-                    }
-                    close = profitsSumm[i];
-
-                    low = Math.Min(open, close);
-                    high = Math.Max(open, close);
-                    series.Points.AddXY(i + 1, low, high, open, close);
-                    max = Math.Max(close, max);
-                    max = Math.Max(open, max);
-                    min = Math.Min(close, min);
-                    min = Math.Min(open, min);
-                    Color color = open < close ? Color.DarkGreen : Color.DarkRed;
-                    series.Points[series.Points.Count - 1].Color = color;
-                    series.Points[series.Points.Count - 1].BorderColor = color;
-                    series.Points[series.Points.Count - 1].BackSecondaryColor = color;
-                }
-
-                if (max != decimal.MinValue &&
-                        min != decimal.MaxValue)
-                {
-                    max = Math.Round(max + max * 0.2m, 4);
-                    min = Math.Round(min, 4);
-
-                    if (max > min)
-                    {
-                        chart.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        chart.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                SendLogMessage(ex.ToString(), LogMessageType.Error);
-            }
-        }
+        
 
         // average profit
 
@@ -2678,6 +2684,7 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
 
+        public event Action<OptimazerFazeReport, OptimizerReport> FullChartButtonClickEvent;
         public event Action<OptimazerFazeReport, OptimizerReport> ChartButtonClickEvent;
 
     }

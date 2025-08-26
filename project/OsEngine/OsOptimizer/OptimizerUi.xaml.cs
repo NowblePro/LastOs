@@ -212,12 +212,13 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.ActivateTotalProfitChart(WindowsFormsHostTotalProfit, ComboBoxTotalProfit);
             _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
-            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2);
+            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2, ComboBoxTotalProfit2);
             _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
             _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
             _resultsCharting.ActivateCSCChart(HostFRS);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
-            _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.FullChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.ChartButtonClickEvent += ShowBotChartDialog;
             TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
             TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
             _resultsCharting.WeightsChanged += _master.UpdateWeights;
@@ -394,6 +395,7 @@ namespace OsEngine.OsOptimizer
                 {
                     _resultsCharting.PaintDynamicTable(_reports);
                     StartUserActivity();
+                    TabControlResults.SelectedItem = TabControlResultsOutOfSampleResults2;
                 }
                 else
                 {
@@ -3341,6 +3343,18 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
+            BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
+
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.ShowChartDialog();
+        }
+
+        private void ShowBotChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)
+        {
             BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
 
             if (bot == null)

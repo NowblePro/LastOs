@@ -30,6 +30,7 @@ namespace OsEngine.OsOptimizer
                 DataGridViewAutoSizeRowsMode.None, false);
             _dgv.CellClick += DynamicTable_CellClick;
             _dgv.Click += GridDynamicStepsTable_Click;
+            _dgv.CellValueChanged += _dgv_CellValueChanged;
             ContextMenu menu = new ContextMenu();
             MenuItem deleteMenuItem = new MenuItem("Удалить", (sender, e) =>
             {
@@ -40,15 +41,6 @@ namespace OsEngine.OsOptimizer
                 }
             });
             menu.MenuItems.Add(deleteMenuItem);
-
-            MenuItem reCalcMenuItem = new MenuItem("Пересчитать", (sender, e) =>
-            {
-                if (sender is MenuItem item && item.Parent.Tag is Period p)
-                {
-                    UpdateDynamicTable(_dgv);
-                }
-            });
-            menu.MenuItems.Add(reCalcMenuItem);
 
             _dgv.ContextMenu = menu;
             menu.Popup += DynamicTableMenu_Popup;
@@ -63,6 +55,26 @@ namespace OsEngine.OsOptimizer
             _dgv.Rows.Add(null, null);
             UpdateDynamicTable(_dgv);
             return _dgv;
+        }
+
+        private void _dgv_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            try
+            {
+                if (sender is DataGridView dgv)
+                {
+                    if (e.ColumnIndex == 3)
+                    {
+                        Period period = GetPeriod(e.RowIndex);
+                        string value = $"{dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value}";
+                        if (period != null)
+                        {
+                            period.Name = value;
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         private void DynamicTableMenu_Popup(object sender, EventArgs e)

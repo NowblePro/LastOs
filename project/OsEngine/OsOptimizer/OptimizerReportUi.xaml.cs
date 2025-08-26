@@ -45,7 +45,7 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.ActivateTotalProfitChart(HostTotalProfit, ComboBoxTotalProfit);
             _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
-            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2);
+            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2, ComboBoxTotalProfit2);
             _resultsCharting.ActivateAverageProfitChart(HostAverageProfit);
             _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
             _resultsCharting.ActivateProfitFactorChart(HostProfitFactor);
@@ -54,7 +54,8 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.ActivateDynamicTableComboboxSort(ComboBoxSortResultsType2, ComboBoxSortResultsBotNumPercent2);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
-            _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.FullChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.ChartButtonClickEvent += ShowBotChartDialog;
 
             CheckBoxDataCapture.IsChecked = _captureData;
             CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
@@ -91,6 +92,11 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.UpdateWeights( _master.PPRWeight,
                                             _master.TRWeight,
                                             _master.GPRWeight);
+
+            if (_master.CustomFazes)
+            {
+                TabControlResults.SelectedItem = TabControlResultsOutOfSampleResults2;
+            }
 
             this.Activate();
             this.Focus();
@@ -799,6 +805,18 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
+            BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
+
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.ShowChartDialog();
+        }
+
+        private void ShowBotChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)
+        {
             BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
 
             if (bot == null)
