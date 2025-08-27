@@ -1821,7 +1821,9 @@ namespace OsEngine.OsOptimizer
                 OptimizerReport inSampleReport = null;
 
                 List<OptimazerFazeReport> outOfSampleReports = new List<OptimazerFazeReport>();
-
+                List<string> periodNames = new List<string>();
+                int isCounter = 0;
+                int oosCounter = 0;
                 for (int i = 0; i < _reports.Count; i++)
                 {
                     OptimazerFazeReport curReport = _reports[i];
@@ -1836,10 +1838,17 @@ namespace OsEngine.OsOptimizer
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
                     {
                         inSampleReport = curReport.Reports[sortBotNumber];
+                        isCounter++;
+                    }
+
+                    if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
+                    {
+                        oosCounter++;
                     }
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample || includeInSample)
                     {
+                        periodNames.Add(curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample ? $"OOS {oosCounter}" : $"IS {isCounter}");
                         string botName = inSampleReport.BotName.Replace(" InSample", "");
                         // reportToPaint = curReport.Reports.Find(rep => rep.BotName.StartsWith(botName));
 
@@ -1936,12 +1945,15 @@ namespace OsEngine.OsOptimizer
                     }
 
                     string toolTip = "";
-
-                    toolTip = "OOS " + (i + 1) + "\n" +
+                    try
+                    {
+                        toolTip = $"{periodNames[i]}" + "\n" +
                          "start: " + outOfSampleReports[i].Faze.TimeStart.ToString(OsLocalization.ShortDateFormatString) + "\n" +
                          "end: " + outOfSampleReports[i].Faze.TimeEnd.ToString(OsLocalization.ShortDateFormatString) + "\n" +
                          "profit: " + profit[i].ToStringWithNoEndZero();
-
+                    }
+                    catch { }
+                    
                     series.Points[series.Points.Count - 1].ToolTip = toolTip;
 
                     if (i + 1 == profitsSumm.Count)
