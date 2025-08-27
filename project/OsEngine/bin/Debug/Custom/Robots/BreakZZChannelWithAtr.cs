@@ -38,6 +38,7 @@ public class BreakZZChannelWithAtr : BotPanel
     private bool _needUpdateLastIndex;
     private bool _needUpdateIterator;
     private int _iterator = 1;
+    private StrategyParameterBool _saveJson;
 
     public BreakZZChannelWithAtr(string name, StartProgram startProgram) : base(name, startProgram)
     {
@@ -48,6 +49,7 @@ public class BreakZZChannelWithAtr : BotPanel
         VolumeRegime = CreateParameter("Volume type", "Number of contracts", new[] { "Number of contracts", "Contract currency", "% of the total portfolio" }, "Base");
         VolumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
         Slippage = CreateParameter("Slippage %", 0m, 0, 20, 1, "Base");
+        _saveJson = CreateParameter("Save Json Data", false, "Base");
 
         TimeStart = CreateParameterTimeOfDay("Start Trade Time", 0, 0, 0, 0, "Base");
         TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
@@ -87,6 +89,7 @@ public class BreakZZChannelWithAtr : BotPanel
 
     private void LRegBot_ParametrsChangeByUser()
     {
+        _tab.setSaveData(_saveJson.ValueBool);
         StopOrActivateIndicators();
 
         if (_zz.ParametersDigit[0].Value != _lengthZZ.ValueInt)
