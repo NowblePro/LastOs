@@ -212,18 +212,21 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.ActivateTotalProfitChart(WindowsFormsHostTotalProfit, ComboBoxTotalProfit);
             _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
-            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2);
+            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2, ComboBoxTotalProfit2);
             _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
             _resultsCharting.ActivateProfitFactorChartCSC(HostProfitFactor1);
             _resultsCharting.ActivateCSCChart(HostFRS);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
-            _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.FullChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.ChartButtonClickEvent += ShowBotChartDialog;
             TabControlResultsOutOfSampleResults.GotFocus += TabControlResultsOutOfSampleResults_GotFocus;
             TabControlResultsOutOfSampleResults1.GotFocus += TabControlResultsOutOfSampleResults1_GotFocus;
             _resultsCharting.WeightsChanged += _master.UpdateWeights;
             _resultsCharting.UpdateWeights( _master.PPRWeight,
                                             _master.TRWeight,
                                             _master.GPRWeight);
+            _customPhazeEditor = new OptimizerCustomPhazesEditor(HostCustomPhazes, _master);
+
             this.Closing += Ui_Closing;
             this.Activate();
             this.Focus();
@@ -349,7 +352,22 @@ namespace OsEngine.OsOptimizer
                 ShowResultDialog();
                 _testIsEnd = true;
 
+                CheckTabVisibility();
             }
+        }
+
+        private void CheckTabVisibility()
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(CheckTabVisibility);
+                return;
+            }
+
+            TabControlResultsSeries.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults1.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults2.Visibility = _master.CustomFazes ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private bool _testIsEnd;
@@ -372,28 +390,38 @@ namespace OsEngine.OsOptimizer
                 }
 
                 PaintEndOnAllProgressBars();
-                PaintTableFazes();
 
-                if (_gridFazesEnd.Rows.Count > 0)
+                if (_master.CustomFazes)
                 {
-                    _gridFazesEnd.Rows[0].Selected = true;
-                    _gridFazesEnd.Rows[0].Cells[0].Selected = true;
-                    _gridFazesEnd.CurrentCell = _gridFazes.Rows[0].Cells[0];
-                }
-
-                PaintTableResults();
-
-                StartUserActivity();
-
-                if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
-                {
-                    _resultsCharting.ReLoadCSC(_reports, true);
-                    _resultsCharting.ReLoad(_reports);
+                    _resultsCharting.PaintDynamicTable(_reports);
+                    StartUserActivity();
+                    TabControlResults.SelectedItem = TabControlResultsOutOfSampleResults2;
                 }
                 else
                 {
-                    _resultsCharting.ReLoad(_reports);
-                    _resultsCharting.ReLoadCSC(_reports, true);
+                    PaintTableFazes();
+
+                    if (_gridFazesEnd.Rows.Count > 0)
+                    {
+                        _gridFazesEnd.Rows[0].Selected = true;
+                        _gridFazesEnd.Rows[0].Cells[0].Selected = true;
+                        _gridFazesEnd.CurrentCell = _gridFazes.Rows[0].Cells[0];
+                    }
+
+                    PaintTableResults();
+
+                    StartUserActivity();
+
+                    if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
+                    {
+                        _resultsCharting.ReLoadCSC(_reports, true);
+                        _resultsCharting.ReLoad(_reports);
+                    }
+                    else
+                    {
+                        _resultsCharting.ReLoad(_reports);
+                        _resultsCharting.ReLoadCSC(_reports, true);
+                    }
                 }
             }
             catch (Exception error)
@@ -1492,18 +1520,33 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         private void ButtonCreateOptimizeFazes_Click(object sender, RoutedEventArgs e)
         {
-            _master.ReloadFazes();
-            PaintTableOptimizeFazes();
-
-            if(_master.Fazes == null ||
-                _master.Fazes.Count == 0)
+            try
             {
-                return;
+                if (TabControlFazes.SelectedItem == TabItemFazes1)
+                {
+                    _master.ReloadFazes();
+                }
+                else if (TabControlFazes.SelectedItem == TabItemFazes2)
+                {
+                    _master.LoadCustomFazes(_customPhazeEditor.GetFazes());
+                }
+                    
+                PaintTableOptimizeFazes();
+
+                if (_master.Fazes == null ||
+                    _master.Fazes.Count == 0)
+                {
+                    return;
+                }
+
+                WolkForwardPeriodsPainter.PaintForwards(HostWalkForwardPeriods, _master.Fazes);
+
+                PaintCountBotsInOptimization();
             }
-
-            WolkForwardPeriodsPainter.PaintForwards(HostWalkForwardPeriods, _master.Fazes);
-
-            PaintCountBotsInOptimization();
+            catch (Exception ex)
+            {
+                _master.SendLogMessage(ex.Message, LogMessageType.Error);
+            }
         }
 
         /// <summary>
@@ -3310,6 +3353,18 @@ namespace OsEngine.OsOptimizer
             bot.ShowChartDialog();
         }
 
+        private void ShowBotChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)
+        {
+            BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
+
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.ShowChartDialog();
+        }
+
         /// <summary>
         /// user clicked results table
         /// пользователь кликнул по таблице результатов
@@ -3430,18 +3485,7 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.Updateweights();
         }
 
-        private void ButtonCalculate_Click(object sender, RoutedEventArgs e)
-        {
-            _resultsCharting.CalculateDynamicTable();
-        }
-
-        private void TabControlResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (sender is System.Windows.Controls.TabControl tab)
-            {
-                ButtonCalculate.Visibility = e.AddedItems[0] == TabControlResultsOutOfSampleResults2 ? Visibility.Visible : Visibility.Hidden;
-            }
-        }
+        OptimizerCustomPhazesEditor _customPhazeEditor;
     }
 
     /// <summary>
@@ -3482,12 +3526,5 @@ namespace OsEngine.OsOptimizer
         TotalProfit,
         MaxDrawDown,
         ProfitToDrawDown
-    }
-
-    public enum SortTypeDynamicTable
-    {
-        TotalProfit,
-        MaxDrawDown,
-        AvgProfit
     }
 }

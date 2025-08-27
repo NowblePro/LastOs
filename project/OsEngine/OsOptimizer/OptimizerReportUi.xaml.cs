@@ -45,7 +45,7 @@ namespace OsEngine.OsOptimizer
 
             _resultsCharting.ActivateTotalProfitChart(HostTotalProfit, ComboBoxTotalProfit);
             _resultsCharting.ActivateTotalProfitChartCSC(HostTotalProfit1, ComboBoxTotalProfit1);
-            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2);
+            _resultsCharting.ActivateTotalProfitChartDynamic(HostTotalProfit2, ComboBoxTotalProfit2);
             _resultsCharting.ActivateAverageProfitChart(HostAverageProfit);
             _resultsCharting.ActivateAverageProfitChartCSC(HostAverageProfit1);
             _resultsCharting.ActivateProfitFactorChart(HostProfitFactor);
@@ -54,7 +54,8 @@ namespace OsEngine.OsOptimizer
             _resultsCharting.ActivateDynamicTableComboboxSort(ComboBoxSortResultsType2, ComboBoxSortResultsBotNumPercent2);
             _resultsCharting.LogMessageEvent += _master.SendLogMessage;
 
-            _resultsCharting.ChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.FullChartButtonClickEvent += ShowBotFullChartDialog;
+            _resultsCharting.ChartButtonClickEvent += ShowBotChartDialog;
 
             CheckBoxDataCapture.IsChecked = _captureData;
             CheckBoxDataCapture.Click += CheckBoxDataCapture_Click;
@@ -92,6 +93,11 @@ namespace OsEngine.OsOptimizer
                                             _master.TRWeight,
                                             _master.GPRWeight);
 
+            if (_master.CustomFazes)
+            {
+                TabControlResults.SelectedItem = TabControlResultsOutOfSampleResults2;
+            }
+
             this.Activate();
             this.Focus();
         }
@@ -106,14 +112,7 @@ namespace OsEngine.OsOptimizer
             {
                 _resultsCharting.ReLoad(_reports);
             }
-
-            if (sender is System.Windows.Controls.TabControl tab)
-            {
-                ButtonCalculate.Visibility = e.AddedItems[0] == TabControlResultsOutOfSampleResults2 ? Visibility.Visible : Visibility.Hidden;
-                ButtonClearCache.Visibility = e.AddedItems[0] == TabControlResultsOutOfSampleResults2 ? Visibility.Visible : Visibility.Hidden;
-            }
         }
-
         public void Paint(List<OptimazerFazeReport> reports)
         {
             if (reports == null)
@@ -141,28 +140,51 @@ namespace OsEngine.OsOptimizer
         {
             try
             {
-                for (int i = 0; i < _reports.Count; i++)
-                {
-                    OptimazerFazeReport.SortResults(_reports[i].Reports, _sortBotsType);
-                }
+                CheckTabVisibility();
 
-                PaintTableFazes();
-                PaintTableResults();
-                if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
+                if (_master.CustomFazes)
                 {
-                    _resultsCharting.ReLoadCSC(_reports, true);
-                    _resultsCharting.ReLoad(_reports);
+                    _resultsCharting.PaintDynamicTable(_reports);
                 }
                 else
                 {
-                    _resultsCharting.ReLoad(_reports);
-                    _resultsCharting.ReLoadCSC(_reports, true);
-                }
+                    for (int i = 0; i < _reports.Count; i++)
+                    {
+                        OptimazerFazeReport.SortResults(_reports[i].Reports, _sortBotsType);
+                    }
+
+                    PaintTableFazes();
+                    PaintTableResults();
+                    if (TabControlResults.SelectedItem == TabControlResultsOutOfSampleResults1)
+                    {
+                        _resultsCharting.ReLoadCSC(_reports, true);
+                        _resultsCharting.ReLoad(_reports);
+                    }
+                    else
+                    {
+                        _resultsCharting.ReLoad(_reports);
+                        _resultsCharting.ReLoadCSC(_reports, true);
+                    }
+                }   
             }
             catch (Exception error)
             {
                 _master.SendLogMessage(error.ToString(), LogMessageType.Error);
             }
+        }
+
+        private void CheckTabVisibility()
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(CheckTabVisibility);
+                return;
+            }
+
+            TabControlResultsSeries.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults1.Visibility = _master.CustomFazes ? Visibility.Collapsed : Visibility.Visible;
+            TabControlResultsOutOfSampleResults2.Visibility = _master.CustomFazes ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // phase table for switching after testing/таблица фаз для переключения после тестирования
@@ -793,6 +815,18 @@ namespace OsEngine.OsOptimizer
             bot.ShowChartDialog();
         }
 
+        private void ShowBotChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)
+        {
+            BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
+
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.ShowChartDialog();
+        }
+
         /// <summary>
         /// user clicked results table
         /// пользователь кликнул по таблице результатов
@@ -994,16 +1028,6 @@ namespace OsEngine.OsOptimizer
         private void ButtonUpdateCSC_Click(object sender, RoutedEventArgs e)
         {
             _resultsCharting.Updateweights();
-        }
-
-        private void ButtonCalculate_Click(object sender, RoutedEventArgs e)
-        {
-            _resultsCharting.CalculateDynamicTable();
-        }
-
-        private void ButtonClearCache_Click(object sender, RoutedEventArgs e)
-        {
-            _resultsCharting.ClearCache();
         }
     }
 }

@@ -884,6 +884,7 @@ namespace OsEngine.OsOptimizer
         /// </summary>
         public void ReloadFazes()
         {
+            CustomFazes = false;
             int fazeCount = IterationCount;
 
             if (fazeCount < 1)
@@ -988,6 +989,23 @@ namespace OsEngine.OsOptimizer
                     }
                 }
             }*/
+        }
+
+        public bool CustomFazes { get; private set; }
+
+        public void LoadCustomFazes(List<OptimizerFaze> fazes)
+        {
+            CustomFazes = true;
+            Fazes = fazes;
+            for (int i = 0; i < Fazes.Count; i++)
+            {
+                if (Fazes[i].Days <= 0)
+                {
+                    SendLogMessage(OsLocalization.Optimizer.Label50, LogMessageType.Error);
+                    Fazes = new List<OptimizerFaze>();
+                    return;
+                }
+            }
         }
 
         private int DaysInFazes(List<OptimizerFaze> fazes)

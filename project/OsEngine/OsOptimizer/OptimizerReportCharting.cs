@@ -94,17 +94,8 @@ namespace OsEngine.OsOptimizer
             boxTypeSortCSC.SelectedItem = CSCSortType.FRS.ToString();
             boxTypeSortCSC.SelectionChanged += BoxTypeSortCSC_SelectionChanged;
 
-            GetTotalPeriod();
-            _master.DateTimeStartEndChange += _master_DateTimeStartEndChange;
-
             CreateStepsOfOptimization();
             CreateRobustnessChart();
-            FillDynamicTable(_gridDynamicTable);
-        }
-
-        private void _master_DateTimeStartEndChange()
-        {
-            GetTotalPeriod();
         }
 
         private void BoxTypeSortCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -238,6 +229,7 @@ namespace OsEngine.OsOptimizer
         {
             try
             {
+                if (_master.CustomFazes) return;
                 _reports = reports;
 
                 if (_reports == null
@@ -281,10 +273,27 @@ namespace OsEngine.OsOptimizer
             });
         }
 
+        private void SortDynamicResults(List<OptimazerFazeReport> reports)
+        {
+            if (reports == null || reports.Count == 0) return;
+
+            OptimazerFazeReport first = reports.First();
+            OptimazerFazeReport.SortResults(first.Reports, _sortTypeDynamicTable);
+            Parallel.For(1, reports.Count, i =>
+            {
+                OptimazerFazeReport faze = reports[i];
+                var indexes = faze.Reports.Select(r => new { Report = r, Index = first.Reports.IndexOf(first.Reports.Where(f => f.GetParamsToDataTable() == r.GetParamsToDataTable()).First()) });
+                var newList = indexes.ToList();
+                newList.Sort((rep1, rep2) => rep1.Index.CompareTo(rep2.Index));
+                faze.Reports = newList.Select(r => r.Report).ToList();
+            });
+        }
+
         private void ReLoadCSCTask(List<OptimazerFazeReport> reports, bool calculate = false, bool calculateFRS = false)
         {
             try
             {
+                if (_master.CustomFazes) return;
                 _reports = reports;
 
                 if (_reports == null
@@ -350,14 +359,6 @@ namespace OsEngine.OsOptimizer
             {
                 SendLogMessage(e.ToString(), LogMessageType.Error);
             }
-        }
-
-
-
-        private void GetTotalPeriod()
-        {
-            TotalPeriod.Start = _master.TimeStart;
-            TotalPeriod.End = _master.TimeEnd;
         }
 
         private void GetBestBotNum(List<OptimizerReport> reports)
@@ -432,44 +433,18 @@ namespace OsEngine.OsOptimizer
             return gridStepsOfOptimization;
         }
 
-        private Period TotalPeriod { get; set; } = new Period();
-
         private DataGridView GetDynamicDGV()
         {
             DataGridView gridDynamicStepsTable = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect,
                 DataGridViewAutoSizeRowsMode.None, false);
-            gridDynamicStepsTable.CellClick += DynamicTable_CellClick;
-            gridDynamicStepsTable.Click += GridDynamicStepsTable_Click;
             ContextMenu menu = new ContextMenu();
-            MenuItem deleteMenuItem = new MenuItem("Удалить", (sender, e) => 
-            {
-                if (sender is MenuItem item && item.Parent.Tag is Period p)
-                {
-                    _master.Phazes.OutOfSamplePeriods.Remove(p);
-                    CalculateAndUpdateDynamicTable(_gridDynamicTable);
-                }
-            });
-            menu.MenuItems.Add(deleteMenuItem);
 
-            MenuItem reCalcMenuItem = new MenuItem("Пересчитать", (sender, e) =>
-            {
-                if (sender is MenuItem item && item.Parent.Tag is Period p)
-                {
-                    if(_periodCacheTable.ContainsKey(p))
-                    {
-                        p.Report = null;
-                        _periodCacheTable.TryRemove(p, out _);
-                    }
-                    CalculateAndUpdateDynamicTable(_gridDynamicTable);
-                }
-            });
-            menu.MenuItems.Add(reCalcMenuItem);
 
             gridDynamicStepsTable.ContextMenu = menu;
-            menu.Popup += DynamicTableMenu_Popup;
             cell0.Style = gridDynamicStepsTable.DefaultCellStyle;
-
             gridDynamicStepsTable.ScrollBars = ScrollBars.Vertical;
+
+            gridDynamicStepsTable.CellMouseClick += GridDynamicStepsTable_CellMouseClick;
 
             gridDynamicStepsTable.Columns.Add(GetColumn("Period"));
             gridDynamicStepsTable.Columns.Add(GetColumn("Start", readOnly: false));
@@ -482,6 +457,12 @@ namespace OsEngine.OsOptimizer
             gridDynamicStepsTable.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Max DrawDown", readOnly: false));
 
+            DataGridViewButtonColumn column10 = new DataGridViewButtonColumn();
+            column10.CellTemplate = new DataGridViewButtonCell();
+            column10.ReadOnly = true;
+            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            gridDynamicStepsTable.Columns.Add(column10);
+
             DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
             column11.CellTemplate = new DataGridViewButtonCell();
             column11.ReadOnly = true;
@@ -492,11 +473,57 @@ namespace OsEngine.OsOptimizer
             return gridDynamicStepsTable;
         }
 
-        private void DynamicTableMenu_Popup(object sender, EventArgs e)
+        private void GridDynamicStepsTable_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            if (sender is ContextMenu menu && menu.Tag is Period p)
+            if (e.RowIndex < 0)
             {
-                menu.MenuItems[0].Visible = p != _master.Phazes.InSamplePeriod;
+                return;
+            }
+
+            if (_reports == null || _master.Phazes.OutOfSamplePeriods.Count + 1 < e.RowIndex + 1)
+            {
+                return;
+            }
+
+            if (sender is DataGridView dgv)
+            {
+                if (e.ColumnIndex == 10)
+                {
+                    OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
+
+                    string parameterString = $"{dgv.Rows[e.RowIndex].Cells[4].Value}";
+
+                    OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == parameterString).SingleOrDefault();
+
+                    if (report == null)
+                    {
+                        return;
+                    }
+
+                    if (ChartButtonClickEvent != null)
+                    {
+                        ChartButtonClickEvent(fazeReport, report);
+                    }
+                }
+
+                if (e.ColumnIndex == 11)
+                {
+                    OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
+
+                    string parameterString = $"{dgv.Rows[e.RowIndex].Cells[4].Value}";
+
+                    OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == parameterString).SingleOrDefault();
+
+                    if (report == null)
+                    {
+                        return;
+                    }
+
+                    if (FullChartButtonClickEvent != null)
+                    {
+                        FullChartButtonClickEvent(fazeReport, report);
+                    }
+                }
             }
         }
 
@@ -630,28 +657,28 @@ namespace OsEngine.OsOptimizer
                 DataGridViewRow row0 = new DataGridViewRow();
                 row0.Height = 30;
 
-                AddCell(row0, "Robot");
-                AddCell(row0, bot.FRS);
-                AddCell(row0, bot.PPR);
-                AddCell(row0, bot.TR);
-                AddCell(row0, bot.GPR);
-                AddCell(row0, bot.TotalProfitAllPeriod);
-                AddCell(row0, bot.MaxDrawDownAllPeriod);
-                AddCell(row0, bot.ProfitToDrawDownAllPeriod);
+                DataGridFactory.AddTextBoxCell(row0, "Robot");
+                DataGridFactory.AddTextBoxCell(row0, bot.FRS);
+                DataGridFactory.AddTextBoxCell(row0, bot.PPR);
+                DataGridFactory.AddTextBoxCell(row0, bot.TR);
+                DataGridFactory.AddTextBoxCell(row0, bot.GPR);
+                DataGridFactory.AddTextBoxCell(row0, bot.TotalProfitAllPeriod);
+                DataGridFactory.AddTextBoxCell(row0, bot.MaxDrawDownAllPeriod);
+                DataGridFactory.AddTextBoxCell(row0, bot.ProfitToDrawDownAllPeriod);
 
                 _gridFRS.Rows.Add(row0);
 
                 DataGridViewRow row1 = new DataGridViewRow();
                 row1.Height = 30;
 
-                AddCell(row1, "Strategy");
-                AddCell(row1, _strategyFRS);
-                AddCell(row1, _strategyPPR);
-                AddCell(row1, _strategyTR);
-                AddCell(row1, _strategyGPR);
-                AddCell(row1, "-");
-                AddCell(row1, "-");
-                AddCell(row1, "-");
+                DataGridFactory.AddTextBoxCell(row1, "Strategy");
+                DataGridFactory.AddTextBoxCell(row1, _strategyFRS);
+                DataGridFactory.AddTextBoxCell(row1, _strategyPPR);
+                DataGridFactory.AddTextBoxCell(row1, _strategyTR);
+                DataGridFactory.AddTextBoxCell(row1, _strategyGPR);
+                DataGridFactory.AddTextBoxCell(row1, "-");
+                DataGridFactory.AddTextBoxCell(row1, "-");
+                DataGridFactory.AddTextBoxCell(row1, "-");
 
                 _gridFRS.Rows.Add(row1);
 
@@ -659,14 +686,14 @@ namespace OsEngine.OsOptimizer
                 row2.Height = 30;
                 row2.ReadOnly = false;
 
-                AddCell(row2, "FRS weights");
-                AddCell(row2, "-");
-                AddCell(row2, _pprWeight, false);
-                AddCell(row2, _trWeight, false);
-                AddCell(row2, _gprWeight, false);
-                AddCell(row2, "-");
-                AddCell(row2, "-");
-                AddCell(row2, "-");
+                DataGridFactory.AddTextBoxCell(row2, "FRS weights");
+                DataGridFactory.AddTextBoxCell(row2, "-");
+                DataGridFactory.AddTextBoxCell(row2, _pprWeight, false);
+                DataGridFactory.AddTextBoxCell(row2, _trWeight, false);
+                DataGridFactory.AddTextBoxCell(row2, _gprWeight, false);
+                DataGridFactory.AddTextBoxCell(row2, "-");
+                DataGridFactory.AddTextBoxCell(row2, "-");
+                DataGridFactory.AddTextBoxCell(row2, "-");
 
                 _gridFRS.Rows.Add(row2);
 
@@ -674,36 +701,17 @@ namespace OsEngine.OsOptimizer
                 row3.Height = 30;
                 row3.ReadOnly = false;
 
-                AddCell(row3, "Rank");
-                AddCell(row3, $"{bot.FRSRank}/{botCount}");
-                AddCell(row3, $"{bot.PPRRank}/{botCount}");
-                AddCell(row3, $"{bot.TRRank}/{botCount}");
-                AddCell(row3, $"{bot.GPRRank}/{botCount}");
-                AddCell(row3, $"{bot.TotalProfitAllPeriodRank}/{botCount}");
-                AddCell(row3, $"{bot.MaxDrawDownAllPeriodRank}/{botCount}");
-                AddCell(row3, $"{bot.ProfitToDrawDownAllPeriodRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, "Rank");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.FRSRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.PPRRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.TRRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.GPRRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.TotalProfitAllPeriodRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.MaxDrawDownAllPeriodRank}/{botCount}");
+                DataGridFactory.AddTextBoxCell(row3, $"{bot.ProfitToDrawDownAllPeriodRank}/{botCount}");
                 _gridFRS.Rows.Add(row3);
             }
             catch { }
-        }
-
-        private DataGridViewTextBoxCell AddCell(DataGridViewRow row, decimal value, bool readOnly = true)
-        {
-            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
-            cell.Value = Math.Round(value, 3);
-            cell.ToolTipText = $"{value}";
-            row.Cells.Add(cell);
-            cell.ReadOnly = readOnly;
-            return cell;
-        }
-
-        private DataGridViewTextBoxCell AddCell(DataGridViewRow row, object value, bool readOnly = true)
-        {
-            DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
-            cell.Value = value;
-            row.Cells.Add(cell);
-            cell.ReadOnly = readOnly;
-            return cell;
         }
 
         private DataGridViewColumn GetColumn(string name, int width = 0, bool readOnly = true)
@@ -871,15 +879,7 @@ namespace OsEngine.OsOptimizer
 
         private void GetFazeFromPeriod(Period period)
         {
-            if (period.Report != null) return;
-            OptimazerFazeReport fazeReport = new OptimazerFazeReport();
-            OptimizerFaze newFaze = new OptimizerFaze();
-            newFaze.TypeFaze = period == _master.Phazes.InSamplePeriod ? OptimizerFazeType.InSample : OptimizerFazeType.OutOfSample;
-            newFaze.TimeStart = (DateTime)period.Start;
-            newFaze.TimeEnd = (DateTime)period.End;
-            newFaze.Days = (int)((DateTime)period.End - (DateTime)period.Start).TotalDays;
-            fazeReport.Faze = newFaze;
-            period.Report = fazeReport;
+            period.Report = _reports.Where(r => r.Faze.TimeStart == period.Start && r.Faze.TimeEnd == period.End).Single();
         }
 
         private void GetFazeFromPeriod(List<Period> periods)
@@ -891,178 +891,6 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private void CalculateDynamicFazes(AwaitObject await)
-        {
-            if (!_master.Phazes.InSamplePeriod.IsDefined) return;
-            await.Label = "Рассчёт In Sample";
-            _dynamicReports.Clear();
-            GetFazeFromPeriod(_master.Phazes.InSamplePeriod);
-            int total = _reports[0].Reports.Count;
-            int count = 0;
-            Parallel.ForEach(_reports[0].Reports, new ParallelOptions() { MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1) }, (report) =>
-            {
-                try
-                {
-                    Period period = new Period();
-                    period.Start = _master.Phazes.InSamplePeriod.Start;
-                    period.End = _master.Phazes.InSamplePeriod.End;
-                    period.RobotKey = report.GetParamsToDataTable();
-                    bool containsKey = false;
-                    lock (_periodCache)
-                    {
-                        containsKey = _periodCache.ContainsKey(period);
-                    }
-                    if (!containsKey)
-                    {
-                        GetFazeFromPeriod(period);
-                        List<IIStrategyParameter> parameters = report.GetParameters();
-                        OptimizerServer server = _master._optimizerExecutor.CreateNewServer(_master.Phazes.InSamplePeriod.Report, true);
-                        Security secToStart = _master.Storage.Securities.Find(s => s.Name == _master.TabsSimpleNamesAndTimeFrames[0].NameSecurity);
-                        server.GetDataToSecurity(secToStart, _master.TabsSimpleNamesAndTimeFrames[0].TimeFrame, (DateTime)_master.Phazes.InSamplePeriod.Start, (DateTime)_master.Phazes.InSamplePeriod.End);
-                        BotPanel bot = BotFactory.GetStrategyForName(_master.StrategyName, "", StartProgram.IsOsOptimizer, _master.IsScript);
-                        bot.SetParameters(parameters);
-                        OptimizerExecutor.InitBot(bot, _master, server);
-
-                        DateTime timeStartWaiting = DateTime.Now;
-                        while (bot.IsConnected == false)
-                        {
-                            Thread.Sleep(50);
-
-                            if (timeStartWaiting.AddSeconds(20) < DateTime.Now)
-                            {
-                                break;
-                            }
-                        }
-                        if (!bot.IsConnected)
-                        {
-                            throw new Exception(OsLocalization.Optimizer.Message10);
-                        }
-                        server.TestingStart();
-                        int countSameTime = 0;
-                        DateTime timeServerLast = DateTime.MinValue;
-
-                        timeStartWaiting = DateTime.Now;
-
-                        while (bot.TabsSimple[0].CandlesAll == null
-                               ||
-                               bot.TabsSimple[0].TimeServerCurrent.AddHours(1) < _master.Phazes.InSamplePeriod.End)
-                        {
-                            Thread.Sleep(1000);
-                            if (timeStartWaiting.AddSeconds(300) < DateTime.Now)
-                            {
-                                break;
-                            }
-
-                            if (timeServerLast == bot.TabsSimple[0].TimeServerCurrent)
-                            {
-                                countSameTime++;
-
-                                if (countSameTime >= 5)
-                                { // пять раз подряд время сервера не меняется. Тест окончен
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                timeServerLast = bot.TabsSimple[0].TimeServerCurrent;
-                                countSameTime = 0;
-                            }
-                        }
-                        period.Report.Load(bot);
-                        _periodCache.AddOrUpdate(period, bot, (p, b) => { return bot; });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    SendLogMessage(ex.Message, LogMessageType.Error);
-                }
-                Interlocked.Increment(ref count);
-                decimal progress = (decimal)count/ (decimal)total * 100;
-                lock (await)
-                {
-                    await.ValueCurrent = Math.Max(progress, await.ValueCurrent);
-                }
-            });
-
-            OptimazerFazeReport faze = new OptimazerFazeReport();
-            faze.Faze = _master.Phazes.InSamplePeriod.Report.Faze;
-            foreach (BotPanel botPanel in _periodCache.Where(p => p.Key.IsDefined && p.Key.Start == _master.Phazes.InSamplePeriod.Start && p.Key.End == _master.Phazes.InSamplePeriod.End).Select(p => p.Value))
-            {
-                faze.Load(botPanel);
-            }
-
-            await.Label = "Сортировка";
-
-            _dynamicReports = faze.Reports;
-            Comparison<OptimizerReport> sortFunc = null;
-            switch (_sortTypeDynamicTable)
-            {
-                case SortTypeDynamicTable.TotalProfit:
-                    sortFunc = new Comparison<OptimizerReport>((rep1, rep2) => { return rep2.TotalProfit.CompareTo(rep1.TotalProfit); });
-                    break;
-                case SortTypeDynamicTable.MaxDrawDown:
-                    sortFunc = new Comparison<OptimizerReport>((rep1, rep2) => { return rep2.MaxDrowDawn.CompareTo(rep1.MaxDrowDawn); });
-                    break;
-                case SortTypeDynamicTable.AvgProfit:
-                    sortFunc = new Comparison<OptimizerReport>((rep1, rep2) => { return rep2.AverageProfit.CompareTo(rep1.AverageProfit); });
-                    break;
-            }
-
-            if (sortFunc != null)
-            {
-                _dynamicReports.Sort(sortFunc);
-            }
-
-            CalculateCacheForDynamicTable(await);
-        }
-
-        private ConcurrentDictionary<Period, BotPanel> _periodCache = new ConcurrentDictionary<Period, BotPanel>();
-        private ConcurrentDictionary<Period, BotPanel> _periodCacheTable = new ConcurrentDictionary<Period, BotPanel>();
-        private List<OptimizerReport> _dynamicReports = new List<OptimizerReport>();
-
-        private void CalculateCacheForDynamicTable(AwaitObject await)
-        {
-            if (_dynamicReports.Count < 1) return;
-            await.ValueCurrent = 0;
-            await.Label = "Рассчёт Out Of Sample выбранного робота";
-            List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
-            periods.AddRange(_master.Phazes.OutOfSamplePeriods);
-            List<Period> definedPeriods = periods.Where(p => p.IsDefined).ToList();
-            int botIndex = Math.Min(_dynamicReports.Count - 1, _sortTypeDynamicTableNum);
-            int count = 0;
-            int total = definedPeriods.Count;
-            foreach (Period period in definedPeriods)
-            {
-                GetFazeFromPeriod(definedPeriods);
-
-                if (string.IsNullOrEmpty(period.RobotKey))
-                {
-                    period.RobotKey = _dynamicReports[botIndex].GetParamsToDataTable();
-                }
-
-                bool contains = _periodCacheTable.ContainsKey(period);
-                bool NULL = period.Report == null;
-                bool moreZero = false;
-                if (!NULL)
-                {
-                    moreZero = period.Report.Reports.Count > 0;
-                }
-                
-                if (!(_periodCacheTable.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0 && _periodCacheTable[period].StartProgram == StartProgram.IsTester))
-                {
-                    OptimizerMaster.TestSingleBot(period.Report, _dynamicReports[botIndex].GetParameters(), _master, (b) =>
-                    {
-                        if (b != null)
-                        {
-                            period.Report.Load(b);
-                            _periodCacheTable.AddOrUpdate(period, b, (p, bo) => { return b; });
-                        }
-                    });
-                }
-                count++;
-                await.ValueCurrent = (decimal) count / (decimal) total * 100;
-            }
-        }
 
         private void FillDynamicTable(DataGridView table)
         {
@@ -1076,12 +904,10 @@ namespace OsEngine.OsOptimizer
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
 
-            int botIndex = -1;
             string parameters = string.Empty;
-            if (_dynamicReports.Count > 0)
+            if (_reports.Count > 0)
             {
-                botIndex = Math.Min(_dynamicReports.Count - 1, _sortTypeDynamicTableNum);
-                parameters = _dynamicReports[botIndex].GetParamsToDataTable();
+                parameters = _reports[0].Reports[_sortTypeDynamicTableNum].GetParamsToDataTable();
             }
             
             FillPeriod(_master.Phazes.InSamplePeriod, "In Sample");
@@ -1097,21 +923,7 @@ namespace OsEngine.OsOptimizer
             foreach (Period period in definedPeriods)
             {
                 GetFazeFromPeriod(definedPeriods);
-
-                BotPanel bot;
-
-                if (string.IsNullOrEmpty(period.RobotKey) && botIndex > -1)
-                {
-                    period.RobotKey = _dynamicReports[botIndex].GetParamsToDataTable();
-                }
-
-                if (_periodCacheTable.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0 && _periodCacheTable[period].StartProgram == StartProgram.IsTester)
-                {
-                    bot = _periodCacheTable[period];
-                    period.Report.Reports.Clear();
-                    period.Report.Load(bot);
-                    Change(period);
-                }
+                Change(period);
 
                 void Change(Period p)
                 {
@@ -1126,12 +938,6 @@ namespace OsEngine.OsOptimizer
                 }
             }
 
-            DataGridViewRow endRow = new DataGridViewRow() { Height = 30 };
-            DataGridViewButtonCell cellEnd = new DataGridViewButtonCell();
-            cellEnd.Value = "Добавить Out Of Sample";
-            endRow.Cells.Add(cellEnd);
-            table.Rows.Add(endRow);
-
             string GetCellValue(Period period, int columnIndex)
             {
                 string cellVAlue = string.Empty;
@@ -1143,34 +949,40 @@ namespace OsEngine.OsOptimizer
                         if (columnIndex == 5)
                         {
                             // Profit
-                            cellVAlue = $"{Math.Round(faze.Reports[0].TotalProfit, 3)}";
+                            cellVAlue = $"{Math.Round(faze.Reports[_sortTypeDynamicTableNum].TotalProfit, 3)}";
                         }
                         if (columnIndex == 6)
                         {
                             // Average Profit
-                            cellVAlue = $"{Math.Round(faze.Reports[0].AverageProfit, 3)}";
+                            cellVAlue = $"{Math.Round(faze.Reports[_sortTypeDynamicTableNum].AverageProfit, 3)}";
                         }
                         if (columnIndex == 7)
                         {
                             // Positions count
-                            cellVAlue = $"{faze.Reports[0].PositionsCount}";
+                            cellVAlue = $"{faze.Reports[_sortTypeDynamicTableNum].PositionsCount}";
                         }
                         if (columnIndex == 8)
                         {
                             // Sharp Ratio
-                            cellVAlue = $"{Math.Round(faze.Reports[0].SharpRatio, 3)}";
+                            cellVAlue = $"{Math.Round(faze.Reports[_sortTypeDynamicTableNum].SharpRatio, 3)}";
                         }
 
                         if (columnIndex == 9)
                         {
                             // Max DrawDown
-                            cellVAlue = $"{Math.Round(faze.Reports[0].MaxDrowDawn, 3)}";
+                            cellVAlue = $"{Math.Round(faze.Reports[_sortTypeDynamicTableNum].MaxDrowDawn, 3)}";
                         }
 
                         if (columnIndex == 10)
                         {
                             // График
                             cellVAlue = $"График";
+                        }
+
+                        if (columnIndex == 11)
+                        {
+                            // График
+                            cellVAlue = $"Полный график";
                         }
                     }
                 }
@@ -1204,7 +1016,7 @@ namespace OsEngine.OsOptimizer
                 {
                     DataGridViewRow row = new DataGridViewRow() { Height = 30 };
 
-                    AddCell(row, periodName, true);
+                    DataGridFactory.AddTextBoxCell(row, periodName, true);
 
                     for (int i = 1; i < table.Columns.Count; i++)
                     {
@@ -1218,7 +1030,7 @@ namespace OsEngine.OsOptimizer
                             }
                             else
                             {
-                                DataGridViewTextBoxCell cell = AddCell(row, period.Start.Value.ToString("dd.MM.yyyy"));
+                                DataGridViewTextBoxCell cell = DataGridFactory.AddTextBoxCell(row, period.Start.Value.ToString("dd.MM.yyyy"));
                                 cell.ToolTipText = period.Start.Value.ToString();
                             }
                         }
@@ -1232,7 +1044,7 @@ namespace OsEngine.OsOptimizer
                             }
                             else
                             {
-                                DataGridViewTextBoxCell cell = AddCell(row, period.End.Value.ToString("dd.MM.yyyy"));
+                                DataGridViewTextBoxCell cell = DataGridFactory.AddTextBoxCell(row, period.End.Value.ToString("dd.MM.yyyy"));
                                 cell.ToolTipText = period.End.Value.ToString();
                             }
                         }
@@ -1243,14 +1055,14 @@ namespace OsEngine.OsOptimizer
                                 if (i == 3)
                                 {
                                     // Название периода (опционально)
-                                    AddCell(row, period.Name, false);
+                                    DataGridFactory.AddTextBoxCell(row, period.Name, false);
                                 }
                                 else if (i == 4)
                                 {
                                     // Параметры
-                                    AddCell(row, parameters);
+                                    DataGridFactory.AddTextBoxCell(row, parameters);
                                 }
-                                else if (i == 10)
+                                else if (i == 10 || i == 11)
                                 {
                                     // График
                                     DataGridViewButtonCell cellChart = new DataGridViewButtonCell();
@@ -1260,12 +1072,12 @@ namespace OsEngine.OsOptimizer
                                 }
                                 else
                                 {
-                                    AddCell(row, GetCellValue(period, i), true);
+                                    DataGridFactory.AddTextBoxCell(row, GetCellValue(period, i), true);
                                 }
                             }
                             else
                             {
-                                AddCell(row, "-", true);
+                                DataGridFactory.AddTextBoxCell(row, "-", true);
                             }
                         }
                     }
@@ -1276,163 +1088,10 @@ namespace OsEngine.OsOptimizer
 
         private void CalculateAndUpdateDynamicTable(DataGridView table)
         {
-            AwaitObject awaitUiBotsInfoLoading = new AwaitObject("Рассчёт", 100, 0, false);
-            AwaitUi ui = new AwaitUi(awaitUiBotsInfoLoading);
-
-            Task.Run(() =>
-            {
-                // Первая задача рассчёт
-                Thread.CurrentThread.IsBackground = true;
-                CalculateDynamicFazes(awaitUiBotsInfoLoading);
-            }).ContinueWith((t) => 
-            {
-                // Вторая задача заполнение таблицы и графика
-                FillDynamicTable(table);
-                UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
-                _master.OnPeriodsChanged();
-                awaitUiBotsInfoLoading?.Dispose();
-            });
-
-            ui.ShowDialog();
-        }
-
-        private void GridDynamicStepsTable_Click(object sender, EventArgs e)
-        {
-            if (sender is DataGridView dgv && e is MouseEventArgs mouse)
-            {
-                var info = dgv.HitTest(mouse.X, mouse.Y);
-                if (mouse.Button != MouseButtons.Right || info.Type != DataGridViewHitTestType.Cell || info.RowIndex < 0 || info.RowIndex > _master.Phazes.OutOfSamplePeriods.Count)
-                {
-                    return;
-                }
-                if (info.RowIndex == 0)
-                {
-                    dgv.ContextMenu.Tag = _master.Phazes.InSamplePeriod;
-                }
-                else
-                {
-                    dgv.ContextMenu.Tag = _master.Phazes.OutOfSamplePeriods[info.RowIndex - 1];
-                }
-                    
-                dgv.ContextMenu.Show(dgv, new Point(mouse.X, mouse.Y));
-            }
-        }
-
-        private void DynamicTable_CellClick(object sender, DataGridViewCellEventArgs e)
-        {
-            try
-            {
-                if (e.RowIndex < 0) return;
-
-                if (e.ColumnIndex == 10 && sender is DataGridView gridView)
-                {
-                    // График
-                    Period period = GetPeriod(e.RowIndex);
-                    if (period == null) return;
-                    BotPanel bot = null;
-                    if (_periodCacheTable.ContainsKey(period) && period.Report != null && period.Report.Reports.Count > 0)
-                    {
-                        bot = _periodCacheTable[period];
-                    }
-
-                    if (bot == null || bot.StartProgram != StartProgram.IsTester)
-                    {
-                        OptimazerFazeReport fazeReport = period.Report;
-                        if (fazeReport == null)
-                        {
-                            return;
-                        }
-
-                        OptimizerReport report = fazeReport.Reports.FirstOrDefault();
-
-                        if (report == null)
-                        {
-                            return;
-                        }
-
-                        bot = _master.TestBot(fazeReport, fazeReport.Reports[0].GetParameters(), false);
-                        _periodCacheTable.AddOrUpdate(period, bot, (p, b) => { return bot; });
-                    }
-
-                    if (bot == null)
-                    {
-                        return;
-                    }
-
-                    bot.ShowChartDialog();
-                    return;
-                }
-
-                if (sender is DataGridView dgv)
-                {
-                    bool changed = false;
-
-                    Period prevPeriod = GetPeriod(e.RowIndex - 1);
-                    Period period = GetPeriod(e.RowIndex);
-                    Period nextPeriod = GetPeriod(e.RowIndex + 1);
-
-                    if (period == null)
-                    {
-                        if (e.ColumnIndex == 0)
-                        {
-                            _master.Phazes.OutOfSamplePeriods.Add(new Period());
-                            changed = true;
-                        }
-                    }
-                    else
-                    {
-                        if (e.ColumnIndex == 1)
-                        {
-                            DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.Start ?? prevPeriod?.End ?? (DateTime)TotalPeriod.Start);
-                            dialog.ShowDialog();
-                            if (dialog.IsSaved)
-                            {
-                                period.Start = dialog.Time;
-                                changed = true;
-                            }
-                        }
-
-                        if (e.ColumnIndex == 2)
-                        {
-                            DateTimeSelectionDialog dialog = new DateTimeSelectionDialog(period?.End ?? nextPeriod?.Start ?? period.Start ?? (DateTime)TotalPeriod.End);
-                            dialog.ShowDialog();
-                            if (dialog.IsSaved)
-                            {
-                                period.End = dialog.Time;
-                                changed = true;
-                            }
-                        }
-                    }
-
-                    if (changed)
-                    {
-                        CalculateAndUpdateDynamicTable(dgv);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                SendLogMessage(ex.ToString(), LogMessageType.Error);
-            }
-        }
-
-        Period GetPeriod(int rowIndex)
-        {
-            if (rowIndex == 0)
-            {
-                return _master.Phazes.InSamplePeriod;
-            }
-            else
-            {
-                if (rowIndex - 1 < _master.Phazes.OutOfSamplePeriods.Count && rowIndex > 0)
-                {
-                    return _master.Phazes.OutOfSamplePeriods[rowIndex - 1];
-                }
-                else
-                {
-                    return null;
-                }
-            }
+            SortDynamicResults(_reports);
+            FillDynamicTable(table);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
+            _master.OnPeriodsChanged();
         }
 
         private decimal _strategyFRS;
@@ -1481,7 +1140,7 @@ namespace OsEngine.OsOptimizer
                     pairs.Add(@is, oos);
                 }
             }
-            
+            if (pairs.Count == 0) return;
             // Для каждого бота, который отличается по строковому ключу, генерирующегося из его параметров, составляется словарь из переиодов insample и соответствующим им out of sample
             Dictionary<string, Dictionary<OptimizerReport, OptimizerReport>> allReports = new Dictionary<string, Dictionary<OptimizerReport, OptimizerReport>>();
             Parallel.ForEach(pairs, pair =>
@@ -1783,9 +1442,9 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            if (ChartButtonClickEvent != null)
+            if (FullChartButtonClickEvent != null)
             {
-                ChartButtonClickEvent(fazeReport, report);
+                FullChartButtonClickEvent(fazeReport, report);
             }
         }
 
@@ -2064,14 +1723,25 @@ namespace OsEngine.OsOptimizer
         }
 
         private Chart _chartTotalProfitDynamic;
+        private System.Windows.Controls.ComboBox _comboBoxProfitTypeCustomPhazes;
 
-        public void ActivateTotalProfitChartDynamic(WindowsFormsHost hostTotalProfit)
+        public void ActivateTotalProfitChartDynamic(WindowsFormsHost hostTotalProfit, System.Windows.Controls.ComboBox comboBoxProfitType)
         {
+            _comboBoxProfitTypeCustomPhazes = comboBoxProfitType;
+            _comboBoxProfitTypeCustomPhazes.Items.Add("Absolute");
+            _comboBoxProfitTypeCustomPhazes.Items.Add("Persent");
+            _comboBoxProfitTypeCustomPhazes.SelectedItem = "Absolute";
             _chartTotalProfitDynamic = GetTotalProfitChart();
             hostTotalProfit.Child = _chartTotalProfitDynamic;
-            UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
+
+            _comboBoxProfitTypeCustomPhazes.SelectionChanged += _comboBoxProfitTypeCustomPhazes_SelectionChanged;
         }
 
+        private void _comboBoxProfitTypeCustomPhazes_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
+        }
 
         private void _comboBoxprofitType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
@@ -2116,7 +1786,7 @@ namespace OsEngine.OsOptimizer
             return result;
         }
 
-        private void UpdateTotalProfitChart(DataGridView gridStepsOfOptimization, Chart chartTotalProfit, System.Windows.Controls.ComboBox comboBoxTotalProfitEquityType, int sortBotNumber)
+        private void UpdateTotalProfitChart(DataGridView gridStepsOfOptimization, Chart chartTotalProfit, System.Windows.Controls.ComboBox comboBoxTotalProfitEquityType, int sortBotNumber, bool includeInSample = false)
         {
             if (chartTotalProfit == null)
             {
@@ -2125,7 +1795,7 @@ namespace OsEngine.OsOptimizer
 
             if (gridStepsOfOptimization.InvokeRequired)
             {
-                gridStepsOfOptimization.Invoke(new Action<DataGridView, Chart, System.Windows.Controls.ComboBox, int>(UpdateTotalProfitChart), gridStepsOfOptimization, chartTotalProfit, comboBoxTotalProfitEquityType, sortBotNumber);
+                gridStepsOfOptimization.Invoke(new Action<DataGridView, Chart, System.Windows.Controls.ComboBox, int, bool>(UpdateTotalProfitChart), gridStepsOfOptimization, chartTotalProfit, comboBoxTotalProfitEquityType, sortBotNumber, includeInSample);
                 return;
             }
 
@@ -2151,7 +1821,9 @@ namespace OsEngine.OsOptimizer
                 OptimizerReport inSampleReport = null;
 
                 List<OptimazerFazeReport> outOfSampleReports = new List<OptimazerFazeReport>();
-
+                List<string> periodNames = new List<string>();
+                int isCounter = 0;
+                int oosCounter = 0;
                 for (int i = 0; i < _reports.Count; i++)
                 {
                     OptimazerFazeReport curReport = _reports[i];
@@ -2166,12 +1838,17 @@ namespace OsEngine.OsOptimizer
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.InSample)
                     {
                         inSampleReport = curReport.Reports[sortBotNumber];
+                        isCounter++;
                     }
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample)
                     {
+                        oosCounter++;
+                    }
 
-
+                    if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample || includeInSample)
+                    {
+                        periodNames.Add(curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample ? $"OOS {oosCounter}" : $"IS {isCounter}");
                         string botName = inSampleReport.BotName.Replace(" InSample", "");
                         // reportToPaint = curReport.Reports.Find(rep => rep.BotName.StartsWith(botName));
 
@@ -2268,12 +1945,15 @@ namespace OsEngine.OsOptimizer
                     }
 
                     string toolTip = "";
-
-                    toolTip = "OOS " + (i + 1) + "\n" +
+                    try
+                    {
+                        toolTip = $"{periodNames[i]}" + "\n" +
                          "start: " + outOfSampleReports[i].Faze.TimeStart.ToString(OsLocalization.ShortDateFormatString) + "\n" +
                          "end: " + outOfSampleReports[i].Faze.TimeEnd.ToString(OsLocalization.ShortDateFormatString) + "\n" +
                          "profit: " + profit[i].ToStringWithNoEndZero();
-
+                    }
+                    catch { }
+                    
                     series.Points[series.Points.Count - 1].ToolTip = toolTip;
 
                     if (i + 1 == profitsSumm.Count)
@@ -2303,80 +1983,7 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private void UpdateTotalProfitChartDynamic(Chart chart)
-        {
-            if (chart.InvokeRequired)
-            {
-                chart.Invoke((Action<Chart>)UpdateTotalProfitChartDynamic, chart);
-                return;
-            }
-
-            try
-            {
-                Series series = chart.Series[0];
-                series.Points.ClearFast();
-
-                decimal max = decimal.MinValue;
-                decimal min = decimal.MaxValue;
-                List<decimal> profitsSumm = new List<decimal>();
-
-                List<Period> periods = _master.Phazes.OutOfSamplePeriods.Where(p => p.IsDefined).ToList();
-                for (int i = 0; i < periods.Count; i++)
-                {
-                    if (periods[i].Report == null || periods[i].Report.Reports.Count == 0) continue;
-                    if (i == 0)
-                    {
-                        profitsSumm.Add(periods[i].Report.Reports[0].TotalProfit);
-                    }
-                    else
-                    {
-                        profitsSumm.Add(profitsSumm.Last() + periods[i].Report.Reports[0].TotalProfit);
-                    }
-                }
-                for (int i = 0; i < profitsSumm.Count; i++)
-                {
-                    decimal open = 0;
-                    decimal close = 0;
-                    decimal low = 0;
-                    decimal high = 0;
-
-                    if (i > 0)
-                    {
-                        open = profitsSumm[i - 1];
-                    }
-                    close = profitsSumm[i];
-
-                    low = Math.Min(open, close);
-                    high = Math.Max(open, close);
-                    series.Points.AddXY(i + 1, low, high, open, close);
-                    max = Math.Max(close, max);
-                    max = Math.Max(open, max);
-                    min = Math.Min(close, min);
-                    min = Math.Min(open, min);
-                    Color color = open < close ? Color.DarkGreen : Color.DarkRed;
-                    series.Points[series.Points.Count - 1].Color = color;
-                    series.Points[series.Points.Count - 1].BorderColor = color;
-                    series.Points[series.Points.Count - 1].BackSecondaryColor = color;
-                }
-
-                if (max != decimal.MinValue &&
-                        min != decimal.MaxValue)
-                {
-                    max = Math.Round(max + max * 0.2m, 4);
-                    min = Math.Round(min, 4);
-
-                    if (max > min)
-                    {
-                        chart.ChartAreas[0].AxisY.Maximum = Convert.ToDouble(max);
-                        chart.ChartAreas[0].AxisY.Minimum = Convert.ToDouble(min);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                SendLogMessage(ex.ToString(), LogMessageType.Error);
-            }
-        }
+        
 
         // average profit
 
@@ -3007,19 +2614,18 @@ namespace OsEngine.OsOptimizer
 
         System.Windows.Controls.ComboBox _comboBoxSortResultsDynamicTable;
         System.Windows.Controls.ComboBox _comboBoxSortResultsDynamicTableNum;
-        private SortTypeDynamicTable _sortTypeDynamicTable = SortTypeDynamicTable.TotalProfit;
+        private SortBotsType _sortTypeDynamicTable = SortBotsType.TotalProfit;
         private int _sortTypeDynamicTableNum = 0;
 
         internal void ActivateDynamicTableComboboxSort(System.Windows.Controls.ComboBox comboBoxSortResultsType2, System.Windows.Controls.ComboBox comboBoxSortResultsBotNumPercent2)
         {
             _comboBoxSortResultsDynamicTable = comboBoxSortResultsType2;
-            string[] sortTypes = Enum.GetNames(typeof(SortTypeDynamicTable));
-            foreach (string sortType in sortTypes)
-            {
-                _comboBoxSortResultsDynamicTable.Items.Add(sortType);
-            }
 
-            _comboBoxSortResultsDynamicTable.SelectedItem = SortTypeDynamicTable.TotalProfit.ToString();
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.TotalProfit.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.MaxDrowDawn.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.AverageProfit.ToString());
+
+            _comboBoxSortResultsDynamicTable.SelectedItem = SortBotsType.TotalProfit.ToString();
             _comboBoxSortResultsDynamicTable.SelectionChanged += _comboBoxSortResultsDynamicTable_SelectionChanged;
 
             _comboBoxSortResultsDynamicTableNum = comboBoxSortResultsBotNumPercent2;
@@ -3036,18 +2642,13 @@ namespace OsEngine.OsOptimizer
         {
             try
             {
-                if (Enum.TryParse(_comboBoxSortResultsDynamicTable.SelectedItem.ToString(), out SortTypeDynamicTable sortType))
+                if (Enum.TryParse(_comboBoxSortResultsDynamicTable.SelectedItem.ToString(), out SortBotsType sortType))
                 {
                     _sortTypeDynamicTable = sortType;
                 }
 
                 if (_reports != null)
                 {
-                    _master.Phazes.InSamplePeriod.Report.Reports.Clear();
-                    foreach (Period p in _master.Phazes.OutOfSamplePeriods)
-                    {
-                        p.Report?.Reports?.Clear();
-                    }
                     CalculateAndUpdateDynamicTable(_gridDynamicTable);
                 }
             }
@@ -3062,14 +2663,9 @@ namespace OsEngine.OsOptimizer
             try
             {
                 _sortTypeDynamicTableNum = Convert.ToInt32(_comboBoxSortResultsDynamicTableNum.SelectedItem.ToString());
-
+                _sortTypeDynamicTableNum = Math.Min(_reports.Count - 1, _sortTypeDynamicTableNum);
                 if (_reports != null)
                 {
-                    _master.Phazes.InSamplePeriod.Report.Reports.Clear();
-                    foreach (Period p in _master.Phazes.OutOfSamplePeriods)
-                    {
-                        p.Report?.Reports?.Clear();
-                    }
                     CalculateAndUpdateDynamicTable(_gridDynamicTable);
                 }
             }
@@ -3079,8 +2675,9 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        internal void CalculateDynamicTable()
+        internal void PaintDynamicTable(List<OptimazerFazeReport> reports)
         {
+            _reports = reports;
             if (_reports == null) return;
 
             try
@@ -3093,25 +2690,13 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        internal void ClearCache()
-        {
-            _periodCache.Clear();
-            _periodCacheTable.Clear();
-            _master.Phazes.InSamplePeriod.Report.Reports.Clear();
-            foreach (Period p in _master.Phazes.OutOfSamplePeriods)
-            {
-                p.Report.Reports.Clear();
-            }
-            FillDynamicTable(_gridDynamicTable);
-            UpdateTotalProfitChartDynamic(_chartTotalProfitDynamic);
-        }
-
         /// <summary>
         /// event: new message for log
         /// событие: новое сообщение для лога
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
 
+        public event Action<OptimazerFazeReport, OptimizerReport> FullChartButtonClickEvent;
         public event Action<OptimazerFazeReport, OptimizerReport> ChartButtonClickEvent;
 
     }
