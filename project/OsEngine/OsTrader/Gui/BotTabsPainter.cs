@@ -377,31 +377,20 @@ namespace OsEngine.OsTrader.Gui
                             int namesRowIndex = 1;
                             int namesColumnStart = 2;
                             Dictionary<string, string> errors = new Dictionary<string, string>();
+                            List<string> nameList = new List<string>();
                             for (int i = namesColumnStart; i < usedRange.Columns.Count + 1; i++)
                             {
                                 object botName = ((Excel.Range)usedRange.Cells[namesRowIndex, i]).Value2;
                                 try
                                 {
                                     object volume = ((Excel.Range)usedRange.Cells[volumeRowIndex, i]).Value2;
-                                    BotPanel bot = GetBot($"{botName}");
+                                    string botNameStr = $"{botName}";
+                                    nameList.Add(botNameStr);
+                                    BotPanel bot = GetBot(botNameStr);
                                     if (bot == null) continue;
                                     if (decimal.TryParse($"{volume}".Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalVolume))
                                     {
-                                        IIStrategyParameter parameter = bot.Parameters.Where(p => p.Name.ToLower() == "volume").SingleOrDefault();
-                                        if (parameter == null) throw new Exception("Не найден параметр Volume");
-                                        IIStrategyParameter parameterVolumeType = bot.Parameters.Where(p => p.Name.ToLower() == "volume type").SingleOrDefault();
-                                        if (parameterVolumeType == null) throw new Exception("Не найден параметр Volume type");
-                                        if (parameter is StrategyParameterDecimal p && parameterVolumeType is StrategyParameterString pType)
-                                        {
-                                            string percent = pType.ValuesString.Where(str => str.Contains("%") || str.ToLower().Contains("percent")).FirstOrDefault();
-                                            if (string.IsNullOrEmpty(percent)) throw new Exception("Не найдена опция процентов у типа объёма");
-                                            pType.ValueString = percent;
-                                            p.ValueDecimal = decimalVolume;
-                                        }
-                                        else
-                                        {
-                                            throw new Exception("Типы параметров не совпадают");
-                                        }
+                                        bot.SetVolume(decimalVolume, VolumeType.Percent);
                                     }
                                     else
                                     {
@@ -410,7 +399,27 @@ namespace OsEngine.OsTrader.Gui
                                 }
                                 catch (Exception ex)
                                 {
-                                    errors.Add($"{botName}", ex.Message);
+                                    errors.Add($"{botName}", $"{botName}: {ex.Message}");
+                                }
+                            }
+
+                            List<BotPanel> zeroVolumes = GetBots(b => !nameList.Contains(b.NameStrategyUniq));
+                            foreach (BotPanel bot in zeroVolumes)
+                            {
+                                try
+                                {
+                                    bot.SetVolume(0, VolumeType.Percent);
+                                }
+                                catch (Exception ex)
+                                {
+                                    if (errors.ContainsKey($"{bot.FileName}"))
+                                    {
+                                        errors[$"{bot.FileName}"] += $"\r\n{bot.FileName}: {ex.Message}";
+                                    }
+                                    else
+                                    {
+                                        errors.Add($"{bot.FileName}", $"{bot.FileName}: {ex.Message}");
+                                    }
                                 }
                             }
 
@@ -423,6 +432,12 @@ namespace OsEngine.OsTrader.Gui
                             if (errorBuilder.Length > 0)
                             {
                                 throw new Exception(errorBuilder.ToString());
+                            }
+
+                            List<BotPanel> GetBots(Func<BotPanel, bool> predicate)
+                            {
+                                if (predicate == null) return null;
+                                return _master.PanelsArray.FindAll(p => predicate(p));
                             }
 
                             BotPanel GetBot(string name)

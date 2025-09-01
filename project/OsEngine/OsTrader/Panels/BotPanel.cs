@@ -2224,6 +2224,35 @@ position => position.State != PositionStateType.OpeningFail
         /// </summary>
         public event Action NewTabCreateEvent;
 
+        internal void SetVolume(decimal volume, VolumeType type)
+        {
+            IIStrategyParameter parameter = Parameters.Where(p => p.Name.ToLower() == "volume").SingleOrDefault();
+            if (parameter == null) throw new Exception("Не найден параметр Volume");
+            IIStrategyParameter parameterVolumeType = Parameters.Where(p => p.Name.ToLower() == "volume type").SingleOrDefault();
+            if (parameterVolumeType == null) throw new Exception("Не найден параметр Volume type");
+            if (parameter is StrategyParameterDecimal p && parameterVolumeType is StrategyParameterString pType)
+            {
+                string percent = pType.ValuesString.Where(str => str.Contains("%") || str.ToLower().Contains("percent")).FirstOrDefault();
+                string number = pType.ValuesString.Where(str => str.ToLower().Contains("number")).FirstOrDefault();
+
+                if (type == VolumeType.Percent)
+                {
+                    if (string.IsNullOrEmpty(percent)) throw new Exception("Не найдена опция процентов у типа объёма");
+                    pType.ValueString = percent;
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(number)) throw new Exception("Не найдена опция количества контрактов у типа объёма");
+                    pType.ValueString = number;
+                }
+                    
+                p.ValueDecimal = volume;
+            }
+            else
+            {
+                throw new Exception("Типы параметров не совпадают");
+            }
+        }
     }
 
     /// <summary>
