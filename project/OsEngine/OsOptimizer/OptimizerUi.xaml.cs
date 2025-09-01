@@ -5,24 +5,25 @@
 
 using OsEngine.Entity;
 using OsEngine.Language;
+using OsEngine.Layout;
+using OsEngine.Logging;
 using OsEngine.Market.Servers.Tester;
+using OsEngine.OsOptimizer.OptEntity;
 using OsEngine.OsTrader.Panels;
+using OsEngine.Robots;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using OsEngine.Logging;
-using OsEngine.Robots;
+using System.Windows.Markup;
 using MessageBox = System.Windows.MessageBox;
 using ProgressBar = System.Windows.Controls.ProgressBar;
-using OsEngine.OsOptimizer.OptEntity;
-using System.Threading;
-using OsEngine.Layout;
-using System.IO;
-using System.Windows.Markup;
-using System.Globalization;
 
 namespace OsEngine.OsOptimizer
 {
@@ -3267,10 +3268,19 @@ namespace OsEngine.OsOptimizer
             {
                 return;
             }
+            string paramsStr = _gridResults.Rows[e.RowIndex].Cells[1].Value.ToString();
+            OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == paramsStr).SingleOrDefault();
+            if (report != null)
+            {
+                BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex].GetParameters(), _captureData);
+                if (bot == null)
+                {
+                    return;
+                }
 
-            bot.ShowChartDialog();
+                bot.ShowChartDialog();
+            }
         }
 
         private void ShowParamsDialog(DataGridViewCellMouseEventArgs e)
@@ -3297,8 +3307,13 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            OptimizerBotParametersSimpleUi ui = new OptimizerBotParametersSimpleUi(fazeReport.Reports[e.RowIndex], fazeReport, _master.StrategyName);
-            ui.Show();
+            string paramsStr = _gridResults.Rows[e.RowIndex].Cells[1].Value.ToString();
+            OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == paramsStr).SingleOrDefault();
+            if (report != null)
+            {
+                OptimizerBotParametersSimpleUi ui = new OptimizerBotParametersSimpleUi(report, fazeReport, _master.StrategyName);
+                ui.Show();
+            }
         }
 
         private void ShowBotFullChartDialog(DataGridViewCellMouseEventArgs e)
@@ -3328,14 +3343,19 @@ namespace OsEngine.OsOptimizer
             fazeReport.Faze.TimeStart = _master.TimeStart;
             fazeReport.Faze.TimeEnd = _master.TimeEnd;
 
-            BotPanel bot = _master.TestBot(fazeReport, fazeReport.Reports[e.RowIndex].GetParameters(), _captureData);
-
-            if (bot == null)
+            string paramsStr = _gridResults.Rows[e.RowIndex].Cells[1].Value.ToString();
+            OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == paramsStr).SingleOrDefault();
+            if (report != null)
             {
-                return;
-            }
+                BotPanel bot = _master.TestBot(fazeReport, report.GetParameters(), _captureData);
 
-            bot.ShowChartDialog();
+                if (bot == null)
+                {
+                    return;
+                }
+
+                bot.ShowChartDialog();
+            }
         }
 
         private void ShowBotFullChartDialog(OptimazerFazeReport fazeReport, OptimizerReport report)

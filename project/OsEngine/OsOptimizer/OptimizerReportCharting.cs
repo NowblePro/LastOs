@@ -266,7 +266,9 @@ namespace OsEngine.OsOptimizer
             Parallel.For(1, reports.Count, i => 
             {
                 OptimazerFazeReport faze = reports[i];
-                var indexes = faze.Reports.Select(r => new { Report = r, Index = first.Reports.IndexOf(first.Reports.Where(f => f.GetParamsToDataTable() == r.GetParamsToDataTable()).First()) });
+
+                IEnumerable<OptimizerReport> reportsFiltered = faze.Reports.Where(r => first.Reports.Any(f => f.GetParamsToDataTable() == r.GetParamsToDataTable()));
+                var indexes = reportsFiltered.Select(r => new { Report = r, Index = first.Reports.IndexOf(first.Reports.Where(f => f.GetParamsToDataTable() == r.GetParamsToDataTable()).First()) });
                 var newList = indexes.ToList();
                 newList.Sort((rep1, rep2) => rep1.Index.CompareTo(rep2.Index));
                 faze.Reports = newList.Select(r => r.Report).ToList();

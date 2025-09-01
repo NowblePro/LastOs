@@ -123,12 +123,20 @@ namespace OsEngine.OsOptimizer
             ReportsToFazes = new List<OptimazerFazeReport>();
 
             int countBots = BotCountOneFaze(_parameters,_parametersOn);
-
-            _countAllServersMax = countBots * (_master.IterationCount * 2);
-
-            if(_master.LastInSample)
+            if (_master.CustomFazes)
             {
-                _countAllServersMax = _countAllServersMax - countBots;
+                // Количество периодов OutOfSample + 1 InSample
+                int periodsCount = _master.Phazes.OutOfSamplePeriods.Count(p => p.IsDefined) + 1;
+                _countAllServersMax = countBots * periodsCount;
+            }
+            else
+            {
+                _countAllServersMax = countBots * (_master.IterationCount * 2);
+
+                if (_master.LastInSample)
+                {
+                    _countAllServersMax = _countAllServersMax - countBots;
+                }
             }
 
             SendLogMessage(OsLocalization.Optimizer.Message4 + _countAllServersMax, LogMessageType.System);
@@ -156,20 +164,16 @@ namespace OsEngine.OsOptimizer
                 }
                 else
                 {
-
                     SendLogMessage("ReportsCount" + ReportsToFazes[ReportsToFazes.Count - 1].Reports.Count.ToString(), LogMessageType.System);
-
-                    OptimazerFazeReport reportFiltred = new OptimazerFazeReport();
-                    EndOfFazeFiltration(ReportsToFazes[ReportsToFazes.Count - 1], reportFiltred);
 
                     OptimazerFazeReport report = new OptimazerFazeReport();
                     report.Faze = _master.Fazes[i];
 
                     ReportsToFazes.Add(report);
 
-                    StartAsuncBotFactoryOutOfSample(reportFiltred, _master.StrategyName, _master.IsScript, "OutOfSample");
+                    StartAsuncBotFactoryOutOfSample(ReportsToFazes[ReportsToFazes.Count - 2], _master.StrategyName, _master.IsScript, "OutOfSample");
 
-                    StartOptimazeFazeOutOfSample(report, reportFiltred);
+                    StartOptimazeFazeOutOfSample(report, ReportsToFazes[ReportsToFazes.Count - 2]);
                 }
             }
 
@@ -676,7 +680,7 @@ namespace OsEngine.OsOptimizer
         /// filtering results at the end of the current phase
         /// фильтрация результатов в конце текущей фазы
         /// </summary>
-        private void EndOfFazeFiltration(OptimazerFazeReport bots, OptimazerFazeReport botsToOutOfSample)
+        private void EndOfFazeFiltration(OptimazerFazeReport bots)
         {
             try
             {
@@ -686,26 +690,27 @@ namespace OsEngine.OsOptimizer
                     return;
                 }
 
+                OptimazerFazeReport botsFiltered = new OptimazerFazeReport();
+
                 int startCount = bots.Reports.Count;
 
                 for (int i = 0; i < bots.Reports.Count; i++)
                 {
-                    if (_master.IsAcceptedByFilter(bots.Reports[i]))
-                    {
-                        botsToOutOfSample.Reports.Add(bots.Reports[i]);
-                    }
+                    botsFiltered.Reports.Add(bots.Reports[i]);
                 }
 
-                if (botsToOutOfSample.Reports.Count == 0)
+                if (botsFiltered.Reports.Count == 0)
                 {
                     /* SendLogMessage(OsLocalization.Optimizer.Message8, LogMessageType.System);
                      MessageBox.Show(OsLocalization.Optimizer.Message8);
                      NeadToMoveUiToEvent(NeadToMoveUiTo.TabsAndTimeFrames);*/
                 }
-                else if (startCount != botsToOutOfSample.Reports.Count)
+                else if (startCount != botsFiltered.Reports.Count)
                 {
-                    SendLogMessage(OsLocalization.Optimizer.Message9 + (startCount - botsToOutOfSample.Reports.Count), LogMessageType.System);
+                    SendLogMessage(OsLocalization.Optimizer.Message9 + (startCount - botsFiltered.Reports.Count), LogMessageType.System);
                 }
+
+                bots.Reports = botsFiltered.Reports;
             }
             catch(Exception ex)
             {
