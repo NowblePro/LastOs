@@ -161,7 +161,6 @@ namespace OsEngine.OsOptimizer
 
                     StartAsuncBotFactoryInSample(countBots, _master.StrategyName, _master.IsScript, "InSample");
                     StartOptimazeFazeInSample(_master.Fazes[i], report, _parameters, _parametersOn);
-                    EndOfFazeFiltration(ReportsToFazes[ReportsToFazes.Count - 1]);
                 }
                 else
                 {
@@ -697,10 +696,7 @@ namespace OsEngine.OsOptimizer
 
                 for (int i = 0; i < bots.Reports.Count; i++)
                 {
-                    if (_master.IsAcceptedByFilter(bots.Reports[i]))
-                    {
-                        botsFiltered.Reports.Add(bots.Reports[i]);
-                    }
+                    botsFiltered.Reports.Add(bots.Reports[i]);
                 }
 
                 if (botsFiltered.Reports.Count == 0)
