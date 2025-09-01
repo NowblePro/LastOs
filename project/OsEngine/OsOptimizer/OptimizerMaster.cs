@@ -82,11 +82,23 @@ namespace OsEngine.OsOptimizer
                 return 0;
             }
 
-            int value = _optimizerExecutor.BotCountOneFaze(_parameters, _paramOn) * IterationCount * 2;
+            int value = 0;
+            int countBots = _optimizerExecutor.BotCountOneFaze(_parameters, _paramOn);
 
-            if(LastInSample)
+            if (CustomFazes)
             {
-                value = value - _optimizerExecutor.BotCountOneFaze(_parameters, _paramOn);
+                // Количество периодов OutOfSample + 1 InSample
+                int periodsCount = Phazes.OutOfSamplePeriods.Count(p => p.IsDefined) + 1;
+                value = countBots * periodsCount;
+            }
+            else
+            {
+                value = countBots * IterationCount * 2;
+
+                if (LastInSample)
+                {
+                    value -= countBots;
+                }
             }
 
             return value;
