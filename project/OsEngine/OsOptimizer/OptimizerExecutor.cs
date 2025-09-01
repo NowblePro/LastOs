@@ -123,12 +123,20 @@ namespace OsEngine.OsOptimizer
             ReportsToFazes = new List<OptimazerFazeReport>();
 
             int countBots = BotCountOneFaze(_parameters,_parametersOn);
-
-            _countAllServersMax = countBots * (_master.IterationCount * 2);
-
-            if(_master.LastInSample)
+            if (_master.CustomFazes)
             {
-                _countAllServersMax = _countAllServersMax - countBots;
+                // Количество периодов OutOfSample + 1 InSample
+                int periodsCount = _master.Phazes.OutOfSamplePeriods.Count(p => p.IsDefined) + 1;
+                _countAllServersMax = countBots * periodsCount;
+            }
+            else
+            {
+                _countAllServersMax = countBots * (_master.IterationCount * 2);
+
+                if (_master.LastInSample)
+                {
+                    _countAllServersMax = _countAllServersMax - countBots;
+                }
             }
 
             SendLogMessage(OsLocalization.Optimizer.Message4 + _countAllServersMax, LogMessageType.System);
