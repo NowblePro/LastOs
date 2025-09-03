@@ -85,6 +85,11 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        public void UpdateDynamicTable()
+        {
+            UpdateDynamicTable(_dgv);
+        }
+
         private void UpdateDynamicTable(DataGridView table)
         {
             if (table.InvokeRequired)

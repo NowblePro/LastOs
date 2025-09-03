@@ -8,6 +8,7 @@ using OsEngine.Language;
 using OsEngine.Layout;
 using OsEngine.Logging;
 using OsEngine.Market.Servers.Tester;
+using OsEngine.OsOptimizer.Gui;
 using OsEngine.OsOptimizer.OptEntity;
 using OsEngine.OsTrader.Panels;
 using OsEngine.Robots;
@@ -3507,6 +3508,21 @@ namespace OsEngine.OsOptimizer
         }
 
         OptimizerCustomPhazesEditor _customPhazeEditor;
+
+        private void ButtonSave_Click(object sender, RoutedEventArgs e)
+        {
+            PhazePresetSaver form = new PhazePresetSaver();
+            form.Init(_master);
+            form.ShowDialog();
+        }
+
+        private void ButtonLoad_Click(object sender, RoutedEventArgs e)
+        {
+            PhazePresetLoader form = new PhazePresetLoader();
+            form.Init(_master);
+            form.ShowDialog();
+            _customPhazeEditor.UpdateDynamicTable();
+        }
     }
 
     /// <summary>

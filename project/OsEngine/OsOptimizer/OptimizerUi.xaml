@@ -73,7 +73,11 @@
                                 </Grid>
                             </TabItem>
                             <TabItem Name="TabItemFazes2" Header="Ручная настройка" FontSize="14" Width="130">
-                                <WindowsFormsHost x:Name="HostCustomPhazes"  Foreground="Black" Height="431"/>
+                                <Grid>
+                                    <Button Name="ButtonPhazePresetSave" Content="Сохранить" Margin="0,0,10,10" VerticalAlignment="Top" HorizontalAlignment="Left" Width="142" Click="ButtonSave_Click"/>
+                                    <Button Name="ButtonPhazePresetImport" Content="Загрузить" Margin="0,0,10,10" VerticalAlignment="Top" HorizontalAlignment="Right" Width="142" Click="ButtonLoad_Click"/>
+                                    <WindowsFormsHost x:Name="HostCustomPhazes"  Foreground="Black" Margin="0,79,0,41"/>
+                                </Grid>
                             </TabItem>
                         </TabControl>
                         <Button Name="ButtonCreateOptimizeFazes" Content="Create optimization scheme" HorizontalAlignment="Right" Margin="810,34,0,0" VerticalAlignment="Top" Width="256" Height="42" Click="ButtonCreateOptimizeFazes_Click"/>
