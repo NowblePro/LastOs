@@ -3562,6 +3562,11 @@ namespace OsEngine.OsOptimizer
                 }
             }
         }
+
+        private void cbGroupPhazePeriods_Checked(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.IsPhazeGroupingByPeriods = cbGroupPhazePeriods.IsChecked.Value;
+        }
     }
 
     /// <summary>

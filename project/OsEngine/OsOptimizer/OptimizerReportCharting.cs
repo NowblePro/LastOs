@@ -894,11 +894,11 @@ namespace OsEngine.OsOptimizer
         }
 
 
-        private void FillDynamicTable(DataGridView table)
+        private void FillDynamicTable(DataGridView table, bool groupPeriods)
         {
             if (table.InvokeRequired)
             {
-                table.Invoke(new Action<DataGridView>(FillDynamicTable), table);
+                table.Invoke(new Action<DataGridView, bool>(FillDynamicTable), table, groupPeriods);
                 return;
             }
             table.Rows.Clear();
@@ -911,36 +911,55 @@ namespace OsEngine.OsOptimizer
             {
                 parameters = _reports[0].Reports[_sortTypeDynamicTableNum].GetParamsToDataTable();
             }
-            
+
+            if (_master.Phazes.InSamplePeriod.IsDefined)
+            {
+                GetFazeFromPeriod(_master.Phazes.InSamplePeriod);
+            }
             FillPeriod(_master.Phazes.InSamplePeriod, "In Sample");
 
             // Заполнение Out Of Sample периодов
-            for (int i = 0; i < _master.Phazes.OutOfSamplePeriods.Count; i++)
+
+            if (groupPeriods)
             {
-                FillPeriod(_master.Phazes.OutOfSamplePeriods[i], "Out Of Sample");
-            }
-
-            List<Period> definedPeriods = periods.Where(p => p.IsDefined).ToList();
-
-            foreach (Period period in definedPeriods)
-            {
-                GetFazeFromPeriod(definedPeriods);
-                Change(period);
-
-                void Change(Period p)
+                for (int i = 0; i < _master.Phazes.OutOfSamplePeriods.Count; i++)
                 {
-                    if (p == _master.Phazes.InSamplePeriod)
+                    Period period = _master.Phazes.OutOfSamplePeriods[i];
+                    if (period.IsDefined)
                     {
-                        ChangePeriod(p, 0);
+                        GetFazeFromPeriod(period);
                     }
-                    else
+                }
+                // Объединить периоды по названиям
+                IEnumerable<IGrouping<string, Period>> groups = _master.Phazes.OutOfSamplePeriods.Where(p => !string.IsNullOrEmpty(p.Name)).GroupBy(p => p.Name);
+                IEnumerable<Period> nonamePeriods = _master.Phazes.OutOfSamplePeriods.Where(p => string.IsNullOrEmpty(p.Name));
+                List<Period> grouped = new List<Period>();
+                foreach (IGrouping<string, Period> group in groups)
+                {
+                    Period period = new Period() { Name = group.Key, Start = group.Min(p => p.Start.Value), End = group.Max(p => p.End.Value )};
+                    period.Report = new OptimazerFazeReport();
+                    period.Report.Reports.Add(new OptimizerReport());
+                    period.Report.Reports[0].TotalProfit = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].TotalProfit);
+                    period.Report.Reports[0].PositionsCount = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].PositionsCount);
+                    period.Report.Reports[0].MaxDrowDawn = group.Min(p => p.Report.Reports[_sortTypeDynamicTableNum].MaxDrowDawn);
+                    period.Report.Reports[0].AverageProfit = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].AverageProfit) / group.Count();
+                    FillPeriod(period, "Out Of Sample", true);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < _master.Phazes.OutOfSamplePeriods.Count; i++)
+                {
+                    Period period = _master.Phazes.OutOfSamplePeriods[i];
+                    if (period.IsDefined)
                     {
-                        ChangePeriod(p, _master.Phazes.OutOfSamplePeriods.IndexOf(p) + 1);
+                        GetFazeFromPeriod(period);
                     }
+                    FillPeriod(period, "Out Of Sample");
                 }
             }
 
-            string GetCellValue(Period period, int columnIndex)
+            string GetCellValue(Period period, int columnIndex, bool firstReport = false)
             {
                 string cellVAlue = string.Empty;
                 if (period.Report != null && period.Report.Reports.Count > 0)
@@ -951,28 +970,28 @@ namespace OsEngine.OsOptimizer
                         if (columnIndex == 5)
                         {
                             // Profit
-                            cellVAlue = $"{Math.Round(faze.Reports[_sortTypeDynamicTableNum].TotalProfit, 3)}";
+                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].TotalProfit, 3)}";
                         }
                         if (columnIndex == 6)
                         {
                             // Average Profit
-                            cellVAlue = $"{Math.Round(faze.Reports[_sortTypeDynamicTableNum].AverageProfit, 3)}";
+                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].AverageProfit, 3)}";
                         }
                         if (columnIndex == 7)
                         {
                             // Positions count
-                            cellVAlue = $"{faze.Reports[_sortTypeDynamicTableNum].PositionsCount}";
+                            cellVAlue = $"{faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].PositionsCount}";
                         }
                         if (columnIndex == 8)
                         {
                             // Sharp Ratio
-                            cellVAlue = $"{Math.Round(faze.Reports[_sortTypeDynamicTableNum].SharpRatio, 3)}";
+                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].SharpRatio, 3)}";
                         }
 
                         if (columnIndex == 9)
                         {
                             // Max DrawDown
-                            cellVAlue = $"{Math.Round(faze.Reports[_sortTypeDynamicTableNum].MaxDrowDawn, 3)}";
+                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].MaxDrowDawn, 3)}";
                         }
 
                         if (columnIndex == 10)
@@ -991,28 +1010,7 @@ namespace OsEngine.OsOptimizer
                 return cellVAlue;
             }
 
-            void ChangePeriod(Period period, int rowIndex)
-            {
-                if (table.InvokeRequired)
-                {
-                    table.Invoke((Action<Period, int>)ChangePeriod, period, rowIndex);
-                    return;
-                }
-                lock (table)
-                {
-                    DataGridViewRow row = table.Rows[rowIndex];
-                    for (int i = 5; i < table.Columns.Count; i++)
-                    {
-                        var cell = row.Cells[i];
-                        if (period.IsDefined)
-                        {
-                            cell.Value = GetCellValue(period, i);
-                        }
-                    }
-                }
-            }
-
-            void FillPeriod(Period period, string periodName)
+            void FillPeriod(Period period, string periodName, bool firstReport = false)
             {
                 lock (table)
                 {
@@ -1057,7 +1055,7 @@ namespace OsEngine.OsOptimizer
                                 if (i == 3)
                                 {
                                     // Название периода (опционально)
-                                    DataGridFactory.AddTextBoxCell(row, period.Name, false);
+                                    DataGridFactory.AddTextBoxCell(row, period.Name, true);
                                 }
                                 else if (i == 4)
                                 {
@@ -1074,7 +1072,13 @@ namespace OsEngine.OsOptimizer
                                 }
                                 else
                                 {
-                                    DataGridFactory.AddTextBoxCell(row, GetCellValue(period, i), true);
+                                    DataGridFactory.AddTextBoxCell(row, GetCellValue(period, i, firstReport), true);
+                                }
+                                string value = GetCellValue(period, i, firstReport);
+                                if (!string.IsNullOrEmpty(value))
+                                {
+                                    DataGridViewCell cell = row.Cells.Cast<DataGridViewCell>().Last();
+                                    cell.Value = value;
                                 }
                             }
                             else
@@ -1088,10 +1092,22 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        private bool isPhazeGroupingByPeriods;
+        public bool IsPhazeGroupingByPeriods
+        {
+            get => isPhazeGroupingByPeriods;
+            set
+            {
+                if (value == isPhazeGroupingByPeriods) return;
+                isPhazeGroupingByPeriods = value;
+                FillDynamicTable(_gridDynamicTable, value);
+            }
+        }
+
         private void CalculateAndUpdateDynamicTable(DataGridView table)
         {
             SortDynamicResults(_reports);
-            FillDynamicTable(table);
+            FillDynamicTable(table, IsPhazeGroupingByPeriods);
             UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
             _master.OnPeriodsChanged();
         }

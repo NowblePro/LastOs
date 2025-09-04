@@ -169,6 +169,7 @@
                                     <ComboBox Name="ComboBoxSortResultsType2" HorizontalAlignment="Left" Margin="220,10,0,0" VerticalAlignment="Top" Width="214" Height="22"/>
                                     <Label Name="LabelSortBy2" Content="Sort by" HorizontalAlignment="Left" Margin="28,10,0,0" VerticalAlignment="Top"/>
                                     <ComboBox x:Name="ComboBoxSortResultsBotNumPercent2" HorizontalAlignment="Left" Margin="150,10,0,0" VerticalAlignment="Top" Width="67" Height="22"/>
+                                    <CheckBox x:Name="cbGroupPhazePeriods" Content="Группировать по названиям периодов" HorizontalAlignment="Left" Margin="450,10,0,0" VerticalAlignment="Top" Checked="cbGroupPhazePeriods_Checked" Unchecked="cbGroupPhazePeriods_Checked"/>
                                 </Grid>
                             </TabItem>
                         </TabControl>
