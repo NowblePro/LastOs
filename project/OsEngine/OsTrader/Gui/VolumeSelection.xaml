@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OsEngine.OsTrader.Gui"
         mc:Ignorable="d"
-        Title="Volume Selection" Height="80" Width="300" Style="{StaticResource WindowStyleCanResize}">
+        Title="Загрузка объёмов" Height="80" Width="300" Style="{StaticResource WindowStyleCanResize}">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="200*"/>

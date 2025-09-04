@@ -2,6 +2,7 @@
 using OsEngine.OsOptimizer;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,11 +32,38 @@ namespace OsEngine.Entity
         {
             return Start?.GetHashCode() ?? 0 + End?.GetHashCode() ?? 0;
         }
+
+        public Period GetClone()
+        {
+            Period period = new Period();
+            period.Name = Name;
+            period.Start = Start;
+            period.End = End;
+            return period;
+        }
     }
 
     public class Phazes
     {
+        public string Name { get; set; }
         public Period InSamplePeriod { get; set; } = new Period();
         public List<Period> OutOfSamplePeriods = new List<Period>();
+
+        public Phazes GetClone()
+        {
+            Phazes result = new Phazes();
+            result.Name = Name;
+            result.InSamplePeriod = InSamplePeriod?.GetClone();
+            foreach (Period period in OutOfSamplePeriods)
+            {
+                result.OutOfSamplePeriods.Add(period.GetClone());
+            }
+            return result;
+        }
+    }
+
+    public class PhazePresets : ObservableCollection<Phazes>
+    {
+        
     }
 }

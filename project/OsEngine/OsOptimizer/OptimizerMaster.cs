@@ -108,6 +108,7 @@ namespace OsEngine.OsOptimizer
         /// Периоды для четвёртой вкладки с динамическим выбором периодов
         /// </summary>
         internal Phazes Phazes { get; set; } = new Phazes();
+        internal PhazePresets PhazePresets { get; set; } = new PhazePresets();
 
         public void OnPeriodsChanged()
         {
@@ -163,6 +164,12 @@ namespace OsEngine.OsOptimizer
                     using (StreamWriter writer = new StreamWriter(@"Engine\OptimizerSettings.json", false))
                     {
                         string str = JsonConvert.SerializeObject(Phazes, Formatting.Indented);
+                        writer.WriteLine(str);
+                    }
+
+                    using (StreamWriter writer = new StreamWriter(@"Engine\OptimizerPhazePresets.json", false))
+                    {
+                        string str = JsonConvert.SerializeObject(PhazePresets, Formatting.Indented);
                         writer.WriteLine(str);
                     }
                 }
@@ -238,6 +245,19 @@ namespace OsEngine.OsOptimizer
                         {
                             string str = reader.ReadToEnd();
                             Phazes = JsonConvert.DeserializeObject(str, typeof(Phazes)) as Phazes;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (File.Exists(@"Engine\OptimizerPhazePresets.json"))
+                {
+                    try
+                    {
+                        using (StreamReader reader = new StreamReader(@"Engine\OptimizerPhazePresets.json"))
+                        {
+                            string str = reader.ReadToEnd();
+                            PhazePresets = JsonConvert.DeserializeObject(str, typeof(PhazePresets)) as PhazePresets;
                         }
                     }
                     catch { }

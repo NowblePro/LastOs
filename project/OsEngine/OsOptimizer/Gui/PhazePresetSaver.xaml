@@ -1,0 +1,14 @@
+﻿<Window x:Class="OsEngine.OsOptimizer.Gui.PhazePresetSaver"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:OsEngine.OsOptimizer.Gui"
+        mc:Ignorable="d"
+        Title="Сохранение фаз" Height="121" Width="259" Style="{StaticResource WindowStyleCanResize}" ResizeMode="NoResize">
+    <Grid>
+        <Label HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,10,0,0">Название:</Label>
+        <TextBox Name="TextBoxPhazePresetName" HorizontalAlignment="Left" Height="23" Margin="100,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="141"/>
+        <Button Name="ButtonPhazePresetSave" Content="Сохранить" Margin="0,52,0,0" VerticalAlignment="Top" HorizontalAlignment="Center" Width="142" Click="ButtonPhazePresetSave_Click"/>
+    </Grid>
+</Window>

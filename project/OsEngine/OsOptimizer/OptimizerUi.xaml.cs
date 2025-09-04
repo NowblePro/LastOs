@@ -8,6 +8,7 @@ using OsEngine.Language;
 using OsEngine.Layout;
 using OsEngine.Logging;
 using OsEngine.Market.Servers.Tester;
+using OsEngine.OsOptimizer.Gui;
 using OsEngine.OsOptimizer.OptEntity;
 using OsEngine.OsTrader.Panels;
 using OsEngine.Robots;
@@ -228,12 +229,14 @@ namespace OsEngine.OsOptimizer
                                             _master.TRWeight,
                                             _master.GPRWeight);
             _customPhazeEditor = new OptimizerCustomPhazesEditor(HostCustomPhazes, _master);
+            UpdatePhazePresetsCombobox();
 
             this.Closing += Ui_Closing;
             this.Activate();
             this.Focus();
 
             GlobalGUILayout.Listen(this, "optimizerUi");
+
 
             Task.Run(new Action(StrategyLoader));
         }
@@ -3507,6 +3510,58 @@ namespace OsEngine.OsOptimizer
         }
 
         OptimizerCustomPhazesEditor _customPhazeEditor;
+
+        private void ButtonSave_Click(object sender, RoutedEventArgs e)
+        {
+            PhazePresetSaver form = new PhazePresetSaver();
+            form.Init(_master);
+            form.ShowDialog();
+            UpdatePhazePresetsCombobox(form.SavedName);
+        }
+
+        private void ComboBoxPhazePresets_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            string name = ComboBoxPhazePresets.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(name)) return;
+            Phazes phazes = _master.PhazePresets.Where(x => x.Name == name).FirstOrDefault();
+            if (phazes != null)
+            {
+                _master.Phazes = phazes.GetClone();
+                _customPhazeEditor.UpdateDynamicTable();
+            }
+        }
+
+        private void UpdatePhazePresetsCombobox(string name = "")
+        {
+            ComboBoxPhazePresets.Items.Clear();
+            foreach (Phazes phazes in _master.PhazePresets)
+            {
+                ComboBoxPhazePresets.Items.Add(phazes.Name);
+            }
+
+            if (ComboBoxPhazePresets.Items.Count > 0)
+            {
+                if (!string.IsNullOrEmpty(name))
+                {
+                    try
+                    {
+                        ComboBoxPhazePresets.SelectedItem = name;
+                    }
+                    catch { }
+                }
+                else if (ComboBoxPhazePresets.SelectedItem == null)
+                {
+                    if (!string.IsNullOrEmpty(_master.Phazes.Name))
+                    {
+                        string item = ComboBoxPhazePresets.Items.Cast<string>().Where(i => i == _master.Phazes.Name).FirstOrDefault();
+                        if (!string.IsNullOrEmpty(item))
+                        {
+                            ComboBoxPhazePresets.SelectedItem = item;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>
