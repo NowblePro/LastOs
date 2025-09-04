@@ -36,6 +36,8 @@ namespace OsEngine.OsOptimizer.Gui
             UpdateName(_phazes.Name);
         }
 
+        public string SavedName { get; private set; }
+
         private void UpdateName(string name)
         {
             if (!TextBoxPhazePresetName.Dispatcher.CheckAccess())
@@ -73,7 +75,7 @@ namespace OsEngine.OsOptimizer.Gui
                 _master.PhazePresets.Remove(phazes);
                 phazes = _master.Phazes.GetClone();
             }
-
+            SavedName = phazes.Name;
             _master.PhazePresets.Add(phazes);
             _master.OnPeriodsChanged();
             DialogResult = true;

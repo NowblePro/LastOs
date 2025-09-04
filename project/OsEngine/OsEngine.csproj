@@ -1058,9 +1058,6 @@
     </Compile>
     <Compile Include="OsMiner\Patterns\PatternTime.cs" />
     <Compile Include="OsMiner\Patterns\PatternVolume.cs" />
-    <Compile Include="OsOptimizer\Gui\PhazePresetLoader.xaml.cs">
-      <DependentUpon>PhazePresetLoader.xaml</DependentUpon>
-    </Compile>
     <Compile Include="OsOptimizer\Gui\PhazePresetSaver.xaml.cs">
       <DependentUpon>PhazePresetSaver.xaml</DependentUpon>
     </Compile>
@@ -1824,10 +1821,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="OsData\OsDataSetUi.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="OsOptimizer\Gui\PhazePresetLoader.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -75,8 +75,9 @@
                             <TabItem Name="TabItemFazes2" Header="Ручная настройка" FontSize="14" Width="130">
                                 <Grid>
                                     <Button Name="ButtonPhazePresetSave" Content="Сохранить" Margin="0,0,10,10" VerticalAlignment="Top" HorizontalAlignment="Left" Width="142" Click="ButtonSave_Click"/>
-                                    <Button Name="ButtonPhazePresetImport" Content="Загрузить" Margin="0,0,10,10" VerticalAlignment="Top" HorizontalAlignment="Right" Width="142" Click="ButtonLoad_Click"/>
-                                    <WindowsFormsHost x:Name="HostCustomPhazes"  Foreground="Black" Margin="0,79,0,41"/>
+                                    <Label Content="Пресет:" HorizontalAlignment="Left" Margin="221,3,0,0" VerticalAlignment="Top"/>
+                                    <ComboBox Name="ComboBoxPhazePresets" HorizontalAlignment="Left" Margin="279,3,0,0" VerticalAlignment="Top" Width="140" Height="22" SelectionChanged="ComboBoxPhazePresets_SelectionChanged"/>
+                                    <WindowsFormsHost x:Name="HostCustomPhazes"  Foreground="Black" Margin="0,41,0,41"/>
                                 </Grid>
                             </TabItem>
                         </TabControl>

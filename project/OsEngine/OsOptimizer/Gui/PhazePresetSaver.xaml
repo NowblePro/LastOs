@@ -5,10 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OsEngine.OsOptimizer.Gui"
         mc:Ignorable="d"
-        Title="Сохранение фаз" Height="150" Width="300" Style="{StaticResource WindowStyleCanResize}">
+        Title="Сохранение фаз" Height="121" Width="259" Style="{StaticResource WindowStyleCanResize}" ResizeMode="NoResize">
     <Grid>
-        <Label HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,10,0,0">Название: </Label>
+        <Label HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,10,0,0">Название:</Label>
         <TextBox Name="TextBoxPhazePresetName" HorizontalAlignment="Left" Height="23" Margin="100,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="141"/>
-        <Button Name="ButtonPhazePresetSave" Content="Сохранить" Margin="50,50,10,10" VerticalAlignment="Top" HorizontalAlignment="Left" Width="142" Click="ButtonPhazePresetSave_Click"/>
+        <Button Name="ButtonPhazePresetSave" Content="Сохранить" Margin="0,52,0,0" VerticalAlignment="Top" HorizontalAlignment="Center" Width="142" Click="ButtonPhazePresetSave_Click"/>
     </Grid>
 </Window>
