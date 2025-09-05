@@ -1042,5 +1042,10 @@ namespace OsEngine.OsOptimizer
         {
             _resultsCharting.Updateweights();
         }
+
+        private void cbGroupPhazePeriods_Checked(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.IsPhazeGroupingByPeriods = cbGroupPhazePeriods.IsChecked.Value;
+        }
     }
 }

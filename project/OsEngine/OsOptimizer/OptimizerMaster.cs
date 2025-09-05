@@ -1733,6 +1733,8 @@ namespace OsEngine.OsOptimizer
             Days = other.Days;
         }
 
+        public string SpecialPeriodName { get; set; } = "";
+
         /// <summary>
         /// type of phase. What we do
         /// тип фазы. Что делаем
