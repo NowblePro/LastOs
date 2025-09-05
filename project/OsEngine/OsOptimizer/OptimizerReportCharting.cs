@@ -247,7 +247,7 @@ namespace OsEngine.OsOptimizer
 
                 UpdGridStepsOfOptimization(_gridStepsOfOptimization, _sortBotNumber);
                 UpdateRobustnessChart();
-                UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
+                UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber, _reports);
                 UpdateAverageProfitChart(_hostAverageProfitChart, _chartAverageProfit, _sortBotNumber);
                 UpdateProfitFactorChart(_hostProfitFactor, _chartProfitFactor);
             }
@@ -314,7 +314,7 @@ namespace OsEngine.OsOptimizer
                 UpdateCSCTable();
                 UpdateAverageProfitChart(_hostAverageProfitChartCSC, _chartAverageProfitCSC, _sortBotNumberCSC);
                 UpdateProfitFactorChart(_hostProfitFactorCSC, _chartProfitFactorCSC);
-                UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
+                UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC, _reports);
             }
             catch (Exception e)
             {
@@ -893,16 +893,14 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-
-        private void FillDynamicTable(DataGridView table, bool groupPeriods)
+        private List<OptimazerFazeReport> FillDynamicTable(DataGridView table, bool groupPeriods)
         {
             if (table.InvokeRequired)
             {
-                table.Invoke(new Action<DataGridView, bool>(FillDynamicTable), table, groupPeriods);
-                return;
+                return table.Invoke(new Func<DataGridView, bool, List<OptimazerFazeReport>>(FillDynamicTable), table, groupPeriods) as List<OptimazerFazeReport>;
             }
             table.Rows.Clear();
-            
+            List<OptimazerFazeReport> result = new List<OptimazerFazeReport>();
             List<Period> periods = new List<Period>() { _master.Phazes.InSamplePeriod };
             periods.AddRange(_master.Phazes.OutOfSamplePeriods);
 
@@ -917,7 +915,11 @@ namespace OsEngine.OsOptimizer
                 GetFazeFromPeriod(_master.Phazes.InSamplePeriod);
             }
             FillPeriod(_master.Phazes.InSamplePeriod, "In Sample");
-
+            OptimazerFazeReport insampleForChart = new OptimazerFazeReport();
+            insampleForChart.Faze = new OptimizerFaze(_master.Phazes.InSamplePeriod.Report.Faze);
+            insampleForChart.Reports.Add(_master.Phazes.InSamplePeriod.Report.Reports[_sortTypeDynamicTableNum]);
+            insampleForChart.Faze.SpecialPeriodName = _master.Phazes.InSamplePeriod.Name;
+            result.Add(insampleForChart);
             // Заполнение Out Of Sample периодов
 
             if (groupPeriods)
@@ -938,7 +940,11 @@ namespace OsEngine.OsOptimizer
                 {
                     Period period = new Period() { Name = group.Key, Start = group.Min(p => p.Start.Value), End = group.Max(p => p.End.Value )};
                     period.Report = new OptimazerFazeReport();
+                    period.Report.Faze = new OptimizerFaze(group.First().Report.Faze);
+                    period.Report.Faze.SpecialPeriodName = group.Key;
+                    result.Add(period.Report);
                     period.Report.Reports.Add(new OptimizerReport());
+                    period.Report.Reports[0].BotName = group.First().Report.Reports[_sortTypeDynamicTableNum].BotName;
                     period.Report.Reports[0].TotalProfit = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].TotalProfit);
                     period.Report.Reports[0].PositionsCount = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].PositionsCount);
                     period.Report.Reports[0].MaxDrowDawn = group.Min(p => p.Report.Reports[_sortTypeDynamicTableNum].MaxDrowDawn);
@@ -958,6 +964,8 @@ namespace OsEngine.OsOptimizer
                     FillPeriod(period, "Out Of Sample");
                 }
             }
+
+            return result;
 
             string GetCellValue(Period period, int columnIndex, bool firstReport = false)
             {
@@ -1100,7 +1108,15 @@ namespace OsEngine.OsOptimizer
             {
                 if (value == isPhazeGroupingByPeriods) return;
                 isPhazeGroupingByPeriods = value;
-                FillDynamicTable(_gridDynamicTable, value);
+                List<OptimazerFazeReport> reportsForChart = FillDynamicTable(_gridDynamicTable, value);
+                if (value)
+                {
+                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes,0, reportsForChart, true);
+                }
+                else
+                {
+                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
+                }  
             }
         }
 
@@ -1108,7 +1124,7 @@ namespace OsEngine.OsOptimizer
         {
             SortDynamicResults(_reports);
             FillDynamicTable(table, IsPhazeGroupingByPeriods);
-            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
             _master.OnPeriodsChanged();
         }
 
@@ -1713,7 +1729,7 @@ namespace OsEngine.OsOptimizer
 
             _chartTotalProfit = GetTotalProfitChart();
             _hostTotalProfit.Child = _chartTotalProfit;
-            UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
+            UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber, _reports);
 
             _comboBoxTotalProfitEquityType.SelectionChanged += _comboBoxprofitType_SelectionChanged;
         }
@@ -1735,7 +1751,7 @@ namespace OsEngine.OsOptimizer
 
             _chartTotalProfitCSC = GetTotalProfitChart();
             _hostTotalProfitCSC.Child = _chartTotalProfitCSC;
-            UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
+            UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC, _reports);
 
             _comboBoxTotalProfitEquityTypeCSC.SelectionChanged += _comboBoxTotalProfitEquityTypeCSC_SelectionChanged;
         }
@@ -1751,24 +1767,24 @@ namespace OsEngine.OsOptimizer
             _comboBoxProfitTypeCustomPhazes.SelectedItem = "Absolute";
             _chartTotalProfitDynamic = GetTotalProfitChart();
             hostTotalProfit.Child = _chartTotalProfitDynamic;
-            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
 
             _comboBoxProfitTypeCustomPhazes.SelectionChanged += _comboBoxProfitTypeCustomPhazes_SelectionChanged;
         }
 
         private void _comboBoxProfitTypeCustomPhazes_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, true);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
         }
 
         private void _comboBoxprofitType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber);
+            UpdateTotalProfitChart(_gridStepsOfOptimization, _chartTotalProfit, _comboBoxTotalProfitEquityType, _sortBotNumber, _reports);
         }
 
         private void _comboBoxTotalProfitEquityTypeCSC_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC);
+            UpdateTotalProfitChart(_gridStepsOfOptimizationCSC, _chartTotalProfitCSC, _comboBoxTotalProfitEquityTypeCSC, _sortBotNumberCSC, _reports);
         }
 
         public Chart GetTotalProfitChart()
@@ -1804,7 +1820,7 @@ namespace OsEngine.OsOptimizer
             return result;
         }
 
-        private void UpdateTotalProfitChart(DataGridView gridStepsOfOptimization, Chart chartTotalProfit, System.Windows.Controls.ComboBox comboBoxTotalProfitEquityType, int sortBotNumber, bool includeInSample = false)
+        private void UpdateTotalProfitChart(DataGridView gridStepsOfOptimization, Chart chartTotalProfit, System.Windows.Controls.ComboBox comboBoxTotalProfitEquityType, int sortBotNumber, List<OptimazerFazeReport> reports, bool includeInSample = false)
         {
             if (chartTotalProfit == null)
             {
@@ -1813,16 +1829,16 @@ namespace OsEngine.OsOptimizer
 
             if (gridStepsOfOptimization.InvokeRequired)
             {
-                gridStepsOfOptimization.Invoke(new Action<DataGridView, Chart, System.Windows.Controls.ComboBox, int, bool>(UpdateTotalProfitChart), gridStepsOfOptimization, chartTotalProfit, comboBoxTotalProfitEquityType, sortBotNumber, includeInSample);
+                gridStepsOfOptimization.Invoke(new Action<DataGridView, Chart, System.Windows.Controls.ComboBox, int, List<OptimazerFazeReport>, bool>(UpdateTotalProfitChart), gridStepsOfOptimization, chartTotalProfit, comboBoxTotalProfitEquityType, sortBotNumber, reports, includeInSample);
                 return;
             }
 
-            if (_reports == null)
+            if (reports == null)
             {
                 return;
             }
 
-            if (_reports.Count <= 1)
+            if (reports.Count <= 1)
             {
                 return;
             }
@@ -1842,9 +1858,9 @@ namespace OsEngine.OsOptimizer
                 List<string> periodNames = new List<string>();
                 int isCounter = 0;
                 int oosCounter = 0;
-                for (int i = 0; i < _reports.Count; i++)
+                for (int i = 0; i < reports.Count; i++)
                 {
-                    OptimazerFazeReport curReport = _reports[i];
+                    OptimazerFazeReport curReport = reports[i];
 
                     if (curReport == null ||
                         curReport.Reports == null ||
@@ -1866,7 +1882,14 @@ namespace OsEngine.OsOptimizer
 
                     if (curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample || includeInSample)
                     {
-                        periodNames.Add(curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample ? $"OOS {oosCounter}" : $"IS {isCounter}");
+                        if (string.IsNullOrEmpty(curReport.Faze.SpecialPeriodName))
+                        {
+                            periodNames.Add(curReport.Faze.TypeFaze == OptimizerFazeType.OutOfSample ? $"OOS {oosCounter}" : $"IS {isCounter}");
+                        }
+                        else
+                        {
+                            periodNames.Add(curReport.Faze.SpecialPeriodName);
+                        }
                         string botName = inSampleReport.BotName.Replace(" InSample", "");
                         // reportToPaint = curReport.Reports.Find(rep => rep.BotName.StartsWith(botName));
 
