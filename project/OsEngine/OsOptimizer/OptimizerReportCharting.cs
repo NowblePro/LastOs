@@ -2713,7 +2713,7 @@ namespace OsEngine.OsOptimizer
             try
             {
                 _sortTypeDynamicTableNum = Convert.ToInt32(_comboBoxSortResultsDynamicTableNum.SelectedItem.ToString());
-                _sortTypeDynamicTableNum = Math.Min(_reports.Count - 1, _sortTypeDynamicTableNum);
+                _sortTypeDynamicTableNum = Math.Min(_reports.First().Reports.Count - 1, _sortTypeDynamicTableNum);
                 if (_reports != null)
                 {
                     CalculateAndUpdateDynamicTable(_gridDynamicTable);
