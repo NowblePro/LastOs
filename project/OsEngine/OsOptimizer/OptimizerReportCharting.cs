@@ -1123,8 +1123,17 @@ namespace OsEngine.OsOptimizer
         private void CalculateAndUpdateDynamicTable(DataGridView table)
         {
             SortDynamicResults(_reports);
-            FillDynamicTable(table, IsPhazeGroupingByPeriods);
-            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
+
+            List<OptimazerFazeReport> reportsForChart = FillDynamicTable(_gridDynamicTable, IsPhazeGroupingByPeriods);
+            if (IsPhazeGroupingByPeriods)
+            {
+                UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, 0, reportsForChart, true);
+            }
+            else
+            {
+                UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
+            }
+
             _master.OnPeriodsChanged();
         }
 
