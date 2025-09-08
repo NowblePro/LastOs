@@ -21,12 +21,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     {
         private BotTabSimple tab;
 
-        #region String constants
-        private const string NUMBER_OF_CONTRACTS = "Number Of Contracts";
-        private const string CONTRACT_CURRENCY = "Contract currency";
-        private const string PERCENT = "Percent";
-        #endregion
-
         #region Parameters
         private StrategyParameterInt Length;
         private StrategyParameterInt periodK;

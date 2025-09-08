@@ -20,8 +20,10 @@ using OsEngine.Logging;
 using OsEngine.Market;
 using OsEngine.Market.Servers;
 using OsEngine.Market.Servers.Tester;
+using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.OsTrader.RiskManager;
+using RestSharp.Extensions;
 
 namespace OsEngine.OsTrader.Panels
 {
@@ -71,6 +73,12 @@ namespace OsEngine.OsTrader.Panels
     /// </summary>
     public abstract class BotPanel
     {
+        #region String constants
+        protected const string NUMBER_OF_CONTRACTS = "Number Of Contracts";
+        protected const string CONTRACT_CURRENCY = "Contract currency";
+        protected const string PERCENT = "Percent";
+        #endregion
+
         protected BotPanel(string name, StartProgram startProgram)
         {
             NameStrategyUniq = name;
@@ -403,7 +411,16 @@ namespace OsEngine.OsTrader.Panels
         /// <summary>
         /// bot name
         /// </summary>
-        public abstract string GetNameStrategyType();
+        public virtual string GetNameStrategyType()
+        {
+            string result = string.Empty;
+            BotAttribute bot = GetType().GetAttribute<BotAttribute>();
+            if (bot != null)
+            {
+                result = bot.Name;
+            }
+            return result;
+        }
 
         /// <summary>
         /// has the robot connected to the exchange of all tabs
