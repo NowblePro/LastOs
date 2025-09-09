@@ -147,14 +147,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (positions.Count == 0)
             {
                 // enter logic
-                decimal buyPrice = lastMa * (1 - _rPercent.ValueDecimal / 100);
-                decimal sellPrice = lastMa * (1 + _rPercent.ValueDecimal / 100);
+                if (_regime.ValueString == "On" ||
+                    _regime.ValueString == "OnlyLong")
+                {
+                    decimal buyPrice = lastMa * (1 - _rPercent.ValueDecimal / 100);
+                    decimal buySlippage = buyPrice * (1 + _slippage.ValueDecimal / 100);
+                    _tab.BuyAtStop(GetVolume(), buyPrice, buySlippage, StopActivateType.LowerOrEqual, 1);
+                }
 
-                decimal buySlippage = buyPrice * (1 + _slippage.ValueDecimal / 100);
-                decimal sellSlippage = sellPrice * (1 - _slippage.ValueDecimal / 100);
-
-                _tab.BuyAtStop(GetVolume(), buyPrice, buySlippage, StopActivateType.LowerOrEqual, 1);
-                _tab.SellAtStop(GetVolume(), sellPrice, sellSlippage, StopActivateType.HigherOrEqual, 1);
+                if (_regime.ValueString == "On" ||
+                    _regime.ValueString == "OnlyShort")
+                {
+                    decimal sellPrice = lastMa * (1 + _rPercent.ValueDecimal / 100);
+                    decimal sellSlippage = sellPrice * (1 - _slippage.ValueDecimal / 100);
+                    _tab.SellAtStop(GetVolume(), sellPrice, sellSlippage, StopActivateType.HigherOrEqual, 1);
+                }
             }
             else
             {
