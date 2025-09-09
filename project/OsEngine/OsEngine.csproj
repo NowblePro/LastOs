@@ -463,6 +463,7 @@
     <Compile Include="Indicators\Samples\Sample2IndicatorParameters.cs" />
     <Compile Include="Indicators\Samples\Sample3IndicatorDataSeries.cs" />
     <Compile Include="Indicators\TrigonumCustom\NadarayaWatson.cs" />
+    <Compile Include="Indicators\TrigonumCustom\SmaCustom.cs" />
     <Compile Include="Indicators\TrigonumCustom\TmLinearRegressionChannel.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustom.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustomExtrems.cs" />
@@ -1384,6 +1385,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseMoveLongBotExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseSmaLRTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseTwoSmaRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MeanReversionSma.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ParabolicSarClassicTradeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\BotPanelSimple.cs" />
