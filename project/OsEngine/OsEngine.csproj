@@ -1386,6 +1386,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseTwoSmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ParabolicSarClassicTradeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\BotPanelSimple.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakBollingerReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakKeltnerChannelsReverseRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\BreakLinearRegressionChannelReverseRsiTM.cs" />
