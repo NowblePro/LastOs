@@ -1,4 +1,6 @@
 ﻿using OsEngine.Entity;
+
+using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.OsTrader.Panels.Tab;
@@ -23,6 +25,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterInt _period;
         #endregion
 
+        Aindicator _zz;
+        StrategyParameterInt _lengthZZ;
+
         public Breaker(string name, StartProgram startProgram) : base(name, startProgram)
         {
             #region Breaker parameters
@@ -33,18 +38,30 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _useBody = CreateParameter("Use Body", false, "Breaker");
             _period = CreateParameter("Period", 14, 5, 100, 1, "Breaker");
             #endregion
-        }
 
-        public override void ShowIndividualSettingsDialog() { }
+            _lengthZZ = CreateParameter("Length ZZ", 50, 50, 200, 20, "Breaker");
 
-        protected override void CandleFinishedEvent(List<Candle> candles)
-        {
-
+            _zz = IndicatorsFactory.CreateIndicatorByName(nameClass: "ZigZagChannel_indicator", name: name + "ZigZagChannel", canDelete: false);
+            _zz = (Aindicator)_tab.CreateCandleIndicator(_zz, nameArea: "Prime");
+            _zz.ParametersDigit[0].Value = _lengthZZ.ValueInt;
+            _zz.Save();
         }
 
         protected override void ParametersChangedByUser()
         {
+            if (_zz.ParametersDigit[0].Value != _lengthZZ.ValueInt)
+            {
+                _zz.ParametersDigit[0].Value = _lengthZZ.ValueInt;
+                _zz.Reload();
+                _zz.Save();
+            }
+        }
+
+        protected override void CandleFinishedEvent(List<Candle> candles)
+        {
+            if (candles.Count < _lengthZZ.ValueInt) return;
 
         }
+        public override void ShowIndividualSettingsDialog() { }
     }
 }
