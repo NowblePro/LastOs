@@ -26,6 +26,7 @@ namespace OsEngine.Robots.TrigonumCustom
             TabCreate(BotTabType.Simple);
             _tab = TabsSimple[0];
 
+            _regimeString = CreateParameter("Regime", BotRegime.Off.ToString(), Enum.GetNames(typeof(BotRegime)), "Base");
             _volumeType = CreateParameter("Volume Type", NUMBER_OF_CONTRACTS, new string[] { NUMBER_OF_CONTRACTS, CONTRACT_CURRENCY, PERCENT }, "Base");
             _slippage = CreateParameter("Slippage", 0.1m, 0.1m, 5, 0.1m, "Base");
             _startTradeTime = CreateParameterTimeOfDay("Start trade time", 0, 0, 0, 0, "Base");
