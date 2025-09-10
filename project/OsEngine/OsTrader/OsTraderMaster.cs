@@ -1069,9 +1069,10 @@ namespace OsEngine.OsTrader
         /// <summary>
         /// Create a global table with positions
         /// </summary>
-        public void CreateGlobalPositionController(WindowsFormsHost hostActivePoses, WindowsFormsHost hostHistoricalPoses)
+        public void CreateGlobalPositionController(WindowsFormsHost hostActivePoses, WindowsFormsHost hostHistoricalPoses, CheckBox checkBoxGroupActive = null)
         {
             _globalPositionViewer = new GlobalPositionViewer(hostActivePoses, hostHistoricalPoses, _startProgram);
+            _globalPositionViewer.SetGroupingCheckBox(checkBoxGroupActive);
             _globalPositionViewer.LogMessageEvent += SendNewLogMessage;
             _globalPositionViewer.UserSelectActionEvent += _globalController_UserSelectActionEvent;
             _globalPositionViewer.UserClickOnPositionShowBotInTableEvent += _globalPositionViewer_UserClickOnPositionShowBotInTableEvent;

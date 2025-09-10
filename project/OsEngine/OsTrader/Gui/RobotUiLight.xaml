@@ -18,7 +18,8 @@
                         <TabControl>
                             <TabItem Name="TabActivePos" Header="Active" Width="280" Height="12">
                                 <Grid Margin="-5,-5,-5,-5">
-                                    <WindowsFormsHost Name="HostActivePoses" Margin="0,0,0,0"/>
+                                    <CheckBox x:Name="CheckBoxGroupActive" Content="Объединить объёмы по инструменту и направлению" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                                    <WindowsFormsHost Name="HostActivePoses" Margin="0,30,0,0"/>
                                 </Grid>
                             </TabItem>
                             <TabItem Name="TabStopLimitPoses" Header="Stop Limit" Width="280" Height="12">
