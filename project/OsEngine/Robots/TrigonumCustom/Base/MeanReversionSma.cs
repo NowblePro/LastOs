@@ -139,7 +139,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (candles.Count < _periodSma.ValueInt) { return; }
 
-            decimal lastPrice = candles[candles.Count - 1].Close;
             decimal lastMa = _sma.DataSeries[0].Last;
 
             List<Position> positions = _tab.PositionsOpenAll;
@@ -147,19 +146,45 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (positions.Count == 0)
             {
                 // enter logic
+                
                 if (_regime.ValueString == "On" ||
                     _regime.ValueString == "OnlyLong")
                 {
-                    decimal buyPrice = lastMa * (1 - _rPercent.ValueDecimal / 100);
-                    decimal buySlippage = buyPrice * (1 + _slippage.ValueDecimal / 100);
+                    decimal buyPrice;
+                    decimal buySlippage;
+
+                    if (_avgMode == AvgMode.Volatility)
+                    {
+                        decimal lastAtr = _atr.DataSeries[0].Last;
+                        buyPrice = lastMa - (positions.Count + 1) * _atrMultiplier.ValueDecimal * lastAtr;
+                        buySlippage = buyPrice * (1 + _slippage.ValueDecimal / 100);
+                    }
+                    else
+                    {
+                        buyPrice = lastMa * (1 - _rPercent.ValueDecimal / 100);
+                        buySlippage = buyPrice * (1 + _slippage.ValueDecimal / 100);
+                    }
                     _tab.BuyAtStop(GetVolume(), buyPrice, buySlippage, StopActivateType.LowerOrEqual, 1);
                 }
 
                 if (_regime.ValueString == "On" ||
                     _regime.ValueString == "OnlyShort")
                 {
-                    decimal sellPrice = lastMa * (1 + _rPercent.ValueDecimal / 100);
-                    decimal sellSlippage = sellPrice * (1 - _slippage.ValueDecimal / 100);
+                    decimal sellPrice;
+                    decimal sellSlippage;
+
+                    if (_avgMode == AvgMode.Volatility)
+                    {
+                        decimal lastAtr = _atr.DataSeries[0].Last;
+                        sellPrice = lastMa + (positions.Count + 1) * _atrMultiplier.ValueDecimal * lastAtr;
+                        sellSlippage = sellPrice * (1 - _slippage.ValueDecimal / 100);
+                    }
+                    else
+                    {
+                        sellPrice = lastMa * (1 + _rPercent.ValueDecimal / 100);
+                        sellSlippage = sellPrice * (1 - _slippage.ValueDecimal / 100);
+                    }
+
                     _tab.SellAtStop(GetVolume(), sellPrice, sellSlippage, StopActivateType.HigherOrEqual, 1);
                 }
             }
