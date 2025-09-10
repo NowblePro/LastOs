@@ -31,7 +31,7 @@ namespace OsEngine.OsTrader.Gui
                 null, HostBotLogPrime, null, null, null, null, null,
                 null, StartProgram.IsOsTrader);
 
-            _strategyKeeper.CreateGlobalPositionController(HostActivePoses, HostHistoricalPoses);
+            _strategyKeeper.CreateGlobalPositionController(HostActivePoses, HostHistoricalPoses, CheckBoxGroupActive);
             _strategyKeeper.CreateBuyAtStopPosViewer(HostStopLimitPoses);
 
             LabelOsa.Content = "V_" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
