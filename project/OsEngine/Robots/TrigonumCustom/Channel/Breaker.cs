@@ -1,6 +1,7 @@
 ﻿using OsEngine.Entity;
 
 using OsEngine.Indicators;
+using OsEngine.Indicators.TrigonumCustom;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.OsTrader.Panels.Tab;
@@ -25,7 +26,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterInt _period;
         #endregion
 
-        Aindicator _zz;
+        OrderBlockZigZag _ob;
         StrategyParameterInt _lengthZZ;
 
         public Breaker(string name, StartProgram startProgram) : base(name, startProgram)
@@ -41,19 +42,28 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             _lengthZZ = CreateParameter("Length ZZ", 50, 50, 200, 20, "Breaker");
 
-            _zz = IndicatorsFactory.CreateIndicatorByName(nameClass: "ZigZagChannel_indicator", name: name + "ZigZagChannel", canDelete: false);
-            _zz = (Aindicator)_tab.CreateCandleIndicator(_zz, nameArea: "Prime");
-            _zz.ParametersDigit[0].Value = _lengthZZ.ValueInt;
-            _zz.Save();
+            _ob = (OrderBlockZigZag)IndicatorsFactory.CreateIndicatorByName(nameClass: "OrderBlockZigZag", name: name + "OrderBlockZigZag", canDelete: false);
+            _ob = (OrderBlockZigZag)_tab.CreateCandleIndicator(_ob, nameArea: "Prime");
+            //_zz.ParametersDigit[0].Value = _lengthZZ.ValueInt;
+            //IndicatorParameterInt period = _ob.CreateParameterInt("Period", 30);
+            //ParameterDigit param = new ParameterDigit(period);
+            //_ob.ParametersDigit.Add(param);
+            _lengthZZ.ValueChange += _lengthZZ_ValueChange;
+            _ob.Save();
+        }
+
+        private void _lengthZZ_ValueChange()
+        {
+            _ob.Period.ValueInt = _lengthZZ.ValueInt;
         }
 
         protected override void ParametersChangedByUser()
         {
-            if (_zz.ParametersDigit[0].Value != _lengthZZ.ValueInt)
+            if (_ob.ParametersDigit[0].Value != _lengthZZ.ValueInt)
             {
-                _zz.ParametersDigit[0].Value = _lengthZZ.ValueInt;
-                _zz.Reload();
-                _zz.Save();
+                _ob.ParametersDigit[0].Value = _lengthZZ.ValueInt;
+                _ob.Reload();
+                _ob.Save();
             }
         }
 

@@ -129,6 +129,11 @@ namespace OsEngine.Indicators
             _myCandles = null;
         }
 
+        public void DeleteSeries(IndicatorDataSeries series)
+        {
+            DataSeries.Remove(series);
+        }
+
         public void Load()
         {
             if (Name == "")
