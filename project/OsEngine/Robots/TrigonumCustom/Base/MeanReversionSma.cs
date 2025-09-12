@@ -64,7 +64,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _rPercent = CreateParameter("Deviation percent (r%)", 0.5m, 0.1m, 3.0m, 0.1m, "Robot parameters");
             _atrMultiplier = CreateParameter("ATR multiplier", 1.0m, 0.4m, 3.0m, 0.2m, "Robot parameters");
             _periodAtr = CreateParameter("ATR period", 14, 20, 400, 1, "Robot parameters");
-            _k = CreateParameter("Linear averaging coefficient (k)", 1.2m, 1.1m, 1.6m, 0.1m, "Robot parameters");
+            _k = CreateParameter("Linear averaging percent (k%)", 1.2m, 1.1m, 1.6m, 0.1m, "Robot parameters");
 
             _sma = IndicatorsFactory.CreateIndicatorByName(nameClass: "SmaCustom", name: name + "SmaCustom", canDelete: false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, nameArea: "Prime");
@@ -284,7 +284,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             decimal lastMa = _sma.DataSeries[0].Last;
 
-            decimal volume = GetVolume() + (positions.Count + 1) * _k.ValueDecimal;
+            decimal volume = positions[0].OpenVolume * (1 + positions.Count * _k.ValueDecimal / 100);
 
             if (positions[0].Direction == Side.Buy)
             {
