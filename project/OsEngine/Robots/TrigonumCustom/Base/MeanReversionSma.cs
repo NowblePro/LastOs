@@ -7,6 +7,7 @@ using OsEngine.OsTrader.Panels.Tab;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Security.Cryptography;
+using System.Windows.Media.Converters;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
@@ -285,6 +286,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal lastMa = _sma.DataSeries[0].Last;
 
             decimal volume = positions[0].OpenVolume * (1 + positions.Count * _k.ValueDecimal / 100);
+            volume = GetRoundedVolume(_tab, volume);
 
             if (positions[0].Direction == Side.Buy)
             {
@@ -394,7 +396,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _tab.SellAtStopCancel();
         }
 
-        private decimal GetVolume()
+        private decimal GetVolume(bool getRounded = true)
         {
             decimal volume = 0;
 
@@ -412,7 +414,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 volume = _tab.Portfolio.ValueCurrent * (_volumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
-            volume = GetRoundedVolume(_tab, volume);
+            if (getRounded)
+            {
+                volume = GetRoundedVolume(_tab, volume);
+            }
 
             return volume;
         }
