@@ -18,9 +18,13 @@ namespace OsEngine.Indicators.TrigonumCustom
         /// Период, в течении которого регистрируются ордер блоки
         /// </summary>
         private IndicatorParameterInt _period;
+
+        public event EventHandler DataUpdate;
+
         public IndicatorParameterInt Period => _period;
 
-        List<IndicatorDataSeries> _dynamicSeries = new List<IndicatorDataSeries>();
+        public List<OrderBlock> HighOrderBlocks { get; private set; } = new List<OrderBlock>();
+        public List<OrderBlock> LowOrderBlocks { get; private set; } = new List<OrderBlock>();
 
         public override void OnProcess(List<Candle> source, int index)
         {
@@ -34,10 +38,11 @@ namespace OsEngine.Indicators.TrigonumCustom
                 delta++;
                 i = index - delta;
             }
-            GetExtremum();
+            GetOrderBlocks();
+            DataUpdate?.Invoke(this, EventArgs.Empty);
         }
 
-        private void GetExtremum()
+        private void GetOrderBlocks()
         {
             if (_zzSeries.Values.Count < _period.ValueInt) return;
             //high
@@ -45,29 +50,34 @@ namespace OsEngine.Indicators.TrigonumCustom
             IEnumerable<decimal> highs = _zz.DataSeries[2].Values.Skip(skip).Where(v => v > 0);
             //lows
             IEnumerable<decimal> lows = _zz.DataSeries[3].Values.Skip(skip).Where(v => v > 0);
-            
-            foreach (IndicatorDataSeries series in _dynamicSeries)
+
+            //decimal[] skips = new decimal[skip];
+
+            //foreach (decimal v in highs)
+            //{
+            //    decimal[] val = new decimal[_period.ValueInt];
+            //    for (int i = 0; i < val.Length; i++)
+            //    {
+            //        val[i] = v;
+            //    }
+
+            //    ser.Values.AddRange(skips);
+            //    ser.Values.AddRange(val);
+            //}
+
+            HighOrderBlocks.Clear();
+            foreach (decimal high in highs)
             {
-                DeleteSeries(series);
+                // hack
+                int i = _zz.DataSeries[2].Values.LastIndexOf(high);
+                HighOrderBlocks.Add(new OrderBlock() { Top = high, Bottom = high - high * 0.1m, Length = _zz.DataSeries[2].Values.Count - i });
             }
-            _dynamicSeries.Clear();
 
-            int index = 1;
-
-            decimal[] skips = new decimal[skip];
-
-            foreach (decimal v in highs)
+            LowOrderBlocks.Clear();
+            foreach (decimal low in lows)
             {
-                decimal[] val = new decimal[_period.ValueInt];
-                for (int i = 0; i< val.Length; i++)
-                {
-                    val[i] = v;
-                }
-                IndicatorDataSeries ser = CreateSeries($"high{index}", Color.FromArgb(255 - index, 0, 0), IndicatorChartPaintType.Line, true);
-                _dynamicSeries.Add(ser);
-                ser.Values.AddRange(skips);
-                ser.Values.AddRange(val);
-                index++;
+                // hack
+                LowOrderBlocks.Add(new OrderBlock() { Top = low + low * 0.1m, Bottom = low });
             }
         }
 
@@ -80,8 +90,8 @@ namespace OsEngine.Indicators.TrigonumCustom
                 //_candlePoint = CreateParameterStringCollection("Candle point", "Typical", Entity.CandlePointsArray);
 
                 //_series = CreateSeries("AC2", Color.DarkGreen, IndicatorChartPaintType.Column, true);
-                _zzSeries = CreateSeries("ZZ", Color.DarkGreen, IndicatorChartPaintType.Line, true);
-                _obSeries = CreateSeries("OB", Color.Red, IndicatorChartPaintType.Line, true);
+                _zzSeries = CreateSeries("ZZ", Color.DarkGreen, IndicatorChartPaintType.Line, false);
+                //_obSeries = CreateSeries("OB", Color.Red, IndicatorChartPaintType.Line, true);
                 _zz = IndicatorsFactory.CreateIndicatorByName("ZigZag", Name + "ZigZag", false);
                 _period = CreateParameterInt("Period", 30);
                 //((IndicatorParameterInt)_ao.Parameters[0]).Bind(_lengthFastLine);
@@ -91,5 +101,12 @@ namespace OsEngine.Indicators.TrigonumCustom
                 TypeIndicator = IndicatorChartPaintType.Line;
             }
         }
+    }
+
+    public class OrderBlock
+    {
+        public decimal Top { get; set; }
+        public decimal Bottom { get; set; }
+        public int Length { get; set; }
     }
 }

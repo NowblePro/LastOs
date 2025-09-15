@@ -268,6 +268,8 @@ namespace OsEngine.Charts.CandleChart
         /// </summary>
         void ShowAreaOnChart();
 
+        Chart GetChart();
+
         /// <summary>
         /// there's been a change int X-axis
         /// изменилось представление по оси Х
