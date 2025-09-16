@@ -47,6 +47,8 @@ namespace OsEngine.Charts.CandleChart
             }
         }
 
+        public event EventHandler ChartCandleCreated;
+
         private void UpDateChartPainter()
         {
             if (ChartCandle != null)
@@ -73,7 +75,7 @@ namespace OsEngine.Charts.CandleChart
                     LoadIndicatorOnChart(_indicators[i]);
                 }
             }
-
+            ChartCandleCreated?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>

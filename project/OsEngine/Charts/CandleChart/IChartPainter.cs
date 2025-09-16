@@ -283,7 +283,8 @@ namespace OsEngine.Charts.CandleChart
         event Action<int> LastXIndexChangeEvent;
 
         event EventHandler<MouseEventArgs> ChartClickEvent;
-
+        event EventHandler<Chart> ChartCreated;
+        event EventHandler<Chart> ChartDeleting;
     }
 
     public enum ChartClickType

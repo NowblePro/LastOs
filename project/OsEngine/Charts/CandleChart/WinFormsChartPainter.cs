@@ -69,7 +69,8 @@ namespace OsEngine.Charts.CandleChart
         }
 
         public event EventHandler<MouseEventArgs> ChartClickEvent;
-
+        public event EventHandler<Chart> ChartCreated;
+        public event EventHandler<Chart> ChartDeleting;
         /// <summary>
         /// program that creates a class object
         /// программа создающая объект класса
@@ -375,6 +376,7 @@ namespace OsEngine.Charts.CandleChart
 
                 _chart.Series.Clear();
                 _chart.ChartAreas.Clear();
+                ChartDeleting?.Invoke(this, _chart);
                 _chart.Dispose();
                 _chart = null;
             }
@@ -639,7 +641,7 @@ namespace OsEngine.Charts.CandleChart
                 _chart.MouseUp += _chart_MouseUp;
                 _chart.ClientSizeChanged += _chart_ClientSizeChanged;
                 _chart.AxisViewChanging += _chart_AxisViewChanging;
-
+                ChartCreated?.Invoke(this, _chart);
             }
             catch (Exception error)
             {
@@ -5019,7 +5021,10 @@ namespace OsEngine.Charts.CandleChart
                     }
                     else
                     {
-                        labelSeries.Points[0].Label = ((decimal)series[i].Points[index].YValues[0]).ToString();
+                        if (!double.IsNaN(series[i].Points[index].YValues[0]))
+                        {
+                            labelSeries.Points[0].Label = ((decimal)series[i].Points[index].YValues[0]).ToString();
+                        }
                     }
                 }
 
@@ -5590,6 +5595,10 @@ namespace OsEngine.Charts.CandleChart
                     }
                     else
                     {
+                        if (double.IsNaN(series.Points[realIndex].YValues[0]))
+                        {
+                            continue;
+                        }
                         decimal value = Convert.ToDecimal(series.Points[realIndex].YValues[0]);
 
                         value = (Math.Round(value, rounder));

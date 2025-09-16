@@ -9,6 +9,7 @@ using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.Robots.TrigonumCustom.Base;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,7 +31,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         private OrderBlockZigZag _ob;
         private StrategyParameterInt _lengthZZ;
-        private ChartCandleMaster _chartMaster;
+
 
         public Breaker(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -48,8 +49,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _ob = (OrderBlockZigZag)IndicatorsFactory.CreateIndicatorByName(nameClass: "OrderBlockZigZag", name: name + "OrderBlockZigZag", canDelete: false);
             _ob = (OrderBlockZigZag)_tab.CreateCandleIndicator(_ob, nameArea: "Prime");
 
-            _chartMaster = _tab.GetChartMaster();
-            
+            _ob.ChartMaster = _tab.GetChartMaster();
+
             _lengthZZ.ValueChange += _lengthZZ_ValueChange;
             _ob.Save();
         }
@@ -57,73 +58,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private void _lengthZZ_ValueChange()
         {
             _ob.Period.ValueInt = _lengthZZ.ValueInt;
-        }
-
-        List<Series> highUpSeries = new List<Series>();
-        List<Series> highDownSeries = new List<Series>();
-
-        private void DrawOrderBlocks(List<Candle> candles)
-        {
-            Chart chart = _chartMaster.ChartCandle?.GetChart();
-            if (chart == null) return;
-
-            if (chart.InvokeRequired)
-            {
-                chart.Invoke((Action<List<Candle>>)DrawOrderBlocks, candles);
-                return;
-            }
-
-            ChartArea area = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
-            int indexHigh = 0;
-            if (area != null)
-            {
-                foreach (Series series in highUpSeries)
-                {
-                    series.Points.Clear();
-                    chart.Series.Remove(series);
-                }
-
-                highUpSeries.Clear();
-
-                foreach (Series series in highDownSeries)
-                {
-                    series.Points.Clear();
-                    chart.Series.Remove(series);
-                }
-
-                highDownSeries.Clear();
-
-                foreach (var ob in _ob.HighOrderBlocks)
-                {
-                    int skip = candles.Count - ob.Length;
-                    int period = candles.Count - skip;
-                    Series seriesHighUp = GetHighUpSeries($"highUp{indexHigh}");
-                    Series seriesHighDown = new Series($"highDown{indexHigh}");
-                    var values = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Top, period)).ToArray();
-                    foreach (double d in values)
-                    {
-                        seriesHighUp.Points.AddY(d);
-                    }
-
-                    seriesHighUp.ChartArea = area.Name;
-                    chart.Series.Add(seriesHighUp);
-                    highUpSeries.Add(seriesHighUp);
-                    indexHigh++;
-                }
-
-                area.AxisY.Minimum = area.AxisY2.Minimum;
-                area.AxisY.Maximum = area.AxisY2.Maximum;
-            }
-        }
-
-        private Series GetHighUpSeries(string name)
-        {
-            Series result = new Series(name);
-            result.ChartType = SeriesChartType.Line;
-            result.Color = System.Drawing.Color.Red;
-            result.BorderWidth = 2;
-            result.BorderDashStyle = ChartDashStyle.Solid;
-            return result;
         }
 
         protected override void ParametersChangedByUser()
@@ -139,8 +73,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
             if (candles.Count < _lengthZZ.ValueInt) return;
-            DrawOrderBlocks(candles);
-
         }
         public override void ShowIndividualSettingsDialog() { }
     }
