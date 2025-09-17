@@ -70,6 +70,7 @@ using OsEngine.Market.Servers.YahooFinance;
 using OsEngine.Market.Servers.Atp;
 using OsEngine.Market.Servers.Polygon;
 using System.Linq;
+using OsEngine.Market.Servers.BybitData;
 
 
 namespace OsEngine.Market
@@ -226,6 +227,7 @@ namespace OsEngine.Market
                 serverTypes.Add(ServerType.MoexFixFastTwimeFutures);
                 serverTypes.Add(ServerType.Mexc);
                 serverTypes.Add(ServerType.AstsBridge);
+                serverTypes.Add(ServerType.BybitData);
 
 
                 // а теперь сортируем в зависимости от предпочтений пользователя
@@ -329,6 +331,7 @@ namespace OsEngine.Market
                 serverTypes.Add(ServerType.KiteConnect);
                 serverTypes.Add(ServerType.YahooFinance);
                 serverTypes.Add(ServerType.Polygon);
+                serverTypes.Add(ServerType.BybitData);
 
                 return serverTypes;
             }
@@ -421,7 +424,10 @@ namespace OsEngine.Market
 
                 IServer newServer = null;
 
-
+                if (type == ServerType.BybitData)
+                {
+                    newServer = new BybitDataServer();
+                }
                 if (type == ServerType.MoexFixFastTwimeFutures)
                 {
                     newServer = new MoexFixFastTwimeFuturesServer();
@@ -1280,6 +1286,10 @@ namespace OsEngine.Market
                 {
                     serverPermission = new PolygonServerPermission();
                 }
+                else if (type == ServerType.BybitData)
+                {
+                    serverPermission = new BybitDataServerPermission();
+                }
 
                 if (serverPermission != null)
                 {
@@ -1753,5 +1763,7 @@ namespace OsEngine.Market
         /// Polygon.io
         /// </summary>
         Polygon,
+
+        BybitData
     }
 }
