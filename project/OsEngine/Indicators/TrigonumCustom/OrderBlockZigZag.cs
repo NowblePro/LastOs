@@ -1,5 +1,6 @@
 ﻿using OsEngine.Charts.CandleChart;
 using OsEngine.Entity;
+using OsEngine.Logging;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -32,6 +33,7 @@ namespace OsEngine.Indicators.TrigonumCustom
         private List<Series> lowUpSeries = new List<Series>();
         private List<Series> lowDownSeries = new List<Series>();
 
+        private int obCount = 2;
 
         private ChartCandleMaster _chartMaster;
         public ChartCandleMaster ChartMaster
@@ -106,7 +108,7 @@ namespace OsEngine.Indicators.TrigonumCustom
 
                 highDownSeries.Clear();
 
-                foreach (var ob in HighOrderBlocks)
+                foreach (var ob in HighOrderBlocks.Skip(HighOrderBlocks.Count - obCount))
                 {
                     int skip = _candles.Count - ob.Length - 1;
                     if (skip < 0) continue;
@@ -153,7 +155,7 @@ namespace OsEngine.Indicators.TrigonumCustom
 
                 lowDownSeries.Clear();
 
-                foreach (var ob in LowOrderBlocks)
+                foreach (var ob in LowOrderBlocks.Skip(LowOrderBlocks.Count - obCount))
                 {
                     int skip = _candles.Count - ob.Length - 1;
                     if (skip < 0) continue;
@@ -227,49 +229,19 @@ namespace OsEngine.Indicators.TrigonumCustom
             IEnumerable<decimal> highs = _zz.DataSeries[2].Values.Skip(skip).Where(v => v > 0);
             //lows
             IEnumerable<decimal> lows = _zz.DataSeries[3].Values.Skip(skip).Where(v => v > 0);
-
+            Enum.TryParse(_priceBasis.ValueString, out OrderBlockPriceBasis basis);
             HighOrderBlocks.Clear();
             foreach (decimal high in highs)
             {
-                int i = _zz.DataSeries[2].Values.LastIndexOf(high);
-                Candle candle = candles[i];
-                decimal top = high;
-                Enum.TryParse(_priceBasis.ValueString, out OrderBlockPriceBasis basis);
-                decimal bottom = top - top * 0.1m;
-                switch (basis)
-                {
-                    case OrderBlockPriceBasis.Body:
-                        top = Math.Max(candle.Open, candle.Close);
-                        bottom = Math.Min(candle.Open, candle.Close); ;
-                        break;
-                    case OrderBlockPriceBasis.Full:
-                        top = candle.High;
-                        bottom = candle.Low;
-                        break;
-                }
-                HighOrderBlocks.Add(new OrderBlock() { Top = top, Bottom = bottom, Length = _zz.DataSeries[2].Values.Count - i });
+                OrderBlock ob = new OrderBlock(high, _zz.DataSeries[2].Values, candles, OrderBlockType.Bullish, basis);
+                HighOrderBlocks.Add(ob);
             }
 
             LowOrderBlocks.Clear();
             foreach (decimal low in lows)
             {
-                int i = _zz.DataSeries[3].Values.LastIndexOf(low);
-                Candle candle = candles[i];
-                Enum.TryParse(_priceBasis.ValueString, out OrderBlockPriceBasis basis);
-                decimal bottom = low;
-                decimal top = bottom + bottom * 0.1m;
-                switch (basis)
-                {
-                    case OrderBlockPriceBasis.Body:
-                        top = Math.Max(candle.Open, candle.Close);
-                        bottom = Math.Min(candle.Open, candle.Close); ;
-                        break;
-                    case OrderBlockPriceBasis.Full:
-                        top = candle.High;
-                        bottom = candle.Low;
-                        break;
-                }
-                LowOrderBlocks.Add(new OrderBlock() { Top = top, Bottom = bottom, Length = _zz.DataSeries[3].Values.Count - i });
+                OrderBlock ob = new OrderBlock(low, _zz.DataSeries[3].Values, candles, OrderBlockType.Bearish, basis);
+                LowOrderBlocks.Add(ob);
             }
         }
 
@@ -286,7 +258,7 @@ namespace OsEngine.Indicators.TrigonumCustom
                 Axis xAxis = area.AxisX;
                 Axis yAxis = area.AxisY;
 
-                foreach (var ob in HighOrderBlocks)
+                foreach (var ob in HighOrderBlocks.Skip(HighOrderBlocks.Count - obCount))
                 {
                     int skip = _candles.Count - ob.Length;
                     if (skip < 0) continue;
@@ -296,16 +268,25 @@ namespace OsEngine.Indicators.TrigonumCustom
 
                     double xPixel1 = xAxis.ValueToPixelPosition(skip);
                     double yPixel1 = yAxis.ValueToPixelPosition(highUp[skip]);
-                    double xPixel2 = xAxis.ValueToPixelPosition(skip + period - 1);
+                    double xPixel2 = ob.IsBroken ? xAxis.ValueToPixelPosition(ob.BrokenIndex) : xAxis.ValueToPixelPosition(skip + period - 1);
                     double yPixel2 = yAxis.ValueToPixelPosition(highDown[skip]);
 
                     using (Brush brush = new SolidBrush(Color.FromArgb(5, Color.Red)))
                     {
                         g.FillRectangle(brush, new RectangleF((float)xPixel1, (float)yPixel1, (float)(xPixel2 - xPixel1), (float)(yPixel2 - yPixel1)));
                     }
+
+                    if (ob.IsBroken)
+                    {
+                        double xPixel3 = xAxis.ValueToPixelPosition(skip + period - 1);
+                        using (Brush brush = new SolidBrush(Color.FromArgb(5, Color.Green)))
+                        {
+                            g.FillRectangle(brush, new RectangleF((float)xPixel2, (float)yPixel1, (float)(xPixel3 - xPixel2), (float)(yPixel2 - yPixel1)));
+                        }
+                    }
                 }
 
-                foreach (var ob in LowOrderBlocks)
+                foreach (var ob in LowOrderBlocks.Skip(LowOrderBlocks.Count - obCount))
                 {
                     int skip = _candles.Count - ob.Length;
                     if (skip < 0) continue;
@@ -315,12 +296,21 @@ namespace OsEngine.Indicators.TrigonumCustom
 
                     double xPixel1 = xAxis.ValueToPixelPosition(skip);
                     double yPixel1 = yAxis.ValueToPixelPosition(highUp[skip]);
-                    double xPixel2 = xAxis.ValueToPixelPosition(skip + period - 1);
+                    double xPixel2 = ob.IsBroken ? xAxis.ValueToPixelPosition(ob.BrokenIndex) : xAxis.ValueToPixelPosition(skip + period - 1);
                     double yPixel2 = yAxis.ValueToPixelPosition(highDown[skip]);
 
                     using (Brush brush = new SolidBrush(Color.FromArgb(5, Color.Blue)))
                     {
                         g.FillRectangle(brush, new RectangleF((float)xPixel1, (float)yPixel1, (float)(xPixel2 - xPixel1), (float)(yPixel2 - yPixel1)));
+                    }
+
+                    if (ob.IsBroken)
+                    {
+                        double xPixel3 = xAxis.ValueToPixelPosition(skip + period - 1);
+                        using (Brush brush = new SolidBrush(Color.FromArgb(5, Color.Green)))
+                        {
+                            g.FillRectangle(brush, new RectangleF((float)xPixel2, (float)yPixel1, (float)(xPixel3 - xPixel2), (float)(yPixel2 - yPixel1)));
+                        }
                     }
                 }
 
@@ -368,10 +358,56 @@ namespace OsEngine.Indicators.TrigonumCustom
 
     public class OrderBlock
     {
+        public OrderBlock(decimal value, List<decimal> zz, List<Candle> candles, OrderBlockType type, OrderBlockPriceBasis basis)
+        {
+            Type = type;
+            int i = zz.LastIndexOf(value);
+            Candle candle = candles[i];
+            switch (basis)
+            {
+                case OrderBlockPriceBasis.Body:
+                    Top = Math.Max(candle.Open, candle.Close);
+                    Bottom = Math.Min(candle.Open, candle.Close); ;
+                    break;
+                case OrderBlockPriceBasis.Full:
+                    Top = candle.High;
+                    Bottom = candle.Low;
+                    break;
+            }
+            Length = zz.Count - i;
+            CheckBroken(candles);
+        }
+
         public decimal Top { get; set; }
         public decimal Bottom { get; set; }
         public int Length { get; set; }
+        public int BrokenIndex { get; private set; } = -1;
+
+        public OrderBlockType Type { get; private set; }
+
+        public bool IsBroken => BrokenIndex > -1;
+
+        public void CheckBroken(List<Candle> candles)
+        {
+            int skip = candles.Count - Length;
+            List<Candle> periodCandles = candles.Skip(skip).ToList();
+            switch (Type)
+            {
+                case OrderBlockType.Bullish:
+                    BrokenIndex = periodCandles.FindIndex(c => c.Close > Top) + skip;
+                    break;
+                case OrderBlockType.Bearish:
+                    BrokenIndex = periodCandles.FindIndex(c => c.Close < Bottom) + skip;
+                    break;
+            }
+            if (BrokenIndex < candles.Count - Length)
+            {
+                BrokenIndex = -1;
+            }
+        }
     }
 
-    enum OrderBlockPriceBasis { Body, Full }
+    public enum OrderBlockType { Bullish, Bearish }
+
+    public enum OrderBlockPriceBasis { Body, Full }
 }
