@@ -486,6 +486,9 @@
     <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexAsset.cs" />
     <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexCandle.cs" />
     <Compile Include="Market\Servers\BitMex\BitMexServerPermission.cs" />
+    <Compile Include="Market\Servers\BybitData\BybitDataServer.cs" />
+    <Compile Include="Market\Servers\BybitData\BybitDataServerPermission.cs" />
+    <Compile Include="Market\Servers\BybitData\Entity\ByBitDataResponse.cs" />
     <Compile Include="Market\Servers\ComparePositionsModule.cs" />
     <Compile Include="Market\Servers\AServerOrdersHub.cs" />
     <Compile Include="Market\Servers\AstsBridge\SecurityLevelOne.cs" />
