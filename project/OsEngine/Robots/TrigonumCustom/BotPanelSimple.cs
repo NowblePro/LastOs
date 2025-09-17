@@ -58,7 +58,87 @@ namespace OsEngine.Robots.TrigonumCustom
             }
         }
 
-        protected abstract void CandleFinishedEvent(List<Candle> candles);
+        protected decimal GetVolume()
+        {
+            decimal volume = 0;
+
+            if (_volumeType.ValueString == CONTRACT_CURRENCY)
+            {
+                decimal contractPrice = TabsSimple[0].PriceBestAsk;
+                volume = _volumeOnPosition.ValueDecimal / contractPrice;
+
+            }
+            else if (_volumeType.ValueString == NUMBER_OF_CONTRACTS)
+            {
+                volume = _volumeOnPosition.ValueDecimal;
+            }
+            else if (_volumeType.ValueString == PERCENT)
+            {
+                volume = _tab.Portfolio.ValueCurrent * (_volumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
+            }
+
+            if (StartProgram == StartProgram.IsTester)
+            {
+                volume = Math.Round(volume, 6);
+            }
+            else
+            {
+                volume = GetRoundedVolume(_tab, volume);
+            }
+            return volume;
+        }
+
+        /// <summary>
+        /// Проверки перед основной логикой обработки события обновления свечи, все они должны возвращать true, чтобы пройти фильтр
+        /// </summary>
+        /// <returns></returns>
+        protected abstract List<Func<List<Candle>, bool>> GetCheckers();
+
+        protected void CandleFinishedEvent(List<Candle> candles)
+        {
+            if (GetCheckers().Any(p => !p(candles))) return;
+            decimal lastPrice = candles.Last().Close;
+            List<Position> positions = _tab.PositionsOpenAll;
+            if (positions.Count > 0)
+            {
+                CheckClosePosition(candles);
+            }
+            else
+            {
+                if (CheckOpenLongPosition(candles))
+                {
+                    decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
+                    _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
+                }
+                else if (CheckOpenShortPosition(candles))
+                {
+                    decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
+                    _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Проверить, соответствуют ли условия открытию позиции в лонг
+        /// </summary>
+        /// <param name="candles"></param>
+        /// <returns></returns>
+        protected abstract bool CheckOpenLongPosition(List<Candle> candles);
+
+        /// <summary>
+        /// Проверить, соответствуют ли условия открытию позиции в шорт
+        /// </summary>
+        /// <param name="candles"></param>
+        /// <returns></returns>
+        protected abstract bool CheckOpenShortPosition(List<Candle> candles);
+
+        /// <summary>
+        /// Проверить, соответствуют ли условия закрытия позиции
+        /// </summary>
+        /// <param name="candles"></param>
+        /// <returns></returns>
+        protected abstract bool CheckClosePosition(List<Candle> candles);
+
         protected abstract void ParametersChangedByUser();
 
         public override void ShowIndividualSettingsDialog() { }

@@ -32,7 +32,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private OrderBlockZigZag _ob;
         private StrategyParameterInt _lengthZZ;
 
-
         public Breaker(string name, StartProgram startProgram) : base(name, startProgram)
         {
             #region Breaker parameters
@@ -69,11 +68,28 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 _ob.Save();
             }
         }
-
-        protected override void CandleFinishedEvent(List<Candle> candles)
+        
+        protected override List<Func<List<Candle>, bool>> GetCheckers()
         {
-            if (candles.Count < _lengthZZ.ValueInt) return;
+            return new List<Func<List<Candle>, bool>>()
+            {
+                (candles) => { return candles.Count >= _lengthZZ.ValueInt; }
+            };
         }
-        public override void ShowIndividualSettingsDialog() { }
+
+        protected override bool CheckOpenLongPosition(List<Candle> candles)
+        {
+            return false;
+        }
+
+        protected override bool CheckOpenShortPosition(List<Candle> candles)
+        {
+            return false;
+        }
+
+        protected override bool CheckClosePosition(List<Candle> candles)
+        {
+            return false;
+        }
     }
 }
