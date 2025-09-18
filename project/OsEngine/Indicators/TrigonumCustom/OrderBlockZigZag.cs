@@ -28,11 +28,6 @@ namespace OsEngine.Indicators.TrigonumCustom
         public List<OrderBlock> HighOrderBlocks { get; private set; } = new List<OrderBlock>();
         public List<OrderBlock> LowOrderBlocks { get; private set; } = new List<OrderBlock>();
 
-        private List<Series> highUpSeries = new List<Series>();
-        private List<Series> highDownSeries = new List<Series>();
-        private List<Series> lowUpSeries = new List<Series>();
-        private List<Series> lowDownSeries = new List<Series>();
-
         private int obCount = 2;
 
         private ChartCandleMaster _chartMaster;
@@ -85,110 +80,86 @@ namespace OsEngine.Indicators.TrigonumCustom
             if (_candles == null || _candles.Count == 0) return;
 
             ChartArea area = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
-            int indexHigh = 0;
-            int indexLow = 0;
+
             if (area != null)
             {
                 Axis xAxis = area.AxisX;
                 Axis yAxis = area.AxisY;
 
-                foreach (Series series in highUpSeries)
-                {
-                    series.Points.Clear();
-                    chart.Series.Remove(series);
-                }
+                //ClearOrderBlocks(HighOrderBlocks, true, true);
 
-                highUpSeries.Clear();
+                //int skipHigh = HighOrderBlocks.Count - obCount;
 
-                foreach (Series series in highDownSeries)
-                {
-                    series.Points.Clear();
-                    chart.Series.Remove(series);
-                }
-
-                highDownSeries.Clear();
-
-                foreach (var ob in HighOrderBlocks.Skip(HighOrderBlocks.Count - obCount))
+                //IEnumerable<OrderBlock> delete = HighOrderBlocks.Take(skipHigh);
+                //foreach (OrderBlock ob in delete)
+                //{
+                //    DeleteOrderBlock(HighOrderBlocks, ob);
+                //}
+                foreach (var ob in HighOrderBlocks)
                 {
                     int skip = _candles.Count - ob.Length - 1;
                     if (skip < 0) continue;
                     int period = _candles.Count - skip;
-                    Series seriesHighUp = GetHighSeries($"highUp{indexHigh}");
+                    Series seriesHighUp = ob.SeriesUp;
+                    seriesHighUp.Points.Clear();
                     var highUp = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Top, period)).ToArray();
                     foreach (double d in highUp)
                     {
                         seriesHighUp.Points.AddY(d);
                     }
 
-                    seriesHighUp.ChartArea = area.Name;
-                    chart.Series.Add(seriesHighUp);
-                    highUpSeries.Add(seriesHighUp);
-
-
-                    Series seriesHighDown = GetHighSeries($"highDown{indexHigh}");
+                    Series seriesHighDown = ob.SeriesDown;
+                    seriesHighDown.Points.Clear();
                     var highDown = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Bottom, period)).ToArray();
                     foreach (double d in highDown)
                     {
                         seriesHighDown.Points.AddY(d);
                     }
-
-                    seriesHighDown.ChartArea = area.Name;
-                    chart.Series.Add(seriesHighDown);
-                    highDownSeries.Add(seriesHighDown);
-
-                    indexHigh++;
                 }
-
-                foreach (Series series in lowUpSeries)
-                {
-                    series.Points.Clear();
-                    chart.Series.Remove(series);
-                }
-
-                lowUpSeries.Clear();
-
-                foreach (Series series in lowDownSeries)
-                {
-                    series.Points.Clear();
-                    chart.Series.Remove(series);
-                }
-
-                lowDownSeries.Clear();
-
-                foreach (var ob in LowOrderBlocks.Skip(LowOrderBlocks.Count - obCount))
+                //int skipLow = LowOrderBlocks.Count - obCount;
+                //delete = LowOrderBlocks.Take(skipLow);
+                //foreach (OrderBlock ob in delete)
+                //{
+                //    DeleteOrderBlock(LowOrderBlocks, ob);
+                //}
+                foreach (var ob in LowOrderBlocks)
                 {
                     int skip = _candles.Count - ob.Length - 1;
                     if (skip < 0) continue;
                     int period = _candles.Count - skip;
-                    Series seriesLowUp = GetLowSeries($"lowUp{indexLow}");
+                    Series seriesLowUp = ob.SeriesUp;
+                    seriesLowUp.Points.Clear();
                     var lowUp = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Top, period)).ToArray();
                     foreach (double d in lowUp)
                     {
                         seriesLowUp.Points.AddY(d);
                     }
 
-                    seriesLowUp.ChartArea = area.Name;
-                    chart.Series.Add(seriesLowUp);
-                    lowUpSeries.Add(seriesLowUp);
-
-
-                    Series seriesLowDown = GetLowSeries($"lowDown{indexLow}");
+                    Series seriesLowDown = ob.SeriesDown;
+                    seriesLowDown.Points.Clear();
                     var lowDown = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Bottom, period)).ToArray();
                     foreach (double d in lowDown)
                     {
                         seriesLowDown.Points.AddY(d);
                     }
-
-                    seriesLowDown.ChartArea = area.Name;
-                    chart.Series.Add(seriesLowDown);
-                    lowDownSeries.Add(seriesLowDown);
-
-                    indexLow++;
                 }
 
                 area.AxisY.Minimum = area.AxisY2.Minimum;
                 area.AxisY.Maximum = area.AxisY2.Maximum;
             }
+        }
+
+        private string GetFreeSeriesName(Chart chart)
+        {
+            int index = 0;
+            string name;
+            do
+            {
+                name = $"series{index}";
+                index++;
+            }
+            while (chart.Series.Any(s => s.Name == name));
+            return name;
         }
 
         private Series GetHighSeries(string name)
@@ -220,29 +191,127 @@ namespace OsEngine.Indicators.TrigonumCustom
         {
             if (_zzSeries.Values.Count < _period.ValueInt)
             {
-                HighOrderBlocks.Clear();
-                LowOrderBlocks.Clear();
+                ClearOrderBlocks(HighOrderBlocks, false, false);
+                ClearOrderBlocks(LowOrderBlocks, false, false);
                 return;
             }
-            //high
             int skip = _zzSeries.Values.Count - _period.ValueInt;
             IEnumerable<decimal> highs = _zz.DataSeries[2].Values.Skip(skip).Where(v => v > 0);
-            //lows
             IEnumerable<decimal> lows = _zz.DataSeries[3].Values.Skip(skip).Where(v => v > 0);
             Enum.TryParse(_priceBasis.ValueString, out OrderBlockPriceBasis basis);
-            HighOrderBlocks.Clear();
+            //ClearOrderBlocks(HighOrderBlocks, false, false);
+            List<OrderBlock> newHighOrderBlocks = new List<OrderBlock>();
+            List<OrderBlock> newLowOrderBlocks = new List<OrderBlock>();
             foreach (decimal high in highs)
             {
                 OrderBlock ob = new OrderBlock(high, _zz.DataSeries[2].Values, candles, OrderBlockType.Bullish, basis);
-                HighOrderBlocks.Add(ob);
+                newHighOrderBlocks.Add(ob);
             }
 
-            LowOrderBlocks.Clear();
+            //ClearOrderBlocks(LowOrderBlocks, false, false);
             foreach (decimal low in lows)
             {
                 OrderBlock ob = new OrderBlock(low, _zz.DataSeries[3].Values, candles, OrderBlockType.Bearish, basis);
-                LowOrderBlocks.Add(ob);
+                newLowOrderBlocks.Add(ob);
             }
+
+            UpdateOrderBlocks(HighOrderBlocks, newHighOrderBlocks);
+            UpdateOrderBlocks(LowOrderBlocks, newLowOrderBlocks);
+        }
+
+        private void UpdateOrderBlocks(List<OrderBlock> collection, List<OrderBlock> newCollection)
+        {
+            Chart chart = _chartMaster.ChartCandle?.GetChart();
+            if (chart == null) return;
+
+            if (chart.InvokeRequired)
+            {
+                chart.Invoke((Action<List<OrderBlock>, List<OrderBlock>>)UpdateOrderBlocks, collection, newCollection);
+                return;
+            }
+            ChartArea area = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
+            var newObs = newCollection.Where(ob => !collection.Any(old => old.Bottom == ob.Bottom && old.Top == ob.Top)).ToList();
+            var updating = collection.Where(old => newCollection.Any(ob => old.Bottom == ob.Bottom && old.Top == ob.Top)).ToList();
+            var deleting = collection.Except(updating).ToList();
+            foreach (OrderBlock ob in deleting)
+            {
+                DeleteOrderBlock(collection, ob);
+            }
+
+            foreach (OrderBlock old in updating)
+            {
+                OrderBlock newOb = newCollection.Where(ob => ob.Top == old.Top && ob.Bottom == old.Bottom).FirstOrDefault();
+                if (newOb != null)
+                {
+                    old.Length = newOb.Length;
+                    old.BrokenIndex = newOb.BrokenIndex;
+                }
+            }
+
+            foreach (OrderBlock ob in newObs)
+            {
+                if (ob.Type == OrderBlockType.Bullish)
+                {
+                    ob.SeriesUp = GetHighSeries(GetFreeSeriesName(chart));
+                    ob.SeriesUp.ChartArea = area.Name;
+                    chart.Series.Add(ob.SeriesUp);
+                    ob.SeriesDown = GetHighSeries(GetFreeSeriesName(chart));
+                    ob.SeriesDown.ChartArea = area.Name;
+                    chart.Series.Add(ob.SeriesDown);
+                }
+                else if (ob.Type == OrderBlockType.Bearish)
+                {
+                    ob.SeriesUp = GetLowSeries(GetFreeSeriesName(chart));
+                    ob.SeriesUp.ChartArea = area.Name;
+                    chart.Series.Add(ob.SeriesUp);
+                    ob.SeriesDown = GetLowSeries(GetFreeSeriesName(chart));
+                    ob.SeriesDown.ChartArea = area.Name;
+                    chart.Series.Add(ob.SeriesDown);
+                }
+                collection.Add(ob);
+            }
+        }
+
+        private void ClearOrderBlocks(List<OrderBlock> obs, bool exceptInPosition, bool onlySeries)
+        {
+            Chart chart = _chartMaster.ChartCandle?.GetChart();
+            if (chart == null) return;
+            if (chart.InvokeRequired)
+            {
+                chart.Invoke((Action<List<OrderBlock>, bool, bool>)ClearOrderBlocks, obs, exceptInPosition, onlySeries);
+                return;
+            }
+            IEnumerable<OrderBlock> deleting = obs.ToList();
+            if (exceptInPosition)
+            {
+                deleting = deleting.Where(ob => !ob.IsInPosition).ToList();
+            }
+            foreach (OrderBlock ob in deleting)
+            {
+                DeleteOrderBlock(obs, ob);
+                if (!onlySeries)
+                {
+                    obs.Remove(ob);
+                }
+            }
+        }
+
+        private void DeleteOrderBlock(List<OrderBlock> collection, OrderBlock ob)
+        {
+            Chart chart = _chartMaster.ChartCandle?.GetChart();
+            if (chart == null) return;
+            if (chart.InvokeRequired)
+            {
+                chart.Invoke((Action<List<OrderBlock>, OrderBlock>)DeleteOrderBlock, collection, ob);
+                return;
+            }
+            ob.SeriesUp?.Points.Clear();
+            chart?.Series.Remove(ob.SeriesUp);
+            ob.SeriesUp = null;
+            ob.SeriesDown?.Points.Clear();
+            chart?.Series.Remove(ob.SeriesDown);
+            ob.SeriesDown = null;
+            collection.Remove(ob);
         }
 
         private void Chart_PostPaint(object sender, ChartPaintEventArgs e)
@@ -258,7 +327,7 @@ namespace OsEngine.Indicators.TrigonumCustom
                 Axis xAxis = area.AxisX;
                 Axis yAxis = area.AxisY;
 
-                foreach (var ob in HighOrderBlocks.Skip(HighOrderBlocks.Count - obCount))
+                foreach (var ob in HighOrderBlocks)
                 {
                     int skip = _candles.Count - ob.Length;
                     if (skip < 0) continue;
@@ -286,7 +355,7 @@ namespace OsEngine.Indicators.TrigonumCustom
                     }
                 }
 
-                foreach (var ob in LowOrderBlocks.Skip(LowOrderBlocks.Count - obCount))
+                foreach (var ob in LowOrderBlocks)
                 {
                     int skip = _candles.Count - ob.Length;
                     if (skip < 0) continue;
@@ -378,14 +447,19 @@ namespace OsEngine.Indicators.TrigonumCustom
             CheckBroken(candles);
         }
 
+        public Series SeriesUp { get; set; }
+        public Series SeriesDown { get; set; }
+
         public decimal Top { get; set; }
         public decimal Bottom { get; set; }
         public int Length { get; set; }
-        public int BrokenIndex { get; private set; } = -1;
+        public int BrokenIndex { get; set; } = -1;
 
         public OrderBlockType Type { get; private set; }
 
         public bool IsBroken => BrokenIndex > -1;
+
+        public bool IsInPosition { get; set; } = false;
 
         public void CheckBroken(List<Candle> candles)
         {

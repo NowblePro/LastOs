@@ -31,6 +31,20 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         private OrderBlockZigZag _ob;
         private StrategyParameterInt _lengthZZ;
+        /// <summary>
+        /// Параметр входа в сделку, проверять цена вошла в зону фитилём или по Close
+        /// </summary>
+        private StrategyParameterString _entryTouchBasis;
+
+        /// <summary>
+        /// Подтверждение отбоя на выбор: бар закрылся выше ближней границы, свечной паттерн отбоя, N подряд баров в "правильную сторону"
+        /// </summary>
+        private StrategyParameterString _entryConfirm;
+
+        /// <summary>
+        /// Количество баров подряд в правильную сторону в случае выбора варианта подтверждения отбоя <see cref="EntryConfirm.NConfirmBars"/>
+        /// </summary>
+        private StrategyParameterInt _nConfirmBars;
 
         public Breaker(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -47,6 +61,10 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             _ob = (OrderBlockZigZag)IndicatorsFactory.CreateIndicatorByName(nameClass: "OrderBlockZigZag", name: name + "OrderBlockZigZag", canDelete: false);
             _ob = (OrderBlockZigZag)_tab.CreateCandleIndicator(_ob, nameArea: "Prime");
+
+            _entryTouchBasis = CreateParameter("EntryTouchBasis", EntryTouchBasis.Close.ToString(), Enum.GetNames(typeof(EntryTouchBasis)), "Breaker");
+            _entryTouchBasis = CreateParameter("EntryConfirm", EntryConfirm.CloseBackAboveNear.ToString(), Enum.GetNames(typeof(EntryConfirm)), "Breaker");
+            _nConfirmBars = CreateParameter("NConfirmBars", 1, 1, 10, 1, "Breaker");
 
             _ob.ChartMaster = _tab.GetChartMaster();
 
@@ -91,5 +109,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         {
             return false;
         }
+
+        enum EntryTouchBasis { Wick, Close }
+        enum EntryConfirm { CloseBackAboveNear, Engulf, NConfirmBars }
     }
 }
