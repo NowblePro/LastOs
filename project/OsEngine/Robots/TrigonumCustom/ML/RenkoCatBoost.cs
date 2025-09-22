@@ -6,6 +6,7 @@ using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
 using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.Robots.Classes;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 
@@ -44,8 +45,25 @@ namespace OsEngine.Robots.TrigonumCustom.ML
         }
 
         // Logic
-        protected override void CandleFinishedEvent(List<Candle> candles)
+
+        protected override List<Func<List<Candle>, bool>> GetCheckers()
         {
+            return new List<Func<List<Candle>, bool>>();
+        }
+
+        protected override bool CheckOpenLongPosition(List<Candle> candles)
+        {
+            return false;
+        }
+
+        protected override bool CheckOpenShortPosition(List<Candle> candles)
+        {
+            return false;
+        }
+
+        protected override bool CheckClosePosition(List<Candle> candles, Position position)
+        {
+            return false;
         }
 
         private void CancelStopsAndProfits()
@@ -74,7 +92,7 @@ namespace OsEngine.Robots.TrigonumCustom.ML
             return false;
         }
 
-        private decimal GetVolume()
+        protected override decimal GetVolume()
         {
             decimal volume = 0;
 

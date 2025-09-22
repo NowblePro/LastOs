@@ -268,6 +268,8 @@ namespace OsEngine.Charts.CandleChart
         /// </summary>
         void ShowAreaOnChart();
 
+        Chart GetChart();
+
         /// <summary>
         /// there's been a change int X-axis
         /// изменилось представление по оси Х
@@ -281,7 +283,8 @@ namespace OsEngine.Charts.CandleChart
         event Action<int> LastXIndexChangeEvent;
 
         event EventHandler<MouseEventArgs> ChartClickEvent;
-
+        event EventHandler<Chart> ChartCreated;
+        event EventHandler<Chart> ChartDeleting;
     }
 
     public enum ChartClickType
