@@ -58,7 +58,7 @@ namespace OsEngine.Robots.TrigonumCustom
             }
         }
 
-        protected decimal GetVolume()
+        protected virtual decimal GetVolume()
         {
             decimal volume = 0;
 
@@ -94,7 +94,7 @@ namespace OsEngine.Robots.TrigonumCustom
         /// <returns></returns>
         protected abstract List<Func<List<Candle>, bool>> GetCheckers();
 
-        protected void CandleFinishedEvent(List<Candle> candles)
+        protected virtual void CandleFinishedEvent(List<Candle> candles)
         {
             if (GetCheckers().Any(p => !p(candles))) return;
             decimal lastPrice = candles.Last().Close;

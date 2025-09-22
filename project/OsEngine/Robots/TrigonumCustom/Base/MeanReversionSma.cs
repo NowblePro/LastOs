@@ -7,6 +7,7 @@ using OsEngine.OsTrader.Panels.Tab;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Security.Cryptography;
+using System.Windows.Media.Converters;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
@@ -64,7 +65,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _rPercent = CreateParameter("Deviation percent (r%)", 0.5m, 0.1m, 3.0m, 0.1m, "Robot parameters");
             _atrMultiplier = CreateParameter("ATR multiplier", 1.0m, 0.4m, 3.0m, 0.2m, "Robot parameters");
             _periodAtr = CreateParameter("ATR period", 14, 20, 400, 1, "Robot parameters");
-            _k = CreateParameter("Linear averaging coefficient (k)", 1.2m, 1.1m, 1.6m, 0.1m, "Robot parameters");
+            _k = CreateParameter("Linear averaging percent (k%)", 1.2m, 1.1m, 1.6m, 0.1m, "Robot parameters");
 
             _sma = IndicatorsFactory.CreateIndicatorByName(nameClass: "SmaCustom", name: name + "SmaCustom", canDelete: false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, nameArea: "Prime");
@@ -139,7 +140,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (candles.Count < _periodSma.ValueInt) { return; }
 
-            decimal lastPrice = candles[candles.Count - 1].Close;
             decimal lastMa = _sma.DataSeries[0].Last;
 
             List<Position> positions = _tab.PositionsOpenAll;
@@ -147,19 +147,45 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (positions.Count == 0)
             {
                 // enter logic
+                
                 if (_regime.ValueString == "On" ||
                     _regime.ValueString == "OnlyLong")
                 {
-                    decimal buyPrice = lastMa * (1 - _rPercent.ValueDecimal / 100);
-                    decimal buySlippage = buyPrice * (1 + _slippage.ValueDecimal / 100);
+                    decimal buyPrice;
+                    decimal buySlippage;
+
+                    if (_avgMode == AvgMode.Volatility)
+                    {
+                        decimal lastAtr = _atr.DataSeries[0].Last;
+                        buyPrice = lastMa - (positions.Count + 1) * _atrMultiplier.ValueDecimal * lastAtr;
+                        buySlippage = buyPrice * (1 + _slippage.ValueDecimal / 100);
+                    }
+                    else
+                    {
+                        buyPrice = lastMa * (1 - _rPercent.ValueDecimal / 100);
+                        buySlippage = buyPrice * (1 + _slippage.ValueDecimal / 100);
+                    }
                     _tab.BuyAtStop(GetVolume(), buyPrice, buySlippage, StopActivateType.LowerOrEqual, 1);
                 }
 
                 if (_regime.ValueString == "On" ||
                     _regime.ValueString == "OnlyShort")
                 {
-                    decimal sellPrice = lastMa * (1 + _rPercent.ValueDecimal / 100);
-                    decimal sellSlippage = sellPrice * (1 - _slippage.ValueDecimal / 100);
+                    decimal sellPrice;
+                    decimal sellSlippage;
+
+                    if (_avgMode == AvgMode.Volatility)
+                    {
+                        decimal lastAtr = _atr.DataSeries[0].Last;
+                        sellPrice = lastMa + (positions.Count + 1) * _atrMultiplier.ValueDecimal * lastAtr;
+                        sellSlippage = sellPrice * (1 - _slippage.ValueDecimal / 100);
+                    }
+                    else
+                    {
+                        sellPrice = lastMa * (1 + _rPercent.ValueDecimal / 100);
+                        sellSlippage = sellPrice * (1 - _slippage.ValueDecimal / 100);
+                    }
+
                     _tab.SellAtStop(GetVolume(), sellPrice, sellSlippage, StopActivateType.HigherOrEqual, 1);
                 }
             }
@@ -259,7 +285,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             decimal lastMa = _sma.DataSeries[0].Last;
 
-            decimal volume = GetVolume() + (positions.Count + 1) * _k.ValueDecimal;
+            decimal volume = positions[0].OpenVolume * (1 + positions.Count * _k.ValueDecimal / 100);
+            volume = GetRoundedVolume(_tab, volume);
 
             if (positions[0].Direction == Side.Buy)
             {
@@ -369,7 +396,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _tab.SellAtStopCancel();
         }
 
-        private decimal GetVolume()
+        private decimal GetVolume(bool getRounded = true)
         {
             decimal volume = 0;
 
@@ -387,7 +414,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 volume = _tab.Portfolio.ValueCurrent * (_volumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
-            volume = GetRoundedVolume(_tab, volume);
+            if (getRounded)
+            {
+                volume = GetRoundedVolume(_tab, volume);
+            }
 
             return volume;
         }

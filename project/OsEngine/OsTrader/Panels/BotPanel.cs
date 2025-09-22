@@ -65,7 +65,9 @@ namespace OsEngine.OsTrader.Panels
         /// <summary>
         ///  source for the news feed
         /// </summary>
-        News
+        News,
+
+        Renko
     }
 
     /// <summary>
@@ -1609,6 +1611,15 @@ position => position.State != PositionStateType.OpeningFail
         }
         private List<BotTabNews> _tabsNews = new List<BotTabNews>();
 
+        public List<BotTabRenko> TabsRenko
+        {
+            get
+            {
+                return _tabsRenko;
+            }
+        }
+        private List<BotTabRenko> _tabsRenko = new List<BotTabRenko>();
+
         /// <summary>
         /// user toggled tabs
         /// </summary>
@@ -1952,6 +1963,10 @@ position => position.State != PositionStateType.OpeningFail
             for (int i = 0; TabsPair != null && i < TabsPair.Count; i++)
             {
                 TabsPair[i].Clear();
+            }
+            for (int i = 0; TabsRenko != null && i < TabsRenko.Count; i++)
+            {
+                TabsRenko[i].Clear();
             }
 
             if (_botTabs != null)

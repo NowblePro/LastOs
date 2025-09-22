@@ -487,6 +487,9 @@
     <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexAsset.cs" />
     <Compile Include="Market\Servers\BitMex\BitMexEntity\BitMexCandle.cs" />
     <Compile Include="Market\Servers\BitMex\BitMexServerPermission.cs" />
+    <Compile Include="Market\Servers\BybitData\BybitDataServer.cs" />
+    <Compile Include="Market\Servers\BybitData\BybitDataServerPermission.cs" />
+    <Compile Include="Market\Servers\BybitData\Entity\ByBitDataResponse.cs" />
     <Compile Include="Market\Servers\ComparePositionsModule.cs" />
     <Compile Include="Market\Servers\AServerOrdersHub.cs" />
     <Compile Include="Market\Servers\AstsBridge\SecurityLevelOne.cs" />
@@ -1159,6 +1162,7 @@
     <Compile Include="OsTrader\Panels\Tab\BotTabPolygonUi.xaml.cs">
       <DependentUpon>BotTabPolygonUi.xaml</DependentUpon>
     </Compile>
+    <Compile Include="OsTrader\Panels\Tab\BotTabRenko.cs" />
     <Compile Include="OsTrader\Panels\Tab\BotTabScreener.cs" />
     <Compile Include="OsTrader\Panels\Tab\BotTabScreenerUi.xaml.cs">
       <DependentUpon>BotTabScreenerUi.xaml</DependentUpon>
@@ -1408,6 +1412,8 @@
     <Compile Include="Robots\TrigonumCustom\Channel\Stoch.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ZZChannelCustom.cs" />
     <Compile Include="Robots\TrigonumCustom\Channel\ZZChannelCustomExtrems.cs" />
+    <Compile Include="Robots\TrigonumCustom\ML\Models\RenkoPrediction.cs" />
+    <Compile Include="Robots\TrigonumCustom\ML\RenkoCatBoost.cs" />
     <Compile Include="Robots\TrigonumCustom\Testing\FrequentOrders.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseHmaRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseTwoSmaRsi.cs" />

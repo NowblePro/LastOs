@@ -14,6 +14,7 @@ using System.Drawing;
 using OsEngine.Language;
 using OsEngine.Alerts;
 using System.Globalization;
+using System.Linq;
 
 namespace OsEngine.OsTrader
 {
@@ -563,7 +564,28 @@ namespace OsEngine.OsTrader
 
                     if (_gridOpenPoses != null)
                     {
-                        CheckPosition(_gridOpenPoses, openPositions);
+                        bool group = false;
+
+                        if (_checkBoxGroupActive != null)
+                        {
+                            if (!_checkBoxGroupActive.Dispatcher.CheckAccess())
+                            {
+                                _checkBoxGroupActive.Dispatcher.Invoke(delegate { group = _checkBoxGroupActive.IsChecked.Value; });
+                            }
+                            else
+                            {
+                                group = _checkBoxGroupActive.IsChecked.Value;
+                            }
+                        }
+
+                        if (group)
+                        {
+                            GroupPositionTable(_gridOpenPoses, openPositions);
+                        }
+                        else
+                        {
+                            CheckPosition(_gridOpenPoses, openPositions);
+                        }
                         Sort(_gridOpenPoses);
                     }
 
@@ -581,6 +603,33 @@ namespace OsEngine.OsTrader
                     await Task.Delay(5000);
                 }
             }
+        }
+
+        private void GroupPositionTable(DataGridView dgv, List<Position> openPositions)
+        {
+            if (dgv.InvokeRequired)
+            {
+                dgv.Invoke((Action<DataGridView, List<Position>>)GroupPositionTable, dgv, openPositions);
+                return;
+            }
+
+            dgv.Rows.Clear();
+            IEnumerable<IGrouping<string, Position>> securityGroup = openPositions.GroupBy(p => p.SecurityName);
+            List<Position> groupedPositions = new List<Position>();
+            foreach (IGrouping<string, Position> sec in securityGroup)
+            {
+                IEnumerable<IGrouping<Side, Position>> directionGroup = sec.GroupBy(p => p.Direction);
+                foreach (IGrouping<Side, Position> dir in directionGroup)
+                {
+                    Order order = new Order();
+                    order.SecurityNameCode = sec.Key;
+                    order.VolumeExecute = dir.Sum(p => p.OpenVolume);
+                    Position newPos = new Position() { Direction = dir.Key, SecurityName = sec.Key, PriceStep = dir.First().PriceStep, Number = dir.First().Number };
+                    newPos.AddNewOpenOrder(order);
+                    groupedPositions.Add(newPos);
+                }
+            }
+            CheckPosition(dgv, groupedPositions);
         }
 
         [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
@@ -1098,6 +1147,13 @@ namespace OsEngine.OsTrader
             {
                 System.Windows.MessageBox.Show(message);
             }
+        }
+
+        System.Windows.Controls.CheckBox _checkBoxGroupActive = null;
+
+        internal void SetGroupingCheckBox(System.Windows.Controls.CheckBox checkBoxGroupActive)
+        {
+            _checkBoxGroupActive = checkBoxGroupActive;
         }
 
         /// <summary>

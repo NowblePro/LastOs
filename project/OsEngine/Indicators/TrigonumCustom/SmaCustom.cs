@@ -13,8 +13,9 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         private IndicatorDataSeries _series;
 
-        private Queue<decimal> _valuesQueue;
+        private LinkedList<decimal> _valuesQueue;
         private decimal _currentSumm;
+        private int _lastIndex;
 
         public override void OnStateChange(IndicatorState state)
         {
@@ -38,18 +39,30 @@ namespace OsEngine.Indicators.TrigonumCustom
 
             if (_valuesQueue == null)
             {
-                _valuesQueue = new Queue<decimal>();
+                _valuesQueue = new LinkedList<decimal>();
                 for (int i = 0; i <= index; ++i)
                 {
-                    _valuesQueue.Enqueue(candles[i].GetPoint(_candlePoint.ValueString));
+                    _valuesQueue.AddLast(candles[i].GetPoint(_candlePoint.ValueString));
                     _currentSumm += candles[i].GetPoint(_candlePoint.ValueString);
                 }
+                _lastIndex = index;
             }
             else
             {
-                _currentSumm -= _valuesQueue.Dequeue();
-                _currentSumm += candles[index].GetPoint(_candlePoint.ValueString);
-                _valuesQueue.Enqueue(candles[index].GetPoint(_candlePoint.ValueString));
+                if (_lastIndex == index)
+                {
+                    _currentSumm -= _valuesQueue.Last.Value;
+                    _valuesQueue.Last.Value = candles[index].GetPoint(_candlePoint.ValueString);
+                    _currentSumm += _valuesQueue.Last.Value;
+                }
+                else
+                {
+                    _currentSumm -= _valuesQueue.First.Value;
+                    _valuesQueue.RemoveFirst();
+                    _currentSumm += candles[index].GetPoint(_candlePoint.ValueString);
+                    _valuesQueue.AddLast(candles[index].GetPoint(_candlePoint.ValueString));
+                    _lastIndex = index;
+                }
             }
 
             _series.Values[index] = _currentSumm / _length.ValueInt;
@@ -59,6 +72,7 @@ namespace OsEngine.Indicators.TrigonumCustom
         {
             _valuesQueue = null;
             _currentSumm = 0.0m;
+            _lastIndex = 0;
         }
     }
 }
