@@ -54,9 +54,14 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private StrategyParameterDecimal _stopLossOffset;
 
         /// <summary>
-        /// Цель для тэйк-профита в процентах от цены входа
+        /// Соотношение риска и прибыли
         /// </summary>
         private StrategyParameterDecimal _rrTarget;
+
+        /// <summary>
+        /// Режим тэйк-профита
+        /// </summary>
+        private StrategyParameterString _tpMode;
 
         private OrderBlock _currentLong = null;
         private OrderBlock _currentShort = null;
@@ -74,6 +79,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             _entryTouchBasis = CreateParameter("EntryTouchBasis", EntryTouchBasis.Close.ToString(), Enum.GetNames(typeof(EntryTouchBasis)), "Breaker");
             _entryConfirm = CreateParameter("EntryConfirm", EntryConfirmType.CloseBackAboveNear.ToString(), Enum.GetNames(typeof(EntryConfirmType)), "Breaker");
+            _tpMode = CreateParameter("TPMode", TPMode.FixedRR.ToString(), Enum.GetNames(typeof(TPMode)), "Breaker");
             _nConfirmBars = CreateParameter("NConfirmBars", 1, 1, 10, 1, "Breaker");
             _stopLossOffset = CreateParameter("StopLossOffset", 0m, 0m, 100m, 1m, "Breaker");
             _rrTarget = CreateParameter("RRTarget", 1m, 1m, 3m, 0.5m, "Breaker");
@@ -81,6 +87,25 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             _lengthZZ.ValueChange += _lengthZZ_ValueChange;
             _ob.Save();
+        }
+
+        public TPMode TPMode
+        {
+            get 
+            {
+                TPMode result = TPMode.FixedRR;
+                try
+                {
+                    Enum.TryParse(_tpMode.ValueString, out result);
+                }
+                catch { }
+                return result;
+            }
+            set 
+            {
+                if (!_tpMode.ValuesString.Contains(value.ToString())) return;
+                _tpMode.ValueString = value.ToString();
+            }
         }
 
         private void _lengthZZ_ValueChange()
@@ -118,18 +143,24 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             return _currentShort != null;
         }
 
+        private bool CheckOrderBlock(OrderBlock ob)
+        {
+            if (!ob.Visible) return false;
+            if (!ob.IsBroken) return false;
+            decimal height = ob.Top - ob.Bottom;
+            if (height / ob.Bottom < _minHigh.ValueDecimal / 100 || height / ob.Bottom > _maxHigh.ValueDecimal / 100)
+            {
+                return false;
+            }
+            return true;
+        }
+
         private OrderBlock GetLongOrderBlock(List<Candle> candles)
         {
             return _ob.HighOrderBlocks.Where(ob => 
             {
-                if (!ob.Visible) return false;
-                if (!ob.IsBroken) return false;
+                if (!CheckOrderBlock(ob)) return false;
                 if (ob.Type != OrderBlockType.Bullish) return false;
-                decimal height = ob.Top - ob.Bottom;
-                //if (height < _minHigh.ValueDecimal || height > _maxHigh.ValueDecimal)
-                //{
-                //    return false;
-                //}
                 int index = candles.Count - ob.Length;
                 Candle candle = candles[index]; // первая свеча ордер блока
                 //Candle brokenCandle = candles[ob.BrokenIndex];
@@ -181,14 +212,8 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         {
             return _ob.LowOrderBlocks.Where(ob =>
             {
-                if (!ob.Visible) return false;
-                if (!ob.IsBroken) return false;
+                if (!CheckOrderBlock(ob)) return false;
                 if (ob.Type != OrderBlockType.Bearish) return false;
-                decimal height = ob.Top - ob.Bottom;
-                //if (height < _minHigh.ValueDecimal || height > _maxHigh.ValueDecimal)
-                //{
-                //    return false;
-                //}
                 int index = candles.Count - ob.Length;
                 Candle candle = candles[index]; // первая свеча ордер блока
                 //Candle brokenCandle = candles[ob.BrokenIndex];
@@ -291,9 +316,14 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         private bool TakeProfit(Candle candle, Position position)
         {
             bool result = false;
+            decimal price = candle.Close;
+            decimal slLevel = GetStopLossLevel();
+            
             if (position.Direction == Side.Buy)
             {
-                result = candle.Close >= position.EntryPrice + position.EntryPrice * _rrTarget.ValueDecimal / 100;
+                decimal risk = position.EntryPrice - slLevel;
+                decimal target = risk * _rrTarget.ValueDecimal;
+                result = price >= position.EntryPrice + target;
                 if (_currentLong != null)
                 {
                     _currentLong.Visible = !result;
@@ -301,11 +331,27 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             }
             else if (position.Direction == Side.Sell)
             {
-                result = candle.Close <= position.EntryPrice - position.EntryPrice * _rrTarget.ValueDecimal / 100;
+                decimal risk = slLevel - position.EntryPrice;
+                decimal target = risk * _rrTarget.ValueDecimal;
+                result = price <= position.EntryPrice - target;
                 if (_currentShort != null)
                 {
                     _currentShort.Visible = !result;
                 }
+            }
+            return result;
+        }
+
+        private decimal GetStopLossLevel()
+        {
+            decimal result = 0;
+            if (_currentLong != null)
+            {
+                result = _currentLong.Bottom - _stopLossOffset.ValueDecimal;
+            }
+            else if (_currentShort != null)
+            {
+                result = _currentShort.Top + _stopLossOffset.ValueDecimal;
             }
             return result;
         }
@@ -332,14 +378,17 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                     max = candle.High;
                     break;
             }
+
+            decimal slLevel = GetStopLossLevel();
+
             if (_currentLong != null)
             {
-                result = min < _currentLong.Bottom - _stopLossOffset.ValueDecimal;
+                result = min < slLevel;
                 _currentLong.Visible = !result;
             }
             else if (_currentShort != null)
             {
-                result = max > _currentShort.Top + _stopLossOffset.ValueDecimal;
+                result = max > slLevel;
                 _currentShort.Visible = !result;
             }
             return result;
@@ -348,4 +397,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         enum EntryTouchBasis { Wick, Close }
         enum EntryConfirmType { CloseBackAboveNear, Engulf, NConfirmBars }
     }
+
+    public enum TPMode { FixedRR }
 }

@@ -92,7 +92,7 @@ namespace OsEngine.Robots.TrigonumCustom.ML
             return false;
         }
 
-        protected override decimal GetVolume()
+        protected override decimal GetVolume(bool getRounded = true)
         {
             decimal volume = 0;
 
@@ -111,7 +111,10 @@ namespace OsEngine.Robots.TrigonumCustom.ML
                 volume = _tab.Portfolio.ValueCurrent * (_volumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
-            volume = GetRoundedVolume(_tab, volume);
+            if (getRounded)
+            {
+                volume = GetRoundedVolume(_tab, volume);
+            }
 
             return volume;
         }
