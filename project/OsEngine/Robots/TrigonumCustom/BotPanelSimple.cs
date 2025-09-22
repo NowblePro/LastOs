@@ -58,7 +58,7 @@ namespace OsEngine.Robots.TrigonumCustom
             }
         }
 
-        protected virtual decimal GetVolume()
+        protected virtual decimal GetVolume(bool getRounded = true)
         {
             decimal volume = 0;
 
@@ -77,14 +77,11 @@ namespace OsEngine.Robots.TrigonumCustom
                 volume = _tab.Portfolio.ValueCurrent * (_volumeOnPosition.ValueDecimal / 100) / _tab.PriceBestAsk / _tab.Security.Lot;
             }
 
-            if (StartProgram == StartProgram.IsTester)
-            {
-                volume = Math.Round(volume, 6);
-            }
-            else
+            if (getRounded)
             {
                 volume = GetRoundedVolume(_tab, volume);
             }
+
             return volume;
         }
 
