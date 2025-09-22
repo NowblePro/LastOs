@@ -99,20 +99,32 @@ namespace OsEngine.Robots.TrigonumCustom
             if (GetCheckers().Any(p => !p(candles))) return;
             decimal lastPrice = candles.Last().Close;
             List<Position> positions = _tab.PositionsOpenAll;
+            decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
             if (positions.Count > 0)
             {
-                CheckClosePosition(candles);
+                foreach (Position pos in positions)
+                {
+                    if (CheckClosePosition(candles, pos))
+                    {
+                        if (pos.Direction == Side.Buy)
+                        {
+                            _tab.CloseAtStop(pos, lastPrice, lastPrice - slippage);
+                        }
+                        else if (pos.Direction == Side.Sell)
+                        {
+                            _tab.CloseAtStop(pos, lastPrice, lastPrice + slippage);
+                        }
+                    }
+                }
             }
             else
             {
                 if (CheckOpenLongPosition(candles))
                 {
-                    decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
                     _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
                 }
                 else if (CheckOpenShortPosition(candles))
                 {
-                    decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
                     _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
                 }
             }
@@ -137,7 +149,7 @@ namespace OsEngine.Robots.TrigonumCustom
         /// </summary>
         /// <param name="candles"></param>
         /// <returns></returns>
-        protected abstract bool CheckClosePosition(List<Candle> candles);
+        protected abstract bool CheckClosePosition(List<Candle> candles, Position position);
 
         protected abstract void ParametersChangedByUser();
 

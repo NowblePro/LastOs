@@ -28,8 +28,6 @@ namespace OsEngine.Indicators.TrigonumCustom
         public List<OrderBlock> HighOrderBlocks { get; private set; } = new List<OrderBlock>();
         public List<OrderBlock> LowOrderBlocks { get; private set; } = new List<OrderBlock>();
 
-        private int obCount = 2;
-
         private ChartCandleMaster _chartMaster;
         public ChartCandleMaster ChartMaster
         {
@@ -50,7 +48,6 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public override void OnProcess(List<Candle> candles, int index)
         {
-            //int index = _series.Values.Count - 1;
             if (index == 0) return;
             int delta = 1;
             int i = index - delta;
@@ -60,126 +57,8 @@ namespace OsEngine.Indicators.TrigonumCustom
                 delta++;
                 i = index - delta;
             }
+            _candles = candles;
             UpdateOrderBlocks(candles);
-            DrawOrderBlocks(candles);
-        }
-
-        private void DrawOrderBlocks(List<Candle> candles)
-        {
-            this._candles = candles;
-
-            Chart chart = _chartMaster.ChartCandle?.GetChart();
-            if (chart == null) return;
-
-            if (chart.InvokeRequired)
-            {
-                chart.Invoke((Action<List<Candle>>)DrawOrderBlocks, candles);
-                return;
-            }
-
-            if (_candles == null || _candles.Count == 0) return;
-
-            ChartArea area = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
-
-            if (area != null)
-            {
-                Axis xAxis = area.AxisX;
-                Axis yAxis = area.AxisY;
-
-                //ClearOrderBlocks(HighOrderBlocks, true, true);
-
-                //int skipHigh = HighOrderBlocks.Count - obCount;
-
-                //IEnumerable<OrderBlock> delete = HighOrderBlocks.Take(skipHigh);
-                //foreach (OrderBlock ob in delete)
-                //{
-                //    DeleteOrderBlock(HighOrderBlocks, ob);
-                //}
-                foreach (var ob in HighOrderBlocks)
-                {
-                    int skip = _candles.Count - ob.Length - 1;
-                    if (skip < 0) continue;
-                    int period = _candles.Count - skip;
-                    Series seriesHighUp = ob.SeriesUp;
-                    seriesHighUp.Points.Clear();
-                    var highUp = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Top, period)).ToArray();
-                    foreach (double d in highUp)
-                    {
-                        seriesHighUp.Points.AddY(d);
-                    }
-
-                    Series seriesHighDown = ob.SeriesDown;
-                    seriesHighDown.Points.Clear();
-                    var highDown = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Bottom, period)).ToArray();
-                    foreach (double d in highDown)
-                    {
-                        seriesHighDown.Points.AddY(d);
-                    }
-                }
-                //int skipLow = LowOrderBlocks.Count - obCount;
-                //delete = LowOrderBlocks.Take(skipLow);
-                //foreach (OrderBlock ob in delete)
-                //{
-                //    DeleteOrderBlock(LowOrderBlocks, ob);
-                //}
-                foreach (var ob in LowOrderBlocks)
-                {
-                    int skip = _candles.Count - ob.Length - 1;
-                    if (skip < 0) continue;
-                    int period = _candles.Count - skip;
-                    Series seriesLowUp = ob.SeriesUp;
-                    seriesLowUp.Points.Clear();
-                    var lowUp = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Top, period)).ToArray();
-                    foreach (double d in lowUp)
-                    {
-                        seriesLowUp.Points.AddY(d);
-                    }
-
-                    Series seriesLowDown = ob.SeriesDown;
-                    seriesLowDown.Points.Clear();
-                    var lowDown = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Bottom, period)).ToArray();
-                    foreach (double d in lowDown)
-                    {
-                        seriesLowDown.Points.AddY(d);
-                    }
-                }
-
-                area.AxisY.Minimum = area.AxisY2.Minimum;
-                area.AxisY.Maximum = area.AxisY2.Maximum;
-            }
-        }
-
-        private string GetFreeSeriesName(Chart chart)
-        {
-            int index = 0;
-            string name;
-            do
-            {
-                name = $"series{index}";
-                index++;
-            }
-            while (chart.Series.Any(s => s.Name == name));
-            return name;
-        }
-
-        private Series GetHighSeries(string name)
-        {
-            Series result = new Series(name);
-            result.ChartType = SeriesChartType.Line;
-            result.Color = System.Drawing.Color.Red;
-            result.BorderWidth = 1;
-            result.BorderDashStyle = ChartDashStyle.Solid;
-            return result;
-        }
-
-        private Series GetLowSeries(string name)
-        {
-            Series result = new Series(name);
-            result.ChartType = SeriesChartType.Line;
-            result.Color = System.Drawing.Color.Blue;
-            result.BorderWidth = 1;
-            result.BorderDashStyle = ChartDashStyle.Solid;
-            return result;
         }
 
         private void _chartMaster_ChartCandleCreated(object sender, EventArgs e)
@@ -191,15 +70,14 @@ namespace OsEngine.Indicators.TrigonumCustom
         {
             if (_zzSeries.Values.Count < _period.ValueInt)
             {
-                ClearOrderBlocks(HighOrderBlocks, false, false);
-                ClearOrderBlocks(LowOrderBlocks, false, false);
+                ClearOrderBlocks(HighOrderBlocks, false);
+                ClearOrderBlocks(LowOrderBlocks, false);
                 return;
             }
             int skip = _zzSeries.Values.Count - _period.ValueInt;
             IEnumerable<decimal> highs = _zz.DataSeries[2].Values.Skip(skip).Where(v => v > 0);
             IEnumerable<decimal> lows = _zz.DataSeries[3].Values.Skip(skip).Where(v => v > 0);
             Enum.TryParse(_priceBasis.ValueString, out OrderBlockPriceBasis basis);
-            //ClearOrderBlocks(HighOrderBlocks, false, false);
             List<OrderBlock> newHighOrderBlocks = new List<OrderBlock>();
             List<OrderBlock> newLowOrderBlocks = new List<OrderBlock>();
             foreach (decimal high in highs)
@@ -208,7 +86,6 @@ namespace OsEngine.Indicators.TrigonumCustom
                 newHighOrderBlocks.Add(ob);
             }
 
-            //ClearOrderBlocks(LowOrderBlocks, false, false);
             foreach (decimal low in lows)
             {
                 OrderBlock ob = new OrderBlock(low, _zz.DataSeries[3].Values, candles, OrderBlockType.Bearish, basis);
@@ -222,9 +99,8 @@ namespace OsEngine.Indicators.TrigonumCustom
         private void UpdateOrderBlocks(List<OrderBlock> collection, List<OrderBlock> newCollection)
         {
             Chart chart = _chartMaster.ChartCandle?.GetChart();
-            if (chart == null) return;
 
-            if (chart.InvokeRequired)
+            if (chart != null && chart.InvokeRequired)
             {
                 chart.Invoke((Action<List<OrderBlock>, List<OrderBlock>>)UpdateOrderBlocks, collection, newCollection);
                 return;
@@ -248,44 +124,19 @@ namespace OsEngine.Indicators.TrigonumCustom
                 }
             }
 
-            foreach (OrderBlock ob in newObs)
-            {
-                if (ob.Type == OrderBlockType.Bullish)
-                {
-                    ob.SeriesUp = GetHighSeries(GetFreeSeriesName(chart));
-                    ob.SeriesUp.ChartArea = area.Name;
-                    chart.Series.Add(ob.SeriesUp);
-                    ob.SeriesDown = GetHighSeries(GetFreeSeriesName(chart));
-                    ob.SeriesDown.ChartArea = area.Name;
-                    chart.Series.Add(ob.SeriesDown);
-                }
-                else if (ob.Type == OrderBlockType.Bearish)
-                {
-                    ob.SeriesUp = GetLowSeries(GetFreeSeriesName(chart));
-                    ob.SeriesUp.ChartArea = area.Name;
-                    chart.Series.Add(ob.SeriesUp);
-                    ob.SeriesDown = GetLowSeries(GetFreeSeriesName(chart));
-                    ob.SeriesDown.ChartArea = area.Name;
-                    chart.Series.Add(ob.SeriesDown);
-                }
-                collection.Add(ob);
-            }
+            collection.AddRange(newObs);
         }
 
-        private void ClearOrderBlocks(List<OrderBlock> obs, bool exceptInPosition, bool onlySeries)
+        private void ClearOrderBlocks(List<OrderBlock> obs, bool onlySeries)
         {
             Chart chart = _chartMaster.ChartCandle?.GetChart();
-            if (chart == null) return;
-            if (chart.InvokeRequired)
+            if (chart != null && chart.InvokeRequired)
             {
-                chart.Invoke((Action<List<OrderBlock>, bool, bool>)ClearOrderBlocks, obs, exceptInPosition, onlySeries);
+                chart.Invoke((Action<List<OrderBlock>, bool>)ClearOrderBlocks, obs, onlySeries);
                 return;
             }
             IEnumerable<OrderBlock> deleting = obs.ToList();
-            if (exceptInPosition)
-            {
-                deleting = deleting.Where(ob => !ob.IsInPosition).ToList();
-            }
+
             foreach (OrderBlock ob in deleting)
             {
                 DeleteOrderBlock(obs, ob);
@@ -299,93 +150,116 @@ namespace OsEngine.Indicators.TrigonumCustom
         private void DeleteOrderBlock(List<OrderBlock> collection, OrderBlock ob)
         {
             Chart chart = _chartMaster.ChartCandle?.GetChart();
-            if (chart == null) return;
-            if (chart.InvokeRequired)
+
+            if (chart != null && chart.InvokeRequired)
             {
                 chart.Invoke((Action<List<OrderBlock>, OrderBlock>)DeleteOrderBlock, collection, ob);
                 return;
             }
-            ob.SeriesUp?.Points.Clear();
-            chart?.Series.Remove(ob.SeriesUp);
-            ob.SeriesUp = null;
-            ob.SeriesDown?.Points.Clear();
-            chart?.Series.Remove(ob.SeriesDown);
-            ob.SeriesDown = null;
+            
             collection.Remove(ob);
         }
 
         private void Chart_PostPaint(object sender, ChartPaintEventArgs e)
         {
-            Graphics g = e.ChartGraphics.Graphics;
-
-            if (_candles == null || _candles.Count == 0) return;
-            Chart chart = e.Chart;
-            ChartArea area = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
-
-            if (area != null)
+            try
             {
-                Axis xAxis = area.AxisX;
-                Axis yAxis = area.AxisY;
+                Graphics g = e.ChartGraphics.Graphics;
 
-                foreach (var ob in HighOrderBlocks)
+                if (_candles == null || _candles.Count == 0) return;
+                Chart chart = e.Chart;
+                ChartArea area = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
+
+                double xMax = (area.InnerPlotPosition.Width / 100 * chart.ClientRectangle.Width) - (area.Position.X / 100 * chart.ClientRectangle.Width);
+                double yMax = (area.InnerPlotPosition.Height / 100 * chart.ClientRectangle.Height) - (area.Position.Y / 100 * chart.ClientRectangle.Height);
+
+                if (area != null)
                 {
-                    int skip = _candles.Count - ob.Length;
-                    if (skip < 0) continue;
-                    int period = _candles.Count - skip;
-                    var highUp = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Top, period)).ToArray();
-                    var highDown = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Bottom, period)).ToArray();
-
-                    double xPixel1 = xAxis.ValueToPixelPosition(skip);
-                    double yPixel1 = yAxis.ValueToPixelPosition(highUp[skip]);
-                    double xPixel2 = ob.IsBroken ? xAxis.ValueToPixelPosition(ob.BrokenIndex) : xAxis.ValueToPixelPosition(skip + period - 1);
-                    double yPixel2 = yAxis.ValueToPixelPosition(highDown[skip]);
-
-                    using (Brush brush = new SolidBrush(Color.FromArgb(5, Color.Red)))
+                    Axis xAxis = area.AxisX;
+                    Axis yAxis = area.AxisY;
+                    if (double.IsNaN(yAxis.Maximum))
                     {
-                        g.FillRectangle(brush, new RectangleF((float)xPixel1, (float)yPixel1, (float)(xPixel2 - xPixel1), (float)(yPixel2 - yPixel1)));
+                        area.AxisY.Minimum = area.AxisY2.Minimum;
+                        area.AxisY.Maximum = area.AxisY2.Maximum;
+                        return;
                     }
-
-                    if (ob.IsBroken)
+                    foreach (var ob in HighOrderBlocks.Where(ob => ob.Visible))
                     {
+                        int skip = _candles.Count - ob.Length;
+                        if (skip < 0) continue;
+                        int period = _candles.Count - skip;
+                        double highUp = (double)ob.Top;
+                        double highDown = (double)ob.Bottom;
+
+                        double xPixel1 = xAxis.ValueToPixelPosition(skip);
+                        double yPixel1 = yAxis.ValueToPixelPosition(highUp);
+                        double xPixel2 = ob.IsBroken ? xAxis.ValueToPixelPosition(ob.BrokenIndex) : xAxis.ValueToPixelPosition(skip + period - 1);
+                        double yPixel2 = yAxis.ValueToPixelPosition(highDown);
                         double xPixel3 = xAxis.ValueToPixelPosition(skip + period - 1);
-                        using (Brush brush = new SolidBrush(Color.FromArgb(5, Color.Green)))
+                        xPixel1 = Math.Min(xPixel1, xMax);
+                        xPixel2 = Math.Min(xPixel2, xMax);
+                        yPixel2 = Math.Min(yPixel2, yMax);
+                        xPixel3 = Math.Min(xPixel3, xMax);
+
+                        using (Brush fillBrush = new SolidBrush(Color.FromArgb(30, Color.Red)))
+                        using (Brush brush = new SolidBrush(Color.Red))
+                        using (Pen pen = new Pen(brush))
                         {
-                            g.FillRectangle(brush, new RectangleF((float)xPixel2, (float)yPixel1, (float)(xPixel3 - xPixel2), (float)(yPixel2 - yPixel1)));
+                            g.FillRectangle(fillBrush, new RectangleF((float)xPixel1, (float)yPixel1, (float)(xPixel2 - xPixel1), (float)(yPixel2 - yPixel1)));
+                            g.DrawLine(pen, (float)xPixel1, (float)yPixel1, (float)xPixel3, (float)yPixel1);
+                            g.DrawLine(pen, (float)xPixel1, (float)yPixel2, (float)xPixel3, (float)yPixel2);
+                        }
+
+                        if (ob.IsBroken)
+                        {
+                            using (Brush brush = new SolidBrush(Color.FromArgb(30, Color.Green)))
+                            {
+                                g.FillRectangle(brush, new RectangleF((float)xPixel2, (float)yPixel1, (float)(xPixel3 - xPixel2), (float)(yPixel2 - yPixel1)));
+                            }
                         }
                     }
-                }
 
-                foreach (var ob in LowOrderBlocks)
-                {
-                    int skip = _candles.Count - ob.Length;
-                    if (skip < 0) continue;
-                    int period = _candles.Count - skip;
-                    var highUp = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Top, period)).ToArray();
-                    var highDown = Enumerable.Repeat(double.NaN, skip).Concat(Enumerable.Repeat((double)ob.Bottom, period)).ToArray();
-
-                    double xPixel1 = xAxis.ValueToPixelPosition(skip);
-                    double yPixel1 = yAxis.ValueToPixelPosition(highUp[skip]);
-                    double xPixel2 = ob.IsBroken ? xAxis.ValueToPixelPosition(ob.BrokenIndex) : xAxis.ValueToPixelPosition(skip + period - 1);
-                    double yPixel2 = yAxis.ValueToPixelPosition(highDown[skip]);
-
-                    using (Brush brush = new SolidBrush(Color.FromArgb(5, Color.Blue)))
+                    foreach (var ob in LowOrderBlocks.Where(ob => ob.Visible))
                     {
-                        g.FillRectangle(brush, new RectangleF((float)xPixel1, (float)yPixel1, (float)(xPixel2 - xPixel1), (float)(yPixel2 - yPixel1)));
-                    }
+                        int skip = _candles.Count - ob.Length;
+                        if (skip < 0) continue;
+                        int period = _candles.Count - skip;
+                        double highUp = (double)ob.Top;
+                        double highDown = (double)ob.Bottom;
 
-                    if (ob.IsBroken)
-                    {
+                        double xPixel1 = xAxis.ValueToPixelPosition(skip);
+                        double yPixel1 = yAxis.ValueToPixelPosition(highUp);
+                        double xPixel2 = ob.IsBroken ? xAxis.ValueToPixelPosition(ob.BrokenIndex) : xAxis.ValueToPixelPosition(skip + period - 1);
+                        double yPixel2 = yAxis.ValueToPixelPosition(highDown);
                         double xPixel3 = xAxis.ValueToPixelPosition(skip + period - 1);
-                        using (Brush brush = new SolidBrush(Color.FromArgb(5, Color.Green)))
+                        xPixel1 = Math.Min(xPixel1, xMax);
+                        xPixel2 = Math.Min(xPixel2, xMax);
+                        yPixel2 = Math.Min(yPixel2, yMax);
+                        xPixel3 = Math.Min(xPixel3, xMax);
+
+                        using (Brush fillBrush = new SolidBrush(Color.FromArgb(30, Color.Blue)))
+                        using (Brush brush = new SolidBrush(Color.Blue))
+                        using (Pen pen = new Pen(brush))
                         {
-                            g.FillRectangle(brush, new RectangleF((float)xPixel2, (float)yPixel1, (float)(xPixel3 - xPixel2), (float)(yPixel2 - yPixel1)));
+                            g.FillRectangle(fillBrush, new RectangleF((float)xPixel1, (float)yPixel1, (float)(xPixel2 - xPixel1), (float)(yPixel2 - yPixel1)));
+                            g.DrawLine(pen, (float)xPixel1, (float)yPixel1, (float)xPixel3, (float)yPixel1);
+                            g.DrawLine(pen, (float)xPixel1, (float)yPixel2, (float)xPixel3, (float)yPixel2);
+                        }
+
+                        if (ob.IsBroken)
+                        {
+                            using (Brush brush = new SolidBrush(Color.FromArgb(30, Color.Green)))
+                            {
+                                g.FillRectangle(brush, new RectangleF((float)xPixel2, (float)yPixel1, (float)(xPixel3 - xPixel2), (float)(yPixel2 - yPixel1)));
+                            }
                         }
                     }
-                }
 
-                area.AxisY.Minimum = area.AxisY2.Minimum;
-                area.AxisY.Maximum = area.AxisY2.Maximum;
+                    area.AxisY.Minimum = area.AxisY2.Minimum;
+                    area.AxisY.Maximum = area.AxisY2.Maximum;
+                }
             }
+            catch { }
         }
 
         private void ChartCandle_ChartCreated(object sender, Chart e)
@@ -395,7 +269,7 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         private void ChartCandle_ChartDeleting(object sender, Chart e)
         {
-            e.PostPaint += Chart_PostPaint;
+            e.PostPaint -= Chart_PostPaint;
         }
 
         public override void OnStateChange(IndicatorState state)
@@ -447,19 +321,18 @@ namespace OsEngine.Indicators.TrigonumCustom
             CheckBroken(candles);
         }
 
-        public Series SeriesUp { get; set; }
-        public Series SeriesDown { get; set; }
-
         public decimal Top { get; set; }
         public decimal Bottom { get; set; }
         public int Length { get; set; }
         public int BrokenIndex { get; set; } = -1;
+        public bool Visible { get; set; } = true;
 
         public OrderBlockType Type { get; private set; }
 
+        /// <summary>
+        /// Ордер блок пробит, цена пересекла
+        /// </summary>
         public bool IsBroken => BrokenIndex > -1;
-
-        public bool IsInPosition { get; set; } = false;
 
         public void CheckBroken(List<Candle> candles)
         {
