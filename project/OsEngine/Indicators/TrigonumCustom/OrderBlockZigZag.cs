@@ -77,7 +77,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             int skip = _zzSeries.Values.Count - _period.ValueInt;
             IEnumerable<decimal> highs = _zz.DataSeries[2].Values.Skip(skip).Where(v => v > 0);
             IEnumerable<decimal> lows = _zz.DataSeries[3].Values.Skip(skip).Where(v => v > 0);
-            Enum.TryParse(_priceBasis.ValueString, out OrderBlockPriceBasis basis);
+            Enum.TryParse(_priceBasis.ValueString, out PriceBasis basis);
             List<OrderBlock> newHighOrderBlocks = new List<OrderBlock>();
             List<OrderBlock> newLowOrderBlocks = new List<OrderBlock>();
             foreach (decimal high in highs)
@@ -279,8 +279,8 @@ namespace OsEngine.Indicators.TrigonumCustom
                 _zzSeries = CreateSeries("ZZ", Color.DarkGreen, IndicatorChartPaintType.Line, false);
                 _zz = IndicatorsFactory.CreateIndicatorByName("ZigZag", Name + "ZigZag", false);
                 _period = CreateParameterInt("Period", 30);
-                _priceBasis = CreateParameterString("PriceBasis", OrderBlockPriceBasis.Full.ToString());
-                _priceBasis.ValuesString.AddRange(Enum.GetNames(typeof(OrderBlockPriceBasis)).Except(_priceBasis.ValuesString));
+                _priceBasis = CreateParameterString("PriceBasis", PriceBasis.Full.ToString());
+                _priceBasis.ValuesString.AddRange(Enum.GetNames(typeof(PriceBasis)).Except(_priceBasis.ValuesString));
 
                 ProcessIndicator("ZigZag", _zz);
                 TypeIndicator = IndicatorChartPaintType.Line;
@@ -301,18 +301,18 @@ namespace OsEngine.Indicators.TrigonumCustom
 
     public class OrderBlock
     {
-        public OrderBlock(decimal value, List<decimal> zz, List<Candle> candles, OrderBlockType type, OrderBlockPriceBasis basis)
+        public OrderBlock(decimal value, List<decimal> zz, List<Candle> candles, OrderBlockType type, PriceBasis basis)
         {
             Type = type;
             int i = zz.LastIndexOf(value);
             Candle candle = candles[i];
             switch (basis)
             {
-                case OrderBlockPriceBasis.Body:
+                case PriceBasis.Body:
                     Top = Math.Max(candle.Open, candle.Close);
                     Bottom = Math.Min(candle.Open, candle.Close); ;
                     break;
-                case OrderBlockPriceBasis.Full:
+                case PriceBasis.Full:
                     Top = candle.High;
                     Bottom = candle.Low;
                     break;
@@ -356,5 +356,5 @@ namespace OsEngine.Indicators.TrigonumCustom
 
     public enum OrderBlockType { Bullish, Bearish }
 
-    public enum OrderBlockPriceBasis { Body, Full }
+    public enum PriceBasis { Body, Full }
 }

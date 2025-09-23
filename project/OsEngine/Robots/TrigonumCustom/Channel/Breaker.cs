@@ -23,7 +23,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         #region Parameters
         private StrategyParameterDecimal _maxHigh;
         private StrategyParameterDecimal _minHigh;
-        private StrategyParameterDecimal _margin;
         #endregion
 
         private OrderBlockZigZag _ob;
@@ -58,11 +57,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         /// </summary>
         private StrategyParameterDecimal _rrTarget;
 
-        /// <summary>
-        /// Режим тэйк-профита
-        /// </summary>
-        private StrategyParameterString _tpMode;
-
         private OrderBlock _currentLong = null;
         private OrderBlock _currentShort = null;
 
@@ -70,16 +64,14 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
         {
             _maxHigh = CreateParameter("Max High", 1.0m, 0.6m, 1.5m, 0.05m, "Breaker");
             _minHigh = CreateParameter("Min High", 0.2m, 0.1m, 0.4m, 0.05m, "Breaker");
-            _margin = CreateParameter("Margin", 0.2m, 0.1m, 0.4m, 0.05m, "Breaker");
             _touchTolerance = CreateParameter("TouchTolerance", 1m, 1m, 100m, 1m, "Breaker");
             _lengthZZ = CreateParameter("Length ZZ", 50, 50, 200, 20, "Breaker");
 
             _ob = (OrderBlockZigZag)IndicatorsFactory.CreateIndicatorByName(nameClass: "OrderBlockZigZag", name: name + "OrderBlockZigZag", canDelete: false);
             _ob = (OrderBlockZigZag)_tab.CreateCandleIndicator(_ob, nameArea: "Prime");
 
-            _entryTouchBasis = CreateParameter("EntryTouchBasis", EntryTouchBasis.Close.ToString(), Enum.GetNames(typeof(EntryTouchBasis)), "Breaker");
-            _entryConfirm = CreateParameter("EntryConfirm", EntryConfirmType.CloseBackAboveNear.ToString(), Enum.GetNames(typeof(EntryConfirmType)), "Breaker");
-            _tpMode = CreateParameter("TPMode", TPMode.FixedRR.ToString(), Enum.GetNames(typeof(TPMode)), "Breaker");
+            _entryTouchBasis = CreateParameter("EntryTouchBasis", PriceBasis.Body.ToString(), Enum.GetNames(typeof(PriceBasis)), "Breaker");
+            _entryConfirm = CreateParameter("EntryConfirm", EntryConfirmType.None.ToString(), Enum.GetNames(typeof(EntryConfirmType)), "Breaker");
             _nConfirmBars = CreateParameter("NConfirmBars", 1, 1, 10, 1, "Breaker");
             _stopLossOffset = CreateParameter("StopLossOffset", 0m, 0m, 100m, 1m, "Breaker");
             _rrTarget = CreateParameter("RRTarget", 1m, 1m, 3m, 0.5m, "Breaker");
@@ -87,25 +79,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
             _lengthZZ.ValueChange += _lengthZZ_ValueChange;
             _ob.Save();
-        }
-
-        public TPMode TPMode
-        {
-            get 
-            {
-                TPMode result = TPMode.FixedRR;
-                try
-                {
-                    Enum.TryParse(_tpMode.ValueString, out result);
-                }
-                catch { }
-                return result;
-            }
-            set 
-            {
-                if (!_tpMode.ValuesString.Contains(value.ToString())) return;
-                _tpMode.ValueString = value.ToString();
-            }
         }
 
         private void _lengthZZ_ValueChange()
@@ -167,17 +140,17 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 int countAfterBreak = candles.Count - ob.BrokenIndex - 1;
                 if (countAfterBreak < 1) return false;
                 List<Candle> candlesAfterBreak = candles.GetRange(ob.BrokenIndex + 1, countAfterBreak);
-                EntryTouchBasis basis = EntryTouchBasis.Wick;
+                PriceBasis basis = PriceBasis.Full;
                 Enum.TryParse(_entryTouchBasis.ValueString, out basis);
                 decimal min;
                 Candle bounceCandle;
                 switch (basis)
                 {
-                    case EntryTouchBasis.Wick:
+                    case PriceBasis.Full:
                         min = candlesAfterBreak.Min(c => c.Low);
                         bounceCandle = candlesAfterBreak.Where(c => c.Low == min).LastOrDefault();
                         break;
-                    case EntryTouchBasis.Close:
+                    case PriceBasis.Body:
                         min = candlesAfterBreak.Min(c => c.Close);
                         bounceCandle = candlesAfterBreak.Where(c => c.Close == min).LastOrDefault();
                         break;
@@ -220,17 +193,17 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                 int countAfterBreak = candles.Count - ob.BrokenIndex - 1;
                 if (countAfterBreak < 1) return false;
                 List<Candle> candlesAfterBreak = candles.GetRange(ob.BrokenIndex + 1, countAfterBreak);
-                EntryTouchBasis basis = EntryTouchBasis.Wick;
+                PriceBasis basis = PriceBasis.Full;
                 Enum.TryParse(_entryTouchBasis.ValueString, out basis);
                 decimal max;
                 Candle bounceCandle;
                 switch (basis)
                 {
-                    case EntryTouchBasis.Wick:
+                    case PriceBasis.Full:
                         max = candlesAfterBreak.Max(c => c.High);
                         bounceCandle = candlesAfterBreak.Where(c => c.High == max).LastOrDefault();
                         break;
-                    case EntryTouchBasis.Close:
+                    case PriceBasis.Body:
                         max = candlesAfterBreak.Max(c => c.Close);
                         bounceCandle = candlesAfterBreak.Where(c => c.Close == max).LastOrDefault();
                         break;
@@ -267,6 +240,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             Enum.TryParse(_entryConfirm.ValueString, out confirmType);
             switch (confirmType)
             {
+                case EntryConfirmType.None: return true;
                 case EntryConfirmType.CloseBackAboveNear:
                     if (ob.Type == OrderBlockType.Bullish)
                     {
@@ -277,8 +251,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
                         return candlesAfterBounce.Last().Close < ob.Bottom;
                     }
                     else return false;
-                case EntryConfirmType.Engulf:
-                    return false;
                 case EntryConfirmType.NConfirmBars:
                     int n = 0;
                     int enough = _nConfirmBars.ValueInt;
@@ -361,15 +333,15 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             bool result = false;
             decimal min;
             decimal max;
-            EntryTouchBasis basis;
+            PriceBasis basis;
             Enum.TryParse(_entryTouchBasis.ValueString, out basis);
             switch (basis)
             {
-                case EntryTouchBasis.Wick:
+                case PriceBasis.Full:
                     min = candle.Low;
                     max = candle.High;
                     break;
-                case EntryTouchBasis.Close:
+                case PriceBasis.Body:
                     min = Math.Min(candle.Close, candle.Open);
                     max = Math.Max(candle.Close, candle.Open);
                     break;
@@ -394,9 +366,6 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             return result;
         }
 
-        enum EntryTouchBasis { Wick, Close }
-        enum EntryConfirmType { CloseBackAboveNear, Engulf, NConfirmBars }
+        enum EntryConfirmType {None, CloseBackAboveNear, NConfirmBars }
     }
-
-    public enum TPMode { FixedRR }
 }
