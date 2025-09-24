@@ -980,5 +980,24 @@ positionOpener.LifeTimeType
             cell.ReadOnly = readOnly;
             return cell;
         }
+
+        public static DataGridViewColumn GetColumn(string name, int width = 0, bool readOnly = true)
+        {
+            DataGridViewColumn column = new DataGridViewColumn();
+            DataGridViewCell cellTemplate = new DataGridViewTextBoxCell();
+            cellTemplate.Style = DataGridFactory.CellStyle;
+            column.CellTemplate = cellTemplate;
+            column.HeaderText = name;
+            column.ReadOnly = readOnly;
+            if (width > 0)
+            {
+                column.Width = width;
+            }
+            else
+            {
+                column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            }
+            return column;
+        }
     }
 }
