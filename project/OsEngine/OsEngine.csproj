@@ -467,6 +467,7 @@
     <Compile Include="Indicators\Samples\Sample3IndicatorDataSeries.cs" />
     <Compile Include="Indicators\TrigonumCustom\NadarayaWatson.cs" />
     <Compile Include="Indicators\TrigonumCustom\OrderBlockZigZag.cs" />
+    <Compile Include="Indicators\TrigonumCustom\SessionIndicator.cs" />
     <Compile Include="Indicators\TrigonumCustom\SmaCustom.cs" />
     <Compile Include="Indicators\TrigonumCustom\TmLinearRegressionChannel.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustom.cs" />
@@ -1417,6 +1418,7 @@
     <Compile Include="Robots\TrigonumCustom\Channel\ZZChannelCustomExtrems.cs" />
     <Compile Include="Robots\TrigonumCustom\ML\Models\RenkoPrediction.cs" />
     <Compile Include="Robots\TrigonumCustom\ML\RenkoCatBoost.cs" />
+    <Compile Include="Common\DateTimeExtensions.cs" />
     <Compile Include="Robots\TrigonumCustom\Periodic\SessionBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Testing\FrequentOrders.cs" />
     <Compile Include="Robots\TrigonumCustom\Trailing\TrailingImpulseHmaRsi.cs" />
