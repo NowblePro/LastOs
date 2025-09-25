@@ -34,13 +34,20 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
-            return false;
+            Candle last = candles.Last();
+            IEnumerable<Period> periods = SessionEditor.Sessions.Where(s => CompareOnlyTime((DateTime)s.Start, position.TimeOpen));
+            DateTime currentTime = last.TimeStart + _tab.Connector.TimeFrameTimeSpan;
+            return periods.Any(p => CompareOnlyTime(currentTime, (DateTime)p.End));
         }
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
             Candle last = candles.Last();
-            foreach (StrategyParameterInt p in _periods)
+            DateTime currentTime = last.TimeStart + _tab.Connector.TimeFrameTimeSpan;
+            IEnumerable<Period> periods = SessionEditor.Sessions.Where(s => CompareOnlyTime((DateTime)s.Start, currentTime));
+            IEnumerable<string> names = periods.Select(s => s.Name);
+            IEnumerable<StrategyParameterInt> strats = _periods.Where(p => names.Contains(p.Name));
+            foreach (StrategyParameterInt p in strats)
             {
                 if (p.ValueInt == 1)
                 {
@@ -53,7 +60,11 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
             Candle last = candles.Last();
-            foreach (StrategyParameterInt p in _periods)
+            DateTime currentTime = last.TimeStart + _tab.Connector.TimeFrameTimeSpan;
+            IEnumerable<Period> periods = SessionEditor.Sessions.Where(s => CompareOnlyTime((DateTime)s.Start, currentTime));
+            IEnumerable<string> names = periods.Select(s => s.Name);
+            IEnumerable<StrategyParameterInt> strats = _periods.Where(p => names.Contains(p.Name));
+            foreach (StrategyParameterInt p in strats)
             {
                 if (p.ValueInt == 2)
                 {
@@ -66,6 +77,11 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
         protected override List<Func<List<Candle>, bool>> GetCheckers()
         {
             return new List<Func<List<Candle>, bool>>();
+        }
+
+        private bool CompareOnlyTime(DateTime time1, DateTime time2)
+        {
+            return time1.Hour == time2.Hour && time1.Minute == time2.Minute && time1.Second == time2.Second;
         }
 
         protected override void ParametersChangedByUser()
