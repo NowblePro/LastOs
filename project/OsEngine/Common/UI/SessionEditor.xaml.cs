@@ -12,7 +12,6 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Forms;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Drawing;
@@ -25,7 +24,7 @@ namespace OsEngine.Common.UI
     public partial class SessionEditor : Window
     {
         private DataGridView _gridSessions;
-        private static List<Period> _sessions;
+        private static List<PeriodSession> _sessions;
         private static string path = @"Engine\Sessions.json";
 
         public SessionEditor()
@@ -35,7 +34,7 @@ namespace OsEngine.Common.UI
             HostSessionTable.Child = _gridSessions;
         }
 
-        public static List<Period> Sessions
+        public static List<PeriodSession> Sessions
         {
             get
             {
@@ -58,7 +57,7 @@ namespace OsEngine.Common.UI
             ContextMenu menu = new ContextMenu();
             MenuItem deleteMenuItem = new MenuItem("Удалить", (sender, e) =>
             {
-                if (sender is MenuItem item && item.Parent.Tag is Period p)
+                if (sender is MenuItem item && item.Parent.Tag is PeriodSession p)
                 {
                     Sessions.Remove(p);
                     UpdateTable(result);
@@ -73,6 +72,7 @@ namespace OsEngine.Common.UI
             result.Columns.Add(DataGridFactory.GetColumn("Period name", readOnly: false));
             result.Columns.Add(DataGridFactory.GetColumn("Start", readOnly: false));
             result.Columns.Add(DataGridFactory.GetColumn("End", readOnly: false));
+            result.Columns.Add(DataGridFactory.GetColumn("Color", readOnly: false));
 
             result.Rows.Add(null, null);
             UpdateTable(result);
@@ -86,12 +86,12 @@ namespace OsEngine.Common.UI
             if (sender is DataGridView dgv)
             {
                 bool changed = false;
-                Period period = GetPeriod(e.RowIndex);
+                PeriodSession period = GetPeriod(e.RowIndex);
                 if (period == null)
                 {
                     if (e.ColumnIndex == 0)
                     {
-                        Sessions.Add(new Period());
+                        Sessions.Add(new PeriodSession());
                         changed = true;
                     }
                 }
@@ -130,6 +130,18 @@ namespace OsEngine.Common.UI
                             changed = true;
                         }
                     }
+
+                    if (e.ColumnIndex == 3 && dgv.Rows[e.RowIndex].Cells[e.ColumnIndex] is DataGridViewButtonCell cell)
+                    {
+                        ColorDialog dialog = new ColorDialog();
+                        dialog.Color = period.Color;
+                        DialogResult result = dialog.ShowDialog();
+                        if (result == System.Windows.Forms.DialogResult.OK || result == System.Windows.Forms.DialogResult.Yes)
+                        {
+                            period.Color = dialog.Color;
+                            cell.Style = new DataGridViewCellStyle() { BackColor = dialog.Color, SelectionBackColor = dialog.Color };
+                        }
+                    }
                 }
                 
                 if (changed)
@@ -139,11 +151,11 @@ namespace OsEngine.Common.UI
             }
         }
 
-        private Period GetPeriod(int rowIndex)
+        private PeriodSession GetPeriod(int rowIndex)
         {
             if (rowIndex >= Sessions.Count) return null;
 
-            Period period = Sessions[rowIndex];
+            PeriodSession period = Sessions[rowIndex];
 
             return period;
         }
@@ -159,31 +171,32 @@ namespace OsEngine.Common.UI
 
         private static void LoadSessions()
         {
-            _sessions = new List<Period>()
+            _sessions = new List<PeriodSession>()
             {
-                new Period() { Name = "London", Start = new DateTime(1970, 1, 1, 8, 0, 0), End = new DateTime(1970, 1, 1, 17, 0, 0) },
-                new Period() { Name = "Asia", Start = new DateTime(1970, 1, 1, 0, 0, 0), End = new DateTime(1970, 1, 1, 8, 0, 0) },
-                new Period() { Name = "NY AM", Start = new DateTime(1970, 1, 1, 13, 0, 0), End = new DateTime(1970, 1, 1, 22, 0, 0) },
+                new PeriodSession() { Name = "London", Start = new DateTime(1970, 1, 1, 8, 0, 0), End = new DateTime(1970, 1, 1, 17, 0, 0), Color = Color.Red },
+                new PeriodSession() { Name = "Asia", Start = new DateTime(1970, 1, 1, 0, 0, 0), End = new DateTime(1970, 1, 1, 8, 0, 0), Color = Color.Blue },
+                new PeriodSession() { Name = "NY AM", Start = new DateTime(1970, 1, 1, 13, 0, 0), End = new DateTime(1970, 1, 1, 22, 0, 0), Color = Color.Green },
             };
             if (File.Exists(path))
             {
                 try
                 {
-                    List<Period> sessions;
+                    List<PeriodSession> sessions;
                     using (StreamReader reader = new StreamReader(path))
                     {
                         string str = reader.ReadToEnd();
 
-                        sessions = JsonConvert.DeserializeObject(str, typeof(List<Period>)) as List<Period>;
+                        sessions = JsonConvert.DeserializeObject(str, typeof(List<PeriodSession>)) as List<PeriodSession>;
                     }
 
-                    foreach (Period s in sessions)
+                    foreach (PeriodSession s in sessions)
                     {
-                        Period session = _sessions.Find(p => p.Name == s.Name);
+                        PeriodSession session = _sessions.Find(p => p.Name == s.Name);
                         if (session != null)
                         {
                             session.Start = s.Start;
                             session.End = s.End;
+                            session.Color = s.Color;
                         }
                         else
                         {
@@ -192,7 +205,7 @@ namespace OsEngine.Common.UI
                     }
                 }
                 catch { }
-                if (_sessions == null) _sessions = new List<Period>();
+                if (_sessions == null) _sessions = new List<PeriodSession>();
             }
         }
 
@@ -206,7 +219,7 @@ namespace OsEngine.Common.UI
 
             table.Rows.Clear();
 
-            foreach (Period period in Sessions)
+            foreach (PeriodSession period in Sessions)
             {
                 FillPeriod(period);
             }
@@ -217,7 +230,7 @@ namespace OsEngine.Common.UI
             endRow.Cells.Add(cellEnd);
             table.Rows.Add(endRow);
 
-            void FillPeriod(Period period)
+            void FillPeriod(PeriodSession period)
             {
                 lock (table)
                 {
@@ -227,7 +240,6 @@ namespace OsEngine.Common.UI
 
                     //TimeZoneInfo info = TimeZoneInfo.Local;
                     //TimeSpan offset = info.GetUtcOffset(DateTime.UtcNow);
-
                     for (int i = 1; i < table.Columns.Count; i++)
                     {
                         if (i == 1)
@@ -257,6 +269,13 @@ namespace OsEngine.Common.UI
                                 DataGridViewTextBoxCell cell = DataGridFactory.AddTextBoxCell(row, period.End.Value.ToString(OsLocalization.LongTimePattern));
                                 cell.ToolTipText = period.End.Value.ToString();
                             }
+                        }
+                        else if (i == 3)
+                        {
+                            DataGridViewButtonCell cell = new DataGridViewButtonCell();
+                            cell.Value = "";
+                            cell.Style = new DataGridViewCellStyle() { BackColor = period.Color, SelectionBackColor = period.Color };
+                            row.Cells.Add(cell);
                         }
                     }
                     table.Rows.Add(row);

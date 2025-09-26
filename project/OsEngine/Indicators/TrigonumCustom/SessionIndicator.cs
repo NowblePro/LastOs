@@ -19,6 +19,7 @@ namespace OsEngine.Indicators.TrigonumCustom
         private IndicatorDataSeries _series;
         private List<Candle> _candles;
         private ChartCandleMaster _chartMaster;
+        private Font _font = new Font("Arial", 11);
         public ChartCandleMaster ChartMaster
         {
             get => _chartMaster;
@@ -62,22 +63,6 @@ namespace OsEngine.Indicators.TrigonumCustom
             }
         }
 
-        private List<Candle> GetVisibleCandles(Chart chart, List<Candle> candles)
-        {
-            List<Candle> result = new List<Candle>();
-            ChartArea area = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
-            Series series = chart.Series.Where(s => s.ChartType == SeriesChartType.Candlestick).FirstOrDefault();
-            if (area != null && series != null)
-            {
-                Axis axisX = area.AxisX;
-                double minX = axisX.ScaleView.ViewMinimum;
-                double maxX = axisX.ScaleView.ViewMaximum;
-                IEnumerable<DataPoint> points = series.Points.Where(p => p.XValue >= minX && p.XValue <= maxX);
-                result = candles.GetRange((int)points.First().XValue, points.Count());
-            }
-            return result;
-        }
-
         List<SessionPaint> _paints = new List<SessionPaint>();
 
         private void Chart_PostPaint(object sender, ChartPaintEventArgs e)
@@ -91,8 +76,6 @@ namespace OsEngine.Indicators.TrigonumCustom
                 Chart chart = e.Chart;
                 ChartArea area = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
                 Series series = chart.Series.Where(s => s.ChartType == SeriesChartType.Candlestick).FirstOrDefault();
-                double xMax = (area.InnerPlotPosition.Width / 100 * chart.ClientRectangle.Width) - (area.Position.X / 100 * chart.ClientRectangle.Width);
-                double yMax = (area.InnerPlotPosition.Height / 100 * chart.ClientRectangle.Height) - (area.Position.Y / 100 * chart.ClientRectangle.Height);
 
                 if (area != null && series != null)
                 {
@@ -103,7 +86,7 @@ namespace OsEngine.Indicators.TrigonumCustom
                     double maxX = xAxis.ScaleView.ViewMaximum;
                     IEnumerable<DataPoint> points = series.Points.Where(p => p.XValue >= minX && p.XValue <= maxX);
                     List<Candle> visible = _candles.GetRange((int)points.First().XValue, points.Count());
-
+                    if (visible.Count > 600) return;
                     if (double.IsNaN(yAxis.Maximum))
                     {
                         area.AxisY.Minimum = area.AxisY2.Minimum;
@@ -112,16 +95,16 @@ namespace OsEngine.Indicators.TrigonumCustom
                     }
 
                     _paints.Clear();
-
+                    Candle firstVisible = visible.First();
+                    Candle lastVisible = visible.Last();
                     int offsetX = _candles.IndexOf(visible.First());
 
                     foreach (Candle candle in visible)
                     {
-                        // hack добавить + TimeFrameSpan
-                        IEnumerable<Period> start = SessionEditor.Sessions.Where(s => s.IsDefined).Where(s => candle.TimeStart.CompareOnlyTime((DateTime)s.Start));
-                        IEnumerable<Period> end = SessionEditor.Sessions.Where(s => s.IsDefined).Where(s => candle.TimeStart.CompareOnlyTime((DateTime)s.End));
+                        IEnumerable<PeriodSession> start = SessionEditor.Sessions.Where(s => s.IsDefined).Where(s => candle.TimeStart.CompareOnlyTime((DateTime)s.Start));
+                        IEnumerable<PeriodSession> end = SessionEditor.Sessions.Where(s => s.IsDefined).Where(s => candle.TimeStart.CompareOnlyTime((DateTime)s.End));
 
-                        foreach (Period p in end)
+                        foreach (PeriodSession p in end)
                         {
                             SessionPaint s = _paints.FindLast(sp => sp.Period == p);
                             if (s == null)
@@ -138,41 +121,64 @@ namespace OsEngine.Indicators.TrigonumCustom
                             SetSessionsCoordinates(s);
                         }
                         
-                        foreach (Period p in start)
+                        foreach (PeriodSession p in start)
                         {
                             SessionPaint s = new SessionPaint() { Period = p, CandleStart = candle };
                             _paints.Add(s);
                         }
                     }
 
+                    foreach (SessionPaint p in _paints)
+                    {
+                        if (p.CandleStop == null)
+                        {
+                            p.CandleStop = lastVisible;
+                            SetSessionsCoordinates(p);
+                        }
+                    }
+
                     void SetSessionsCoordinates(SessionPaint sp)
                     {
-                        int indexX1 = visible.IndexOf(sp.CandleStart);
-                        int indexX2 = visible.IndexOf(sp.CandleStop);
-                        
-                        float x1 = indexX1 + offsetX;
-                        float x2 = indexX2 + offsetX;
+                        try
+                        {
+                            int indexX1 = visible.IndexOf(sp.CandleStart);
+                            int indexX2 = visible.IndexOf(sp.CandleStop);
 
-                        float y1 = (float)visible.GetRange(indexX1, indexX2 - indexX1).Max(c => c.High);
-                        y1 = (float)yAxis.ValueToPixelPosition(y1);
+                            float x1 = (float)xAxis.ValueToPixelPosition(indexX1 + offsetX);
+                            float x2 = (float)xAxis.ValueToPixelPosition(indexX2 + offsetX);
 
-                        float y2 = (float)visible.GetRange(indexX1, indexX2 - indexX1).Min(c => c.Low);
-                        y2 = (float)yAxis.ValueToPixelPosition(y2);
+                            float y1 = (float)visible.GetRange(indexX1, indexX2 - indexX1).Max(c => c.High);
+                            y1 = (float)yAxis.ValueToPixelPosition(y1);
 
-                        sp.X1 = (int)x1;
-                        sp.X2 = (int)x2;
-                        sp.Y1 = (int)y1;
-                        sp.Y2 = (int)y2;
+                            float y2 = (float)visible.GetRange(indexX1, indexX2 - indexX1).Min(c => c.Low);
+                            y2 = (float)yAxis.ValueToPixelPosition(y2);
+
+                            sp.X1 = (int)x1;
+                            sp.X2 = (int)x2;
+                            sp.Y1 = (int)y1;
+                            sp.Y2 = (int)y2;
+                        }
+                        catch { }
                     }
+
+                    float maxPixelX = (float)xAxis.ValueToPixelPosition(maxX);
 
                     foreach (SessionPaint sp in _paints)
                     {
-                        using (Brush fillBrush = new SolidBrush(Color.FromArgb(30, Color.Red)))
-                        using (Brush brush = new SolidBrush(Color.Red))
+                        SizeF size = g.MeasureString(sp.Period.Name, _font);
+                        float textY = Math.Max(sp.Y1 - size.Height, 0);
+                        float offset = 0;
+                        if (maxPixelX < sp.X1 + size.Width)
+                        {
+                            offset = sp.X1 + size.Width - maxPixelX;
+                        }
+                        using (Brush fillBrush = new SolidBrush(Color.FromArgb(30, sp.Period.Color)))
+                        using (Brush brush = new SolidBrush(sp.Period.Color))
                         using (Pen pen = new Pen(brush))
                         {
                             g.FillRectangle(fillBrush, new RectangleF(sp.X1, sp.Y1, sp.X2 - sp.X1, sp.Y2 - sp.Y1));
-                            //g.DrawLine(pen, (float)xPixel1, (float)yPixel1, (float)xPixel3, (float)yPixel1);
+                            g.DrawLine(pen, sp.X1, sp.Y1, sp.X2, sp.Y1);
+                            g.DrawString(sp.Period.Name, _font, brush, sp.X1 - offset, textY);
                             //g.DrawLine(pen, (float)xPixel1, (float)yPixel2, (float)xPixel3, (float)yPixel2);
                         }
                     }
@@ -181,7 +187,10 @@ namespace OsEngine.Indicators.TrigonumCustom
                     area.AxisY.Maximum = area.AxisY2.Maximum;
                 }
             }
-            catch { }
+            catch(Exception ex)
+            {
+
+            }
         }
 
         public override void OnProcess(List<Candle> candles, int index)
@@ -207,7 +216,7 @@ namespace OsEngine.Indicators.TrigonumCustom
 
     public class SessionPaint
     {
-        public Period Period { get; set; }
+        public PeriodSession Period { get; set; }
 
         public Candle CandleStart { get; set; }
         public Candle CandleStop { get; set; }

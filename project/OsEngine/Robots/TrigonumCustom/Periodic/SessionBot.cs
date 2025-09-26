@@ -42,9 +42,43 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
             Candle last = candles.Last();
-            IEnumerable<Period> periods = SessionEditor.Sessions.Where(s => position.TimeOpen.CompareOnlyTime((DateTime)s.Start));
+            IEnumerable<Period> periods = SessionEditor.Sessions.Where(s => position.TimeOpen.CompareOnlyTime((DateTime)s.Start, TimeSpan.FromSeconds(5)));
             DateTime currentTime = last.TimeStart + _tab.Connector.TimeFrameTimeSpan;
-            return periods.Any(p => currentTime.CompareOnlyTime((DateTime)p.End));
+            return periods.Any(p => currentTime.CompareOnlyTime((DateTime)p.End, TimeSpan.FromSeconds(5)));
+        }
+
+        protected override void CandleFinishedEvent(List<Candle> candles)
+        {
+            if (GetCheckers().Any(p => !p(candles))) return;
+            decimal lastPrice = candles.Last().Close;
+            List<Position> positions = _tab.PositionsOpenAll;
+            decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
+            if (positions.Count > 0)
+            {
+                foreach (Position pos in positions)
+                {
+                    if (CheckClosePosition(candles, pos))
+                    {
+                        if (pos.Direction == Side.Buy)
+                        {
+                            _tab.CloseAtStop(pos, lastPrice, lastPrice - slippage);
+                        }
+                        else if (pos.Direction == Side.Sell)
+                        {
+                            _tab.CloseAtStop(pos, lastPrice, lastPrice + slippage);
+                        }
+                    }
+                }
+            }
+
+            if (CheckOpenLongPosition(candles))
+            {
+                _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
+            }
+            else if (CheckOpenShortPosition(candles))
+            {
+                _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
+            }
         }
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
