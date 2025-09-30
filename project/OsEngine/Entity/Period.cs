@@ -21,7 +21,7 @@ namespace OsEngine.Entity
         public OptimazerFazeReport Report { get; set; } = null;
 
         [JsonIgnore]
-        public bool IsDefined => Start != null && End != null && Start < End;
+        public bool IsDefined => Start != null && End != null;
 
         public override bool Equals(object obj)
         {
