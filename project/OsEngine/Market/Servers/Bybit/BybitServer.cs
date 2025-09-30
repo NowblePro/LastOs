@@ -17,6 +17,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using WebSocketSharp;
@@ -35,6 +36,7 @@ namespace OsEngine.Market.Servers.Bybit
             CreateParameterEnum(OsLocalization.Market.Label1, Net_type.MainNet.ToString(), new List<string>() { Net_type.MainNet.ToString(), Net_type.TestNet.ToString() });
             CreateParameterEnum(OsLocalization.Market.ServerParam4, MarginMode.Cross.ToString(), new List<string>() { MarginMode.Cross.ToString(), MarginMode.Isolated.ToString() });
             CreateParameterEnum("Hedge Mode", "On", new List<string> { "On", "Off" });
+            CreateParameterBoolean("Request Logging", false);
         }
     }
 
@@ -49,6 +51,8 @@ namespace OsEngine.Market.Servers.Bybit
 
         public BybitServerRealization()
         {
+            _reqLogger = new RequestLogger();
+
             ServerStatus = ServerConnectStatus.Disconnect;
             supported_intervals = CreateIntervalDictionary();
 
@@ -303,7 +307,7 @@ namespace OsEngine.Market.Servers.Bybit
         {
             get
             {
-                if (((ServerParameterBool)ServerParameters[12]).Value)
+                if (((ServerParameterBool)ServerParameters[13]).Value)
                 {
                     return 50;
                 }
@@ -772,7 +776,7 @@ namespace OsEngine.Market.Servers.Bybit
 
                 pos.PortfolioName = potrolioNumber;
 
-                if (_hedgeMode 
+                if (_hedgeMode
                     && posJson.symbol.Contains("USDT"))
                 {
                     if (posJson.side == "Buy")
@@ -2964,6 +2968,8 @@ namespace OsEngine.Market.Servers.Bybit
 
         private HttpClientHandler httpClientHandler;
 
+        private RequestLogger _reqLogger;
+
         private HttpClient httpClient;
 
         private string _httpClientLocker = "httpClientLocker";
@@ -3061,6 +3067,10 @@ namespace OsEngine.Market.Servers.Bybit
                     {
                         return null;
                     }
+                    else if (((ServerParameterBool)ServerParameters[5]).Value)
+                    {
+                        _reqLogger.LogRequest(httpMethod.ToString(), uri);
+                    }
 
                     if (response.StatusCode != System.Net.HttpStatusCode.OK)
                     {
@@ -3119,6 +3129,10 @@ namespace OsEngine.Market.Servers.Bybit
                     if (response == null)
                     {
                         return null;
+                    }
+                    else if (((ServerParameterBool)ServerParameters[5]).Value)
+                    {
+                        _reqLogger.LogRequest(httpMethod.ToString(), uri);
                     }
 
                     if (response.StatusCode != System.Net.HttpStatusCode.OK)
@@ -3179,6 +3193,11 @@ namespace OsEngine.Market.Servers.Bybit
 
                     HttpResponseMessage response = httpClient?.SendAsync(request).Result;
                     string response_msg = response.Content.ReadAsStringAsync().Result;
+
+                    if (((ServerParameterBool)ServerParameters[5]).Value)
+                    {
+                        _reqLogger.LogRequest("GET", "/v5/market/time");
+                    }
 
                     timeFromServer = JToken.Parse(response_msg);
 
