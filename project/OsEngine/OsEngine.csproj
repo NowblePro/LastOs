@@ -441,6 +441,10 @@
       <DependentUpon>IndicarotCreateUi.xaml</DependentUpon>
     </Compile>
     <Compile Include="Charts\Extensions.cs" />
+    <Compile Include="Common\OrderType.cs" />
+    <Compile Include="Common\StopLossDecoration.cs" />
+    <Compile Include="Common\TakeProfitDecoration.cs" />
+    <Compile Include="Common\TrailingStopDecoration.cs" />
     <Compile Include="Common\UI\SessionEditor.xaml.cs">
       <DependentUpon>SessionEditor.xaml</DependentUpon>
     </Compile>

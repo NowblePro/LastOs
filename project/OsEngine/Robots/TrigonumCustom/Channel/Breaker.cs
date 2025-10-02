@@ -88,7 +88,7 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         protected override void ParametersChangedByUser()
         {
-            if (_ob.ParametersDigit[0].Value != _lengthZZ.ValueInt)
+            if (_ob != null && _ob.ParametersDigit[0].Value != _lengthZZ.ValueInt)
             {
                 _ob.ParametersDigit[0].Value = _lengthZZ.ValueInt;
                 _ob.Reload();

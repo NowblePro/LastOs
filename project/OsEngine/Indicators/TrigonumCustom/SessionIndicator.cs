@@ -99,26 +99,52 @@ namespace OsEngine.Indicators.TrigonumCustom
                     Candle lastVisible = visible.Last();
                     int offsetX = _candles.IndexOf(visible.First());
 
-                    foreach (Candle candle in visible)
+                    bool IsStartCandle(PeriodSession session, List<Candle> candles, int index)
                     {
-                        IEnumerable<PeriodSession> start = SessionEditor.Sessions.Where(s => s.IsDefined).Where(s => candle.TimeStart.CompareOnlyTime((DateTime)s.Start));
-                        IEnumerable<PeriodSession> end = SessionEditor.Sessions.Where(s => s.IsDefined).Where(s => candle.TimeStart.CompareOnlyTime((DateTime)s.End));
+                        Candle candle = candles[index];
+                        Candle prevCandle = index > 0 ? candles[index - 1] : null;
+                        if (session.CheckInSession(candle.TimeStart) && (prevCandle == null || !session.CheckInSession(prevCandle.TimeStart)))
+                        {
+                            return true;
+                        }
+                        return false;
 
+                    }
+
+                    bool IsEndCandle(PeriodSession session, List<Candle> candles, int index)
+                    {
+                        Candle candle = candles[index];
+                        Candle nextCandle = index < candles.Count - 1 ? candles[index + 1] : null;
+                        if (session.CheckInSession(candle.TimeStart) && (nextCandle == null || !session.CheckInSession(nextCandle.TimeStart)))
+                        {
+                            return true;
+                        }
+                        return false;
+
+                    }
+
+                    for (int i = 0; i < visible.Count; i++)
+                    {
+                        Candle candle = visible[i];
+                        IEnumerable<PeriodSession> start = SessionEditor.Sessions.Where(s => s.IsDefined).Where(s => IsStartCandle(s, visible, i));
+                        IEnumerable<PeriodSession> end = SessionEditor.Sessions.Where(s => s.IsDefined).Where(s => IsEndCandle(s, visible, i));
                         foreach (PeriodSession p in end)
                         {
-                            SessionPaint s = _paints.FindLast(sp => sp.Period == p);
+                            SessionPaint s = _paints.FindLast(sp => sp.Period == p && sp.CandleStop == null);
                             if (s == null)
                             {
                                 s = new SessionPaint() { Period = p };
                                 _paints.Add(s);
                             }
-                            if (s.CandleStart == null)
+                            if (s.CandleStart == null && candle != lastVisible)
                             {
                                 s.CandleStart = visible.First();
                             }
                             s.CandleStop = candle;
-
-                            SetSessionsCoordinates(s);
+                            if (s.CandleStart != s.CandleStop && s.CandleStart != null)
+                            {
+                                SetSessionsCoordinates(s);
+                            }
                         }
                         
                         foreach (PeriodSession p in start)
@@ -130,12 +156,42 @@ namespace OsEngine.Indicators.TrigonumCustom
 
                     foreach (SessionPaint p in _paints)
                     {
-                        if (p.CandleStop == null)
+                        if (p.CandleStop == null && p.CandleStart != firstVisible)
                         {
                             p.CandleStop = lastVisible;
-                            SetSessionsCoordinates(p);
+                            if (p.CandleStart != p.CandleStop)
+                            {
+                                SetSessionsCoordinates(p);
+                            }
                         }
                     }
+
+                    float maxPixelX = (float)xAxis.ValueToPixelPosition(maxX);
+
+                    foreach (SessionPaint sp in _paints)
+                    {
+                        if (sp.CandleStart == sp.CandleStop) continue;
+                        if (sp.CandleStart == null || sp.CandleStop == null) continue;
+                        SizeF size = g.MeasureString(sp.Period.Name, _font);
+                        float textY = Math.Max(sp.Y1 - size.Height, 0);
+                        float offset = 0;
+                        if (maxPixelX < sp.X1 + size.Width)
+                        {
+                            offset = sp.X1 + size.Width - maxPixelX;
+                        }
+                        using (Brush fillBrush = new SolidBrush(Color.FromArgb(30, sp.Period.Color)))
+                        using (Brush brush = new SolidBrush(sp.Period.Color))
+                        using (Pen pen = new Pen(brush))
+                        {
+                            g.FillRectangle(fillBrush, new RectangleF(sp.X1, sp.Y1, sp.X2 - sp.X1, sp.Y2 - sp.Y1));
+                            g.DrawLine(pen, sp.X1, sp.Y1, sp.X2, sp.Y1);
+                            g.DrawString(sp.Period.Name, _font, brush, sp.X1 - offset, textY);
+                            //g.DrawLine(pen, (float)xPixel1, (float)yPixel2, (float)xPixel3, (float)yPixel2);
+                        }
+                    }
+
+                    area.AxisY.Minimum = area.AxisY2.Minimum;
+                    area.AxisY.Maximum = area.AxisY2.Maximum;
 
                     void SetSessionsCoordinates(SessionPaint sp)
                     {
@@ -160,31 +216,6 @@ namespace OsEngine.Indicators.TrigonumCustom
                         }
                         catch { }
                     }
-
-                    float maxPixelX = (float)xAxis.ValueToPixelPosition(maxX);
-
-                    foreach (SessionPaint sp in _paints)
-                    {
-                        SizeF size = g.MeasureString(sp.Period.Name, _font);
-                        float textY = Math.Max(sp.Y1 - size.Height, 0);
-                        float offset = 0;
-                        if (maxPixelX < sp.X1 + size.Width)
-                        {
-                            offset = sp.X1 + size.Width - maxPixelX;
-                        }
-                        using (Brush fillBrush = new SolidBrush(Color.FromArgb(30, sp.Period.Color)))
-                        using (Brush brush = new SolidBrush(sp.Period.Color))
-                        using (Pen pen = new Pen(brush))
-                        {
-                            g.FillRectangle(fillBrush, new RectangleF(sp.X1, sp.Y1, sp.X2 - sp.X1, sp.Y2 - sp.Y1));
-                            g.DrawLine(pen, sp.X1, sp.Y1, sp.X2, sp.Y1);
-                            g.DrawString(sp.Period.Name, _font, brush, sp.X1 - offset, textY);
-                            //g.DrawLine(pen, (float)xPixel1, (float)yPixel2, (float)xPixel3, (float)yPixel2);
-                        }
-                    }
-
-                    area.AxisY.Minimum = area.AxisY2.Minimum;
-                    area.AxisY.Maximum = area.AxisY2.Maximum;
                 }
             }
             catch(Exception ex)
