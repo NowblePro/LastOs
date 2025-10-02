@@ -22,8 +22,8 @@ namespace OsEngine.Common
         {
             _bot = bot;
             _tab = bot.TabsSimple[0];
-            _fixTakeOn = bot.CreateParameter("FixTakeOn", false, "Sessions");
-            _fixTake = bot.CreateParameter("FixTake", 5m, 1, 30, 1, "Sessions");
+            _fixTakeOn = bot.CreateParameter("FixTakeOn", false, "Base");
+            _fixTake = bot.CreateParameter("FixTake", 5m, 1, 30, 1, "Base");
             _slippageParam = _bot.Parameters.OfType<StrategyParameterDecimal>().Where(p => p.Name.ToLower() == "slippage").FirstOrDefault();
             _orderTypeParam = _bot.Parameters.OfType<StrategyParameterString>().Where(p => p.Name.ToLower() == "ordertype").FirstOrDefault();
             bot.TabsSimple[0].PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;

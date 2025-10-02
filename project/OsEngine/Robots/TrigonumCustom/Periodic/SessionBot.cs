@@ -33,8 +33,6 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
         /// </summary>
         private StrategyParameterInt _sessionExit;
 
-        private TrailingStop _ts;
-
         public SessionBot(string name, StartProgram startProgram) : base(name, startProgram)
         {
             foreach (Period period in SessionEditor.Sessions.Where(s => s.IsDefined))
@@ -49,8 +47,7 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
             _sessionExit = CreateParameter("SessionExit", 1, 0, 1, 1, "Sessions");
             new TakeProfitDecoration(this);
             new StopLossDecoration(this);
-            //_ts = new TrailingStop(_tab,);
-            //TrailingStop
+            new TrailingStopDecoration(this);
 
             _si = (SessionIndicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "SessionIndicator", name: name + "SessionIndicator", canDelete: false);
             _si = (SessionIndicator)_tab.CreateCandleIndicator(_si, nameArea: "Prime");
