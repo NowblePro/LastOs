@@ -1,4 +1,5 @@
-﻿using OsEngine.Entity;
+﻿using OsEngine.Common;
+using OsEngine.Entity;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Tab;
 using System;
@@ -20,6 +21,7 @@ namespace OsEngine.Robots.TrigonumCustom
         protected StrategyParameterDecimal _volumeOnPosition;
         protected StrategyParameterBool _saveJson;
         protected BotRegime _regime = BotRegime.Off;
+        protected StrategyParameterString _orderType;
 
         public BotPanelSimple(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -33,9 +35,10 @@ namespace OsEngine.Robots.TrigonumCustom
             _endTradeTime = CreateParameterTimeOfDay("End trade time", 24, 0, 0, 0, "Base");
             _volumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
             _saveJson = CreateParameter("Save Json Data", false, "Base");
-
+            _orderType = CreateParameter("OrderType", OrderType.Limit.ToString(), Enum.GetNames(typeof(OrderType)), "Base");
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
             ParametrsChangeByUser += BotPanelSimple_ParametrsChangeByUser;
+            BotPanelSimple_ParametrsChangeByUser();
         }
 
         private void BotPanelSimple_ParametrsChangeByUser()
@@ -97,6 +100,14 @@ namespace OsEngine.Robots.TrigonumCustom
             decimal lastPrice = candles.Last().Close;
             List<Position> positions = _tab.PositionsOpenAll;
             decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
+            OrderType orderType = OrderType.Limit;
+
+            if (_regime == BotRegime.Off) return;
+
+            if (Enum.TryParse(_orderType.ValueString, true, out OrderType ot))
+            {
+                orderType = ot;
+            }
             if (positions.Count > 0)
             {
                 foreach (Position pos in positions)
@@ -116,13 +127,27 @@ namespace OsEngine.Robots.TrigonumCustom
             }
             else
             {
-                if (CheckOpenLongPosition(candles))
+                if (_regime != BotRegime.OnlyShort && CheckOpenLongPosition(candles))
                 {
-                    _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
+                    if (orderType == OrderType.Market)
+                    {
+                        _tab.BuyAtMarket(GetVolume());
+                    }
+                    else if (orderType == OrderType.Limit)
+                    {
+                        _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
+                    }
                 }
-                else if (CheckOpenShortPosition(candles))
+                else if (_regime != BotRegime.OnlyLong && CheckOpenShortPosition(candles))
                 {
-                    _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
+                    if (orderType == OrderType.Market)
+                    {
+                        _tab.SellAtMarket(GetVolume());
+                    }
+                    else if (orderType == OrderType.Limit)
+                    {
+                        _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
+                    }
                 }
             }
         }

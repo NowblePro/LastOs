@@ -1,10 +1,12 @@
 ﻿using Newtonsoft.Json;
+using OsEngine.Common;
 using OsEngine.Common.UI;
 using OsEngine.Entity;
 using OsEngine.Indicators;
 using OsEngine.Indicators.TrigonumCustom;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
+using OsEngine.Robots.Classes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -31,14 +33,10 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
         /// </summary>
         private StrategyParameterInt _sessionExit;
 
-        private StrategyParameterBool _fixTakeOn;
-        private StrategyParameterDecimal _fixTake;
-        private StrategyParameterBool _fixStopOn;
-        private StrategyParameterDecimal _fixStop;
+        private TrailingStop _ts;
 
         public SessionBot(string name, StartProgram startProgram) : base(name, startProgram)
         {
-            _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
             foreach (Period period in SessionEditor.Sessions.Where(s => s.IsDefined))
             {
                 StrategyParameterInt p = CreateParameter(period.Name, (int)3, 1, 3, 1, "Sessions");
@@ -49,50 +47,14 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
             journal.PositionStateChangeEvent += Journal_PositionStateChangeEvent;
 
             _sessionExit = CreateParameter("SessionExit", 1, 0, 1, 1, "Sessions");
-            _fixTakeOn = CreateParameter("FixTakeOn", false, "Sessions");
-            _fixTake = CreateParameter("FixTake", 5m, 1, 30, 1, "Sessions");
-            _fixStopOn = CreateParameter("FixStopOn", false, "Sessions");
-            _fixStop = CreateParameter("FixStop", 5m, 1, 30, 1, "Sessions");
+            new TakeProfitDecoration(this);
+            new StopLossDecoration(this);
+            //_ts = new TrailingStop(_tab,);
+            //TrailingStop
 
             _si = (SessionIndicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "SessionIndicator", name: name + "SessionIndicator", canDelete: false);
             _si = (SessionIndicator)_tab.CreateCandleIndicator(_si, nameArea: "Prime");
             _si.ChartMaster = _tab.GetChartMaster();
-        }
-
-        private void _tab_PositionOpeningSuccesEvent(Position position)
-        {
-            if (_fixTakeOn.ValueBool)
-            {
-                if (position.Direction == Side.Buy)
-                {
-                    decimal stopPrice = position.EntryPrice + position.EntryPrice * (_fixTake.ValueDecimal / 100);
-                    decimal stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage.ValueDecimal;
-
-                    _tab.CloseAtProfit(position, stopPrice, stopOrderPrice);
-                }
-                else if (position.Direction == Side.Sell)
-                {
-                    decimal stopPrice = position.EntryPrice - position.EntryPrice * (_fixTake.ValueDecimal / 100);
-                    decimal stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage.ValueDecimal;
-                    _tab.CloseAtProfit(position, stopPrice, stopOrderPrice);
-                }
-            }
-
-            if (_fixStopOn.ValueBool)
-            {
-                if (position.Direction == Side.Buy)
-                {
-                    decimal stopPrice = position.EntryPrice - position.EntryPrice * (_fixStop.ValueDecimal / 100);
-                    decimal stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage.ValueDecimal;
-                    _tab.CloseAtStop(position, stopPrice, stopOrderPrice);
-                }
-                else if (position.Direction == Side.Sell)
-                {
-                    decimal stopPrice = position.EntryPrice + position.EntryPrice * (_fixStop.ValueDecimal / 100);
-                    decimal stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage.ValueDecimal;
-                    _tab.CloseAtStop(position, stopPrice, stopOrderPrice);
-                }
-            }
         }
 
         private void Journal_PositionStateChangeEvent(Position obj)
@@ -149,6 +111,14 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
             decimal lastPrice = candles.Last().Close;
             List<Position> positions = _tab.PositionsOpenAll;
             decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
+            OrderType orderType = OrderType.Limit;
+
+            if (_regime == BotRegime.Off) return;
+
+            if (Enum.TryParse(_orderType.ValueString, true, out OrderType ot))
+            {
+                orderType = ot;
+            }
             if (positions.Count > 0)
             {
                 foreach (Position pos in positions)
@@ -166,14 +136,27 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
                     }
                 }
             }
-
-            if (CheckOpenLongPosition(candles))
+            if (_regime != BotRegime.OnlyShort && CheckOpenLongPosition(candles))
             {
-                _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
+                if (orderType == OrderType.Market)
+                {
+                    _tab.BuyAtMarket(GetVolume());
+                }
+                else if (orderType == OrderType.Limit)
+                {
+                    _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
+                }
             }
-            else if (CheckOpenShortPosition(candles))
+            else if (_regime != BotRegime.OnlyLong && CheckOpenShortPosition(candles))
             {
-                _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
+                if (orderType == OrderType.Market)
+                {
+                    _tab.SellAtMarket(GetVolume());
+                }
+                else if (orderType == OrderType.Limit)
+                {
+                    _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
+                }
             }
         }
 
@@ -192,7 +175,7 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
-            IEnumerable<PeriodSession> periods = SessionEditor.Sessions.Where(s => IsStartSession(s, candles));
+            IEnumerable<PeriodSession> periods = SessionEditor.Sessions.Where(s => s.IsDefined && IsStartSession(s, candles));
             IEnumerable<string> names = periods.Select(s => s.Name);
             IEnumerable<StrategyParameterInt> strats = _periods.Where(p => names.Contains(p.Name));
             foreach (StrategyParameterInt p in strats)
@@ -208,7 +191,7 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
-            IEnumerable<PeriodSession> periods = SessionEditor.Sessions.Where(s => IsStartSession(s, candles));
+            IEnumerable<PeriodSession> periods = SessionEditor.Sessions.Where(s => s.IsDefined && IsStartSession(s, candles));
             IEnumerable<string> names = periods.Select(s => s.Name);
             IEnumerable<StrategyParameterInt> strats = _periods.Where(p => names.Contains(p.Name));
             foreach (StrategyParameterInt p in strats)
