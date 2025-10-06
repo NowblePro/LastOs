@@ -70,8 +70,7 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
 
         public override void ShowIndividualSettingsDialog() 
         {
-            SessionEditor editor = new SessionEditor();
-            editor.ShowDialog();
+            
         }
 
         private bool IsStopBySessionEnd(List<Candle> candles, Position position)

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OsEngine.PrimeSettings"
         mc:Ignorable="d"
-        Title="Configuration" Style="{StaticResource WindowStyleNoResize}" Height="447" Width="404" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen" Icon="/Images/OsLogo.ico">
+        Title="Configuration" Style="{StaticResource WindowStyleNoResize}" Height="482" Width="404" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen" Icon="/Images/OsLogo.ico">
     <Grid>
         <ComboBox x:Name="ComboBoxLocalization" Margin="183,28,56,0" VerticalAlignment="Top" Height="23"/>
         <Label Name="LanguageLabel"  Content="Language" HorizontalAlignment="Left" Margin="79,28,0,0" VerticalAlignment="Top"/>
@@ -16,7 +16,7 @@
         <Label x:Name="ExtraLogSound" Content="Emergency log sound" HorizontalAlignment="Left" Margin="79,168,0,0" VerticalAlignment="Top"/>
         <CheckBox x:Name="CheckBoxTransactionSound" Margin="0,196,56,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="23"/>
         <Label x:Name="TransactionSoundLabel" Content="Transaction sound" HorizontalAlignment="Left" Margin="79,196,0,0" VerticalAlignment="Top"/>
-        <TextBox Name="TextBoxMessageToUsers" IsReadOnly="True" HorizontalAlignment="Center" Margin="0,280,0,0" TextWrapping="Wrap" Text="Our company has made the translation of this program due to its capabilities. We apologize for any inconvenience this may cause. &#xD;&#xA;Support our common Open Source project and it will become better." VerticalAlignment="Top" Width="323" Height="97" />
+        <TextBox Name="TextBoxMessageToUsers" IsReadOnly="True" HorizontalAlignment="Center" Margin="0,315,0,0" TextWrapping="Wrap" Text="Our company has made the translation of this program due to its capabilities. We apologize for any inconvenience this may cause. &#xD;&#xA;Support our common Open Source project and it will become better." VerticalAlignment="Top" Width="323" Height="97" />
         <TextBox Name="TextBoxBotHeader" HorizontalAlignment="Left" Margin="183,112,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="151"/>
         <Label x:Name="LabelRebootTradeUiLigth" Content="Reboot Ligth on error" HorizontalAlignment="Left" Margin="79,223,0,0" VerticalAlignment="Top"/>
         <CheckBox x:Name="CheckBoxRebootTradeUiLigth" Margin="0,223,56,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="23"/>
@@ -26,5 +26,6 @@
         <Label x:Name="LabelDateFormat"  Content="Date format" HorizontalAlignment="Left" Margin="79,84,0,0" VerticalAlignment="Top"/>
         <Label x:Name="LabelReportCriticalErrors" Content="Report critical errors" HorizontalAlignment="Left" Margin="79,251,0,0" VerticalAlignment="Top"/>
         <CheckBox x:Name="CheckBoxReportCriticalErrors" Margin="0,251,56,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="23"/>
+        <Button x:Name="ButtonEditSessions" Content="Сессии" Margin="79,279,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Width="142" Click="ButtonEditSessions_Click"/>
     </Grid>
 </Window>

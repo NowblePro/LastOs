@@ -176,6 +176,7 @@ namespace OsEngine.Common.UI
                 new PeriodSession() { Name = "London", Start = new DateTime(1970, 1, 1, 8, 0, 0), End = new DateTime(1970, 1, 1, 17, 0, 0), Color = Color.Red },
                 new PeriodSession() { Name = "Asia", Start = new DateTime(1970, 1, 1, 0, 0, 0), End = new DateTime(1970, 1, 1, 8, 0, 0), Color = Color.Blue },
                 new PeriodSession() { Name = "NY AM", Start = new DateTime(1970, 1, 1, 13, 0, 0), End = new DateTime(1970, 1, 1, 22, 0, 0), Color = Color.Green },
+                new PeriodSession() { Name = "Sydney", Start = new DateTime(1970, 1, 1, 21, 0, 0), End = new DateTime(1970, 1, 1, 6, 0, 0), Color = Color.MintCream },
             };
             if (File.Exists(path))
             {

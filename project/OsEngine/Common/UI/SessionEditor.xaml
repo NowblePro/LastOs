@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OsEngine.Common.UI"
         mc:Ignorable="d"
-        Title="SessionEditor" Height="450" Width="800" Style="{StaticResource WindowStyleCanResize}"
+        Title="SessionEditor" Height="300" Width="350" Style="{StaticResource WindowStyleCanResize}"
         Closing="Window_Closing">
     <Grid>
         <WindowsFormsHost Name="HostSessionTable"  Foreground="Black" Margin="6,40,11,0"/>

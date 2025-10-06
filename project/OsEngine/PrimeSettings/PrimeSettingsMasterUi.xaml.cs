@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using OsEngine.Common.UI;
 using OsEngine.Language;
 
 
@@ -127,6 +128,12 @@ namespace OsEngine.PrimeSettings
         {
             if (CheckBoxReportCriticalErrors.IsChecked != null)
                 PrimeSettingsMaster.ReportCriticalErrors = CheckBoxReportCriticalErrors.IsChecked.Value;
+        }
+
+        private void ButtonEditSessions_Click(object sender, RoutedEventArgs e)
+        {
+            SessionEditor editor = new SessionEditor();
+            editor.ShowDialog();
         }
     }
 }
