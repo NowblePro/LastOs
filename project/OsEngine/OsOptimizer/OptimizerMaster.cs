@@ -313,6 +313,8 @@ namespace OsEngine.OsOptimizer
                 PrimeProgressBarStatus.CurrentValue = PrimeProgressBarStatus.MaxValue;
             }
 
+            CalculateAggregateMetrics(reports);
+
             if (TestReadyEvent != null)
             {
                 TestReadyEvent(reports);
@@ -324,6 +326,52 @@ namespace OsEngine.OsOptimizer
         /// событие: тестирование завершилось
         /// </summary>
         public event Action<List<OptimazerFazeReport>> TestReadyEvent;
+
+        /// <summary>
+        /// Посчитать общие (включая все периоды) для одного бота метрики, после просчёта метрик для отдельных периодов
+        /// </summary>
+        /// <param name="reports"></param>
+        private void CalculateAggregateMetrics(List<OptimazerFazeReport> reports)
+        {
+            IEnumerable<OptimazerFazeReport> insamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample).ToList();
+            IEnumerable<OptimazerFazeReport> outsamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.OutOfSample).ToList();
+
+            // репорты первого инсемпла, потом результаты записанные в них, не плохо было бы записать и в остальные отчёты
+            IEnumerable<OptimizerReport> results = insamples.First().Reports.Select(r => r);
+
+            Parallel.Invoke(() => 
+            {
+                DateTime start = insamples.Min(f => f.Faze.TimeStart);
+                OptimazerFazeReport startIS = insamples.Where(f => f.Faze.TimeStart == start).Single();
+                Parallel.ForEach(startIS.Reports, (inSample) =>
+                {
+                    IEnumerable<OptimizerReport> outOfSamples = outsamples.SelectMany(o => o.Reports).Where(r => r.GetParamsToDataTable() == inSample.GetParamsToDataTable());
+                    decimal profit = inSample.TotalProfit + outOfSamples.Sum(r => r.TotalProfit);
+                    foreach (var r in reports.SelectMany(f => f.Reports).Where(r => r.GetParamsToDataTable() == inSample.GetParamsToDataTable()))
+                    {
+                        r.TotalProfitAllPeriod = profit;
+                    }
+                });
+
+                List<IGrouping<decimal, OptimizerReport>> profitRankGroup = results.GroupBy(r => r.TotalProfitAllPeriod).ToList();
+                profitRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalProfitAllPeriod.CompareTo(r1.First().TotalProfitAllPeriod)));
+                for (int i = 0; i < profitRankGroup.Count; i++)
+                {
+                    foreach (OptimizerReport report in profitRankGroup[i])
+                    {
+                        report.TotalProfitAllPeriodRank = i + 1;
+                    }
+                }
+            }, () => 
+            {
+                
+                //decimal maxDrawDown = Math.Max(insamples.Max(r => Math.Abs(r.MaxDrowDawn)), allOutOfSamples.Max(r => Math.Abs(r.MaxDrowDawn)));
+                //foreach (var report in reports.SelectMany(r => r.Reports).Where(r => r.GetParamsToDataTable() == pair.Key))
+                //{
+                //    report.MaxDrawDownAllPeriod = maxDrawDown;
+                //}
+            });
+        }
 
         /// <summary>
         /// Progress on a specific robot has changed

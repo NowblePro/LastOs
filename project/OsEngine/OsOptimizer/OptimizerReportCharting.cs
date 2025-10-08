@@ -372,12 +372,12 @@ namespace OsEngine.OsOptimizer
 
             _sortBotNumber = Convert.ToInt32(result);
             _sortBotNumberCSC = Convert.ToInt32(resultCSC);
-            if (_sortBotNumber > reports.Count)
+            if (_sortBotNumber >= reports.Count)
             {
                 _sortBotNumber = reports.Count - 1;
             }
 
-            if (_sortBotNumberCSC > reports.Count)
+            if (_sortBotNumberCSC >= reports.Count)
             {
                 _sortBotNumberCSC = reports.Count - 1;
             }
@@ -2674,6 +2674,7 @@ namespace OsEngine.OsOptimizer
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.TotalProfit.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.MaxDrowDawn.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.AverageProfit.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.RRProfit.ToString());
 
             _comboBoxSortResultsDynamicTable.SelectedItem = SortBotsType.TotalProfit.ToString();
             _comboBoxSortResultsDynamicTable.SelectionChanged += _comboBoxSortResultsDynamicTable_SelectionChanged;

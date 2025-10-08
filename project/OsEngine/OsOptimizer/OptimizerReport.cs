@@ -143,6 +143,11 @@ namespace OsEngine.OsOptimizer
                     return rep2.SmaDeviation.CompareTo(rep1.SmaDeviation);
                 });
             }
+            else if (sortType == SortBotsType.RRProfit)
+            {
+                // hack
+                // AllTotalProfit / MaxDrawDown
+            }
         }
 
         public static void SortResults(List<OptimizerReport> reports, CSCSortType sortType)
