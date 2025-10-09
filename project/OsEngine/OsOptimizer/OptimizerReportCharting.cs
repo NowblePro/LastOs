@@ -458,6 +458,9 @@ namespace OsEngine.OsOptimizer
             gridDynamicStepsTable.Columns.Add(GetColumn("Position count", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Max DrawDown", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("RR Profit", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Win rate", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("OOS Profit", readOnly: false));
 
             DataGridViewButtonColumn column10 = new DataGridViewButtonColumn();
             column10.CellTemplate = new DataGridViewButtonCell();
@@ -1004,11 +1007,40 @@ namespace OsEngine.OsOptimizer
 
                         if (columnIndex == 10)
                         {
+                            // rr
+                            decimal maxDrawDown = Math.Abs(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].MaxDrowDawn);
+                            if (maxDrawDown == 0) maxDrawDown = 10e-3m;
+                            decimal totalProfit = faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].TotalProfit;
+                            cellVAlue = $"{Math.Round(totalProfit / maxDrawDown, 3)}";
+                        }
+
+                        if (columnIndex == 11)
+                        {
+                            // win rate
+                            int totalCount = faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].PositionsCount;
+                            if (totalCount == 0)
+                            {
+                                cellVAlue = $"{0}";
+                            }
+                            else
+                            {
+                                cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].ProfitDealCount / (decimal)totalCount, 3)}";
+                            }
+                        }
+
+                        if (columnIndex == 12)
+                        {
+                            // суммарный тотал профит за весь out of sample
+                            cellVAlue = $"{0}";
+                        }
+
+                        if (columnIndex == 13)
+                        {
                             // График
                             cellVAlue = $"График";
                         }
 
-                        if (columnIndex == 11)
+                        if (columnIndex == 14)
                         {
                             // График
                             cellVAlue = $"Полный график";
@@ -1070,7 +1102,7 @@ namespace OsEngine.OsOptimizer
                                     // Параметры
                                     DataGridFactory.AddTextBoxCell(row, parameters);
                                 }
-                                else if (i == 10 || i == 11)
+                                else if (i == 13 || i == 14)
                                 {
                                     // График
                                     DataGridViewButtonCell cellChart = new DataGridViewButtonCell();
@@ -1111,7 +1143,7 @@ namespace OsEngine.OsOptimizer
                 List<OptimazerFazeReport> reportsForChart = FillDynamicTable(_gridDynamicTable, value);
                 if (value)
                 {
-                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes,0, reportsForChart, true);
+                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, 0, reportsForChart, true);
                 }
                 else
                 {
@@ -2606,6 +2638,7 @@ namespace OsEngine.OsOptimizer
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.MaxDrowDawn.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.AverageProfit.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.RRProfit.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.WinRate.ToString());
 
             _comboBoxSortResultsDynamicTable.SelectedItem = SortBotsType.TotalProfit.ToString();
             _comboBoxSortResultsDynamicTable.SelectionChanged += _comboBoxSortResultsDynamicTable_SelectionChanged;

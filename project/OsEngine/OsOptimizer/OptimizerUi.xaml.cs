@@ -3597,7 +3597,11 @@ namespace OsEngine.OsOptimizer
 
         SmaDeviation,
 
-        RRProfit
+        RRProfit,
+
+        WinRate,
+
+        OOSProfit
     }
 
     public enum CSCSortType
