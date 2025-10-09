@@ -328,19 +328,24 @@ namespace OsEngine.OsOptimizer
         public event Action<List<OptimazerFazeReport>> TestReadyEvent;
 
         /// <summary>
-        /// Посчитать общие (включая все периоды) для одного бота метрики, после просчёта метрик для отдельных периодов
+        /// Посчитать общие (включая все периоды) для одного бота метрики, после того как метрики для отдельных периодов были посчитаны
         /// </summary>
         /// <param name="reports"></param>
         private void CalculateAggregateMetrics(List<OptimazerFazeReport> reports)
         {
+            SendLogMessage("Расчёт общих метрик...", LogMessageType.System);
             IEnumerable<OptimazerFazeReport> insamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.InSample).ToList();
             IEnumerable<OptimazerFazeReport> outsamples = reports.Where(r => r.Faze.TypeFaze == OptimizerFazeType.OutOfSample).ToList();
 
-            // репорты первого инсемпла, потом результаты записанные в них, не плохо было бы записать и в остальные отчёты
-            IEnumerable<OptimizerReport> results = insamples.First().Reports.Select(r => r);
+            // репорты первого инсемпла, сначала результаты записываются в них, потом, т. к. результаты общие для всех периодов, копируются в остальные
+            OptimazerFazeReport firstFazeReport = insamples.First();
+            IEnumerable<OptimizerReport> results = firstFazeReport.Reports.Select(r => r);
 
             Parallel.Invoke(() => 
             {
+                // Расчёт TotalProfit за все периоды
+                // Берётся первый инсэмпл и все out of sample'ы чтобы не было перекрытия периодов и повторного суммирования профита (т.к. старт in sample'ов берётся раньше чем конец предыдущих in sample'ов)
+                // Поэтому данный подсчёт подходит и для фазовой прогонки
                 DateTime start = insamples.Min(f => f.Faze.TimeStart);
                 OptimazerFazeReport startIS = insamples.Where(f => f.Faze.TimeStart == start).Single();
                 Parallel.ForEach(startIS.Reports, (inSample) =>
@@ -362,15 +367,96 @@ namespace OsEngine.OsOptimizer
                         report.TotalProfitAllPeriodRank = i + 1;
                     }
                 }
+
+                // Присваиваем результаты отчётам остальных фаз
+                Parallel.ForEach(insamples, (faze)=> 
+                {
+                    if (faze == firstFazeReport) return;
+                    Parallel.ForEach(results, (rep) =>
+                    {
+                        OptimizerReport report = faze.Reports.Where(r => r.GetParamsToDataTable() == rep.GetParamsToDataTable()).SingleOrDefault();
+                        if (report != null)
+                        {
+                            report.TotalProfitAllPeriod = rep.TotalProfitAllPeriod;
+                            report.TotalProfitAllPeriodRank = rep.TotalProfitAllPeriodRank;
+                        }
+                    });
+                } );
             }, () => 
             {
-                
-                //decimal maxDrawDown = Math.Max(insamples.Max(r => Math.Abs(r.MaxDrowDawn)), allOutOfSamples.Max(r => Math.Abs(r.MaxDrowDawn)));
-                //foreach (var report in reports.SelectMany(r => r.Reports).Where(r => r.GetParamsToDataTable() == pair.Key))
-                //{
-                //    report.MaxDrawDownAllPeriod = maxDrawDown;
-                //}
+                // Расчёт максимальной просадки за все периоды In sample и Out of sample
+                OptimazerFazeReport firstFaze = reports.First();
+                IEnumerable<string> keys = firstFaze.Reports.Select(r => r.GetParamsToDataTable());
+                Parallel.ForEach(keys, key => 
+                {
+                    IEnumerable<OptimizerReport> reportsOfKey = reports.SelectMany(f => f.Reports.Where(r => r.GetParamsToDataTable() == key));
+                    decimal maxDrawDown = reportsOfKey.Max(r => Math.Abs(r.MaxDrowDawn));
+                    foreach (OptimizerReport r in reportsOfKey)
+                    {
+                        r.MaxDrawDownAllPeriod = maxDrawDown;
+                    }
+                });
+
+                List<IGrouping<decimal, OptimizerReport>> drawDownRankGroup = results.GroupBy(r => r.TotalProfitAllPeriod).ToList();
+                drawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r1.First().MaxDrawDownAllPeriod.CompareTo(r2.First().MaxDrawDownAllPeriod)));
+                for (int i = 0; i < drawDownRankGroup.Count; i++)
+                {
+                    foreach (OptimizerReport report in drawDownRankGroup[i])
+                    {
+                        report.MaxDrawDownAllPeriodRank = i + 1;
+                    }
+                }
+
+                // Присваиваем результаты отчётам остальных фаз
+                Parallel.ForEach(insamples, (faze) =>
+                {
+                    if (faze == firstFazeReport) return;
+                    Parallel.ForEach(results, (rep) =>
+                    {
+                        OptimizerReport report = faze.Reports.Where(r => r.GetParamsToDataTable() == rep.GetParamsToDataTable()).SingleOrDefault();
+                        if (report != null)
+                        {
+                            report.MaxDrawDownAllPeriod = rep.MaxDrawDownAllPeriod;
+                            report.MaxDrawDownAllPeriodRank = rep.MaxDrawDownAllPeriodRank;
+                        }
+                    });
+                });
             });
+
+            // Рассчёт отношения тотал профита за весь период к максимальной просадке за весь период
+            Parallel.ForEach(reports.SelectMany(f => f.Reports), (r) =>
+            {
+                decimal a = r.TotalProfitAllPeriod == 0 ? 10e-6m : r.TotalProfitAllPeriod;
+                decimal b = r.MaxDrawDownAllPeriod == 0 ? 10e-3m : r.MaxDrawDownAllPeriod;
+                r.ProfitToDrawDownAllPeriod = a / b;
+            });
+
+            List<IGrouping<decimal, OptimizerReport>> profitToDrawDownRankGroup = results.GroupBy(r => r.ProfitToDrawDownAllPeriod).ToList();
+            profitToDrawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().ProfitToDrawDownAllPeriod.CompareTo(r1.First().ProfitToDrawDownAllPeriod)));
+            for (int i = 0; i < profitToDrawDownRankGroup.Count; i++)
+            {
+                foreach (OptimizerReport report in profitToDrawDownRankGroup[i])
+                {
+                    report.ProfitToDrawDownAllPeriodRank = i + 1;
+                }
+            }
+
+            // Присваиваем результаты отчётам остальных фаз
+            Parallel.ForEach(insamples, (faze) =>
+            {
+                if (faze == firstFazeReport) return;
+                Parallel.ForEach(results, (rep) =>
+                {
+                    OptimizerReport report = faze.Reports.Where(r => r.GetParamsToDataTable() == rep.GetParamsToDataTable()).SingleOrDefault();
+                    if (report != null)
+                    {
+                        report.ProfitToDrawDownAllPeriod = rep.ProfitToDrawDownAllPeriod;
+                        report.ProfitToDrawDownAllPeriodRank = rep.ProfitToDrawDownAllPeriodRank;
+                    }
+                });
+            });
+
+            SendLogMessage("Расчёт общих метрик завершён", LogMessageType.System);
         }
 
         /// <summary>
