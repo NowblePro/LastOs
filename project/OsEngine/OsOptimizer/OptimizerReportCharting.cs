@@ -493,7 +493,7 @@ namespace OsEngine.OsOptimizer
 
             if (sender is DataGridView dgv)
             {
-                if (e.ColumnIndex == 10)
+                if (e.ColumnIndex == 13)
                 {
                     OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
 
@@ -512,7 +512,7 @@ namespace OsEngine.OsOptimizer
                     }
                 }
 
-                if (e.ColumnIndex == 11)
+                if (e.ColumnIndex == 14)
                 {
                     OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
 
