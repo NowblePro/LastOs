@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using OsEngine.Entity;
 using OsEngine.Journal.Internal;
 using OsEngine.OsTrader.Panels;
@@ -141,6 +142,27 @@ namespace OsEngine.OsOptimizer
                 reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
                 {
                     return rep2.SmaDeviation.CompareTo(rep1.SmaDeviation);
+                });
+            }
+            else if (sortType == SortBotsType.RRProfit)
+            {
+                reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
+                {
+                    return rep2.RRProfit.CompareTo(rep1.RRProfit);
+                });
+            }
+            else if (sortType == SortBotsType.WinRate)
+            {
+                reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
+                {
+                    return rep2.WinRate.CompareTo(rep1.WinRate);
+                });
+            }
+            else if (sortType == SortBotsType.OOSProfit)
+            {
+                reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
+                {
+                    return rep2.TotalOOSProfit.CompareTo(rep1.TotalOOSProfit);
                 });
             }
         }
@@ -398,6 +420,9 @@ namespace OsEngine.OsOptimizer
                 PayOffRatio = TabsReports[0].PayOffRatio;
                 SharpRatio = TabsReports[0].SharpRatio;
                 SmaDeviation = TabsReports[0].SmaDeviation;
+                ProfitDealCount = allPositionsForAllTabs.Count(p => p.ProfitPortfolioPunkt > 0);
+                RRProfit = PositionStatisticGenerator.CalculateRRProfit(TotalProfit, MaxDrowDawn);
+                WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
             }
             else
             {
@@ -416,6 +441,9 @@ namespace OsEngine.OsOptimizer
                 PayOffRatio = PositionStatisticGenerator.GetPayOffRatio(posesArray);
                 SharpRatio = PositionStatisticGenerator.GetSharpRatio(posesArray, 7);
                 SmaDeviation = PositionStatisticGenerator.GetSmaDeviation(posesArray);
+                ProfitDealCount = posesArray.Count(p => p.ProfitPortfolioPunkt > 0);
+                RRProfit = PositionStatisticGenerator.CalculateRRProfit(TotalProfit, MaxDrowDawn);
+                WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
             }
         }
 
@@ -440,6 +468,16 @@ namespace OsEngine.OsOptimizer
         public decimal SharpRatio;
 
         public decimal SmaDeviation;
+
+        //Метрики для фазовой прогонки
+
+        public decimal RRProfit;
+
+        public int ProfitDealCount;
+
+        public decimal WinRate;
+
+        public decimal TotalOOSProfit;
 
 
         public decimal FRS;

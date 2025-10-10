@@ -3595,7 +3595,13 @@ namespace OsEngine.OsOptimizer
 
         SharpRatio,
 
-        SmaDeviation
+        SmaDeviation,
+
+        RRProfit,
+
+        WinRate,
+
+        OOSProfit
     }
 
     public enum CSCSortType

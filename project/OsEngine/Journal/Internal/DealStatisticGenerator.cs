@@ -3,11 +3,11 @@
  * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
+using OsEngine.Entity;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using OsEngine.Entity;
 
 namespace OsEngine.Journal.Internal
 {
@@ -1083,6 +1083,24 @@ namespace OsEngine.Journal.Internal
         private static decimal Round(decimal number)
         {
             return Decimal.Round(number, 6);
+        }
+
+        public static decimal CalculateRRProfit(decimal totalProfit, decimal maxDrawDown)
+        {
+            decimal result;
+            if (maxDrawDown == 0) maxDrawDown = 10e-3m;
+            result = totalProfit / maxDrawDown;
+            return result;
+        }
+
+        public static decimal CalculateWinRate(int profitDealCount, int totalDealCount)
+        {
+            decimal result = 0;
+            if (totalDealCount >= 10)
+            {
+                result = (decimal)profitDealCount / (decimal)totalDealCount;
+            }
+            return result;
         }
     }
 }

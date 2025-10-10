@@ -1,6 +1,7 @@
 ﻿using Microsoft.Office.Core;
 using OsEngine.Charts;
 using OsEngine.Entity;
+using OsEngine.Journal.Internal;
 using OsEngine.Language;
 using OsEngine.Logging;
 using OsEngine.Market.Servers.Optimizer;
@@ -372,12 +373,12 @@ namespace OsEngine.OsOptimizer
 
             _sortBotNumber = Convert.ToInt32(result);
             _sortBotNumberCSC = Convert.ToInt32(resultCSC);
-            if (_sortBotNumber > reports.Count)
+            if (_sortBotNumber >= reports.Count)
             {
                 _sortBotNumber = reports.Count - 1;
             }
 
-            if (_sortBotNumberCSC > reports.Count)
+            if (_sortBotNumberCSC >= reports.Count)
             {
                 _sortBotNumberCSC = reports.Count - 1;
             }
@@ -458,6 +459,9 @@ namespace OsEngine.OsOptimizer
             gridDynamicStepsTable.Columns.Add(GetColumn("Position count", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Max DrawDown", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("RR Profit", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Win rate", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("OOS Profit", readOnly: false));
 
             DataGridViewButtonColumn column10 = new DataGridViewButtonColumn();
             column10.CellTemplate = new DataGridViewButtonCell();
@@ -949,6 +953,8 @@ namespace OsEngine.OsOptimizer
                     period.Report.Reports[0].PositionsCount = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].PositionsCount);
                     period.Report.Reports[0].MaxDrowDawn = group.Min(p => p.Report.Reports[_sortTypeDynamicTableNum].MaxDrowDawn);
                     period.Report.Reports[0].AverageProfit = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].AverageProfit) / group.Count();
+                    period.Report.Reports[0].RRProfit = group.Max(p => p.Report.Reports[_sortTypeDynamicTableNum].RRProfit);
+                    period.Report.Reports[0].WinRate = group.Max(p => p.Report.Reports[_sortTypeDynamicTableNum].WinRate);
                     FillPeriod(period, "Out Of Sample", true);
                 }
             }
@@ -973,42 +979,61 @@ namespace OsEngine.OsOptimizer
                 if (period.Report != null && period.Report.Reports.Count > 0)
                 {
                     OptimazerFazeReport faze = period.Report;
+                    OptimizerReport report = faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum];
                     if (faze != null)
                     {
                         if (columnIndex == 5)
                         {
                             // Profit
-                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].TotalProfit, 3)}";
+                            cellVAlue = $"{Math.Round(report.TotalProfit, 3)}";
                         }
                         if (columnIndex == 6)
                         {
                             // Average Profit
-                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].AverageProfit, 3)}";
+                            cellVAlue = $"{Math.Round(report.AverageProfit, 3)}";
                         }
                         if (columnIndex == 7)
                         {
                             // Positions count
-                            cellVAlue = $"{faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].PositionsCount}";
+                            cellVAlue = $"{report.PositionsCount}";
                         }
                         if (columnIndex == 8)
                         {
                             // Sharp Ratio
-                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].SharpRatio, 3)}";
+                            cellVAlue = $"{Math.Round(report.SharpRatio, 3)}";
                         }
 
                         if (columnIndex == 9)
                         {
                             // Max DrawDown
-                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].MaxDrowDawn, 3)}";
+                            cellVAlue = $"{Math.Round(report.MaxDrowDawn, 3)}";
                         }
 
                         if (columnIndex == 10)
+                        {
+                            // rr
+                            cellVAlue = $"{Math.Round(report.RRProfit, 3)}";
+                        }
+
+                        if (columnIndex == 11)
+                        {
+                            // win rate
+                            cellVAlue = $"{Math.Round(report.WinRate, 3)}";
+                        }
+
+                        if (columnIndex == 12)
+                        {
+                            // суммарный тотал профит за весь out of sample
+                            cellVAlue = $"{Math.Round(report.TotalOOSProfit, 3)}";
+                        }
+
+                        if (columnIndex == 13)
                         {
                             // График
                             cellVAlue = $"График";
                         }
 
-                        if (columnIndex == 11)
+                        if (columnIndex == 14)
                         {
                             // График
                             cellVAlue = $"Полный график";
@@ -1070,7 +1095,7 @@ namespace OsEngine.OsOptimizer
                                     // Параметры
                                     DataGridFactory.AddTextBoxCell(row, parameters);
                                 }
-                                else if (i == 10 || i == 11)
+                                else if (i == 13 || i == 14)
                                 {
                                     // График
                                     DataGridViewButtonCell cellChart = new DataGridViewButtonCell();
@@ -1111,7 +1136,7 @@ namespace OsEngine.OsOptimizer
                 List<OptimazerFazeReport> reportsForChart = FillDynamicTable(_gridDynamicTable, value);
                 if (value)
                 {
-                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes,0, reportsForChart, true);
+                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, 0, reportsForChart, true);
                 }
                 else
                 {
@@ -1279,75 +1304,6 @@ namespace OsEngine.OsOptimizer
                             report.GPRRank = i + 1;
                         }
                     }
-                }, () =>
-                {
-                    Parallel.Invoke(() =>
-                    {
-                        DateTime start = insamples.Min(f => f.Faze.TimeStart);
-                        OptimazerFazeReport startIS = insamples.Where(f => f.Faze.TimeStart == start).Single();
-                        Parallel.ForEach(startIS.Reports, (inSample) =>
-                        {
-                            IEnumerable<OptimizerReport> outOfSamples = outsamples.SelectMany(o => o.Reports).Where(r => r.GetParamsToDataTable() == inSample.GetParamsToDataTable());
-                            decimal profit = CalculateTotalProfit(inSample, outOfSamples);
-                            foreach (var r in reports.SelectMany(f => f.Reports).Where(r => r.GetParamsToDataTable() == inSample.GetParamsToDataTable()))
-                            {
-                                r.TotalProfitAllPeriod = profit;
-                            }
-                        });
-                    }, () =>
-                    {
-                        Parallel.ForEach(allReports, (pair) =>
-                        {
-                            decimal maxDrawDown = GetMaxDrawDown(pair.Value.Keys, pair.Value.Values);
-                            foreach (var report in reports.SelectMany(r => r.Reports).Where(r => r.GetParamsToDataTable() == pair.Key))
-                            {
-                                report.MaxDrawDownAllPeriod = maxDrawDown;
-                            }
-                        });
-                    });
-
-                    Parallel.ForEach(reports.SelectMany(f => f.Reports), (r) =>
-                    {
-                        decimal a = r.TotalProfitAllPeriod == 0 ? 10e-6m : r.TotalProfitAllPeriod;
-                        decimal b = r.MaxDrawDownAllPeriod == 0 ? 10e-3m : r.MaxDrawDownAllPeriod;
-                        r.ProfitToDrawDownAllPeriod = a / b;
-                    });
-
-                    Parallel.Invoke(() =>
-                    {
-                        List<IGrouping<decimal, OptimizerReport>> profitRankGroup = results.GroupBy(r => r.TotalProfitAllPeriod).ToList();
-                        profitRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().TotalProfitAllPeriod.CompareTo(r1.First().TotalProfitAllPeriod)));
-                        for (int i = 0; i < profitRankGroup.Count; i++)
-                        {
-                            foreach (OptimizerReport report in profitRankGroup[i])
-                            {
-                                report.TotalProfitAllPeriodRank = i + 1;
-                            }
-                        }
-                    }, () =>
-                    {
-                        List<IGrouping<decimal, OptimizerReport>> drawDownRankGroup = results.GroupBy(r => r.TotalProfitAllPeriod).ToList();
-                        drawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r1.First().MaxDrawDownAllPeriod.CompareTo(r2.First().MaxDrawDownAllPeriod)));
-                        for (int i = 0; i < drawDownRankGroup.Count; i++)
-                        {
-                            foreach (OptimizerReport report in drawDownRankGroup[i])
-                            {
-                                report.MaxDrawDownAllPeriodRank = i + 1;
-                            }
-                        }
-                    }
-                    , () =>
-                    {
-                        List<IGrouping<decimal, OptimizerReport>> profitToDrawDownRankGroup = results.GroupBy(r => r.ProfitToDrawDownAllPeriod).ToList();
-                        profitToDrawDownRankGroup.Sort(new Comparison<IGrouping<decimal, OptimizerReport>>((r1, r2) => r2.First().ProfitToDrawDownAllPeriod.CompareTo(r1.First().ProfitToDrawDownAllPeriod)));
-                        for (int i = 0; i < profitToDrawDownRankGroup.Count; i++)
-                        {
-                            foreach (OptimizerReport report in profitToDrawDownRankGroup[i])
-                            {
-                                report.ProfitToDrawDownAllPeriodRank = i + 1;
-                            }
-                        }
-                    });
                 });
 
                 reportsForCSCTable.Clear();
@@ -2674,6 +2630,9 @@ namespace OsEngine.OsOptimizer
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.TotalProfit.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.MaxDrowDawn.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.AverageProfit.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.RRProfit.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.WinRate.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.OOSProfit.ToString());
 
             _comboBoxSortResultsDynamicTable.SelectedItem = SortBotsType.TotalProfit.ToString();
             _comboBoxSortResultsDynamicTable.SelectionChanged += _comboBoxSortResultsDynamicTable_SelectionChanged;
