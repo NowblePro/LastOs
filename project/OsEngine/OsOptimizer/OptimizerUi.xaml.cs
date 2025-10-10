@@ -3601,7 +3601,9 @@ namespace OsEngine.OsOptimizer
 
         WinRate,
 
-        OOSProfit
+        OOSProfit,
+
+        Eval
     }
 
     public enum CSCSortType

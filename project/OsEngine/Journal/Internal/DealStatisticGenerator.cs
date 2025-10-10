@@ -1085,13 +1085,9 @@ namespace OsEngine.Journal.Internal
             return Decimal.Round(number, 6);
         }
 
-        public static decimal CalculateRRProfit(decimal totalProfit, decimal maxDrawDown)
+        public static decimal CalculateRRProfit(IEnumerable<Position> positions)
         {
-            decimal result;
-            if (maxDrawDown == 0) maxDrawDown = 10e-3m;
-            maxDrawDown = Math.Abs(maxDrawDown);
-            result = totalProfit / maxDrawDown;
-            return result;
+            return positions.Where(p => p.ProfitPortfolioPunkt > 0).Sum(p => p.ProfitPortfolioPunkt) / positions.Sum(p => Math.Abs(p.ProfitPortfolioPunkt));
         }
 
         public static decimal CalculateWinRate(int profitDealCount, int totalDealCount)
@@ -1102,6 +1098,11 @@ namespace OsEngine.Journal.Internal
                 result = (decimal)profitDealCount / (decimal)totalDealCount;
             }
             return result;
+        }
+
+        internal static decimal GetEval(decimal winRate, decimal rRProfit)
+        {
+            return winRate * rRProfit - (1 - winRate);
         }
     }
 }

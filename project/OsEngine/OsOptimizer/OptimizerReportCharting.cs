@@ -462,6 +462,7 @@ namespace OsEngine.OsOptimizer
             gridDynamicStepsTable.Columns.Add(GetColumn("RR Profit", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Win rate", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("OOS Profit", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Eval", readOnly: false));
 
             DataGridViewButtonColumn column10 = new DataGridViewButtonColumn();
             column10.CellTemplate = new DataGridViewButtonCell();
@@ -493,7 +494,7 @@ namespace OsEngine.OsOptimizer
 
             if (sender is DataGridView dgv)
             {
-                if (e.ColumnIndex == 13)
+                if (e.ColumnIndex == 14)
                 {
                     OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
 
@@ -512,7 +513,7 @@ namespace OsEngine.OsOptimizer
                     }
                 }
 
-                if (e.ColumnIndex == 14)
+                if (e.ColumnIndex == 15)
                 {
                     OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
 
@@ -1029,11 +1030,17 @@ namespace OsEngine.OsOptimizer
 
                         if (columnIndex == 13)
                         {
+                            // eval
+                            cellVAlue = $"{Math.Round(report.Eval, 3)}";
+                        }
+
+                        if (columnIndex == 14)
+                        {
                             // График
                             cellVAlue = $"График";
                         }
 
-                        if (columnIndex == 14)
+                        if (columnIndex == 15)
                         {
                             // График
                             cellVAlue = $"Полный график";
@@ -1095,7 +1102,7 @@ namespace OsEngine.OsOptimizer
                                     // Параметры
                                     DataGridFactory.AddTextBoxCell(row, parameters);
                                 }
-                                else if (i == 13 || i == 14)
+                                else if (i == 14 || i == 15)
                                 {
                                     // График
                                     DataGridViewButtonCell cellChart = new DataGridViewButtonCell();
@@ -2633,6 +2640,7 @@ namespace OsEngine.OsOptimizer
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.RRProfit.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.WinRate.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.OOSProfit.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.Eval.ToString());
 
             _comboBoxSortResultsDynamicTable.SelectedItem = SortBotsType.TotalProfit.ToString();
             _comboBoxSortResultsDynamicTable.SelectionChanged += _comboBoxSortResultsDynamicTable_SelectionChanged;

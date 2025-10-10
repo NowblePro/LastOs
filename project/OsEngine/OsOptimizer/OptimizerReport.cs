@@ -165,6 +165,13 @@ namespace OsEngine.OsOptimizer
                     return rep2.TotalOOSProfit.CompareTo(rep1.TotalOOSProfit);
                 });
             }
+            else if (sortType == SortBotsType.Eval)
+            {
+                reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
+                {
+                    return rep2.Eval.CompareTo(rep1.Eval);
+                });
+            }
         }
 
         public static void SortResults(List<OptimizerReport> reports, CSCSortType sortType)
@@ -421,8 +428,9 @@ namespace OsEngine.OsOptimizer
                 SharpRatio = TabsReports[0].SharpRatio;
                 SmaDeviation = TabsReports[0].SmaDeviation;
                 ProfitDealCount = allPositionsForAllTabs.Count(p => p.ProfitPortfolioPunkt > 0);
-                RRProfit = PositionStatisticGenerator.CalculateRRProfit(TotalProfitPersent, MaxDrowDawn);
+                RRProfit = PositionStatisticGenerator.CalculateRRProfit(allPositionsForAllTabs);
                 WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
+                Eval = PositionStatisticGenerator.GetEval(WinRate, RRProfit);
             }
             else
             {
@@ -442,8 +450,9 @@ namespace OsEngine.OsOptimizer
                 SharpRatio = PositionStatisticGenerator.GetSharpRatio(posesArray, 7);
                 SmaDeviation = PositionStatisticGenerator.GetSmaDeviation(posesArray);
                 ProfitDealCount = posesArray.Count(p => p.ProfitPortfolioPunkt > 0);
-                RRProfit = PositionStatisticGenerator.CalculateRRProfit(TotalProfitPersent, MaxDrowDawn);
+                RRProfit = PositionStatisticGenerator.CalculateRRProfit(posesArray);
                 WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
+                Eval = PositionStatisticGenerator.GetEval(WinRate, RRProfit);
             }
         }
 
@@ -478,6 +487,8 @@ namespace OsEngine.OsOptimizer
         public decimal WinRate;
 
         public decimal TotalOOSProfit;
+
+        public decimal Eval;
 
 
         public decimal FRS;
