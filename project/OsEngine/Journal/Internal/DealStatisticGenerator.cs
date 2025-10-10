@@ -1089,6 +1089,7 @@ namespace OsEngine.Journal.Internal
         {
             decimal result;
             if (maxDrawDown == 0) maxDrawDown = 10e-3m;
+            maxDrawDown = Math.Abs(maxDrawDown);
             result = totalProfit / maxDrawDown;
             return result;
         }

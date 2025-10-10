@@ -421,7 +421,7 @@ namespace OsEngine.OsOptimizer
                 SharpRatio = TabsReports[0].SharpRatio;
                 SmaDeviation = TabsReports[0].SmaDeviation;
                 ProfitDealCount = allPositionsForAllTabs.Count(p => p.ProfitPortfolioPunkt > 0);
-                RRProfit = PositionStatisticGenerator.CalculateRRProfit(TotalProfit, MaxDrowDawn);
+                RRProfit = PositionStatisticGenerator.CalculateRRProfit(TotalProfitPersent, MaxDrowDawn);
                 WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
             }
             else
@@ -442,7 +442,7 @@ namespace OsEngine.OsOptimizer
                 SharpRatio = PositionStatisticGenerator.GetSharpRatio(posesArray, 7);
                 SmaDeviation = PositionStatisticGenerator.GetSmaDeviation(posesArray);
                 ProfitDealCount = posesArray.Count(p => p.ProfitPortfolioPunkt > 0);
-                RRProfit = PositionStatisticGenerator.CalculateRRProfit(TotalProfit, MaxDrowDawn);
+                RRProfit = PositionStatisticGenerator.CalculateRRProfit(TotalProfitPersent, MaxDrowDawn);
                 WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
             }
         }
