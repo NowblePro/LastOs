@@ -1,6 +1,7 @@
 ﻿using Microsoft.Office.Core;
 using OsEngine.Charts;
 using OsEngine.Entity;
+using OsEngine.Journal.Internal;
 using OsEngine.Language;
 using OsEngine.Logging;
 using OsEngine.Market.Servers.Optimizer;
@@ -952,6 +953,8 @@ namespace OsEngine.OsOptimizer
                     period.Report.Reports[0].PositionsCount = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].PositionsCount);
                     period.Report.Reports[0].MaxDrowDawn = group.Min(p => p.Report.Reports[_sortTypeDynamicTableNum].MaxDrowDawn);
                     period.Report.Reports[0].AverageProfit = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].AverageProfit) / group.Count();
+                    period.Report.Reports[0].RRProfit = group.Max(p => p.Report.Reports[_sortTypeDynamicTableNum].RRProfit);
+                    period.Report.Reports[0].WinRate = group.Max(p => p.Report.Reports[_sortTypeDynamicTableNum].WinRate);
                     FillPeriod(period, "Out Of Sample", true);
                 }
             }
@@ -976,62 +979,52 @@ namespace OsEngine.OsOptimizer
                 if (period.Report != null && period.Report.Reports.Count > 0)
                 {
                     OptimazerFazeReport faze = period.Report;
+                    OptimizerReport report = faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum];
                     if (faze != null)
                     {
                         if (columnIndex == 5)
                         {
                             // Profit
-                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].TotalProfit, 3)}";
+                            cellVAlue = $"{Math.Round(report.TotalProfit, 3)}";
                         }
                         if (columnIndex == 6)
                         {
                             // Average Profit
-                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].AverageProfit, 3)}";
+                            cellVAlue = $"{Math.Round(report.AverageProfit, 3)}";
                         }
                         if (columnIndex == 7)
                         {
                             // Positions count
-                            cellVAlue = $"{faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].PositionsCount}";
+                            cellVAlue = $"{report.PositionsCount}";
                         }
                         if (columnIndex == 8)
                         {
                             // Sharp Ratio
-                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].SharpRatio, 3)}";
+                            cellVAlue = $"{Math.Round(report.SharpRatio, 3)}";
                         }
 
                         if (columnIndex == 9)
                         {
                             // Max DrawDown
-                            cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].MaxDrowDawn, 3)}";
+                            cellVAlue = $"{Math.Round(report.MaxDrowDawn, 3)}";
                         }
 
                         if (columnIndex == 10)
                         {
                             // rr
-                            decimal maxDrawDown = Math.Abs(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].MaxDrowDawn);
-                            if (maxDrawDown == 0) maxDrawDown = 10e-3m;
-                            decimal totalProfit = faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].TotalProfit;
-                            cellVAlue = $"{Math.Round(totalProfit / maxDrawDown, 3)}";
+                            cellVAlue = $"{Math.Round(report.RRProfit, 3)}";
                         }
 
                         if (columnIndex == 11)
                         {
                             // win rate
-                            int totalCount = faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].PositionsCount;
-                            if (totalCount == 0)
-                            {
-                                cellVAlue = $"{0}";
-                            }
-                            else
-                            {
-                                cellVAlue = $"{Math.Round(faze.Reports[firstReport ? 0 : _sortTypeDynamicTableNum].ProfitDealCount / (decimal)totalCount, 3)}";
-                            }
+                            cellVAlue = $"{Math.Round(report.WinRate, 3)}";
                         }
 
                         if (columnIndex == 12)
                         {
                             // суммарный тотал профит за весь out of sample
-                            cellVAlue = $"{0}";
+                            cellVAlue = $"{Math.Round(report.TotalOOSProfit, 3)}";
                         }
 
                         if (columnIndex == 13)
@@ -2639,6 +2632,7 @@ namespace OsEngine.OsOptimizer
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.AverageProfit.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.RRProfit.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.WinRate.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.OOSProfit.ToString());
 
             _comboBoxSortResultsDynamicTable.SelectedItem = SortBotsType.TotalProfit.ToString();
             _comboBoxSortResultsDynamicTable.SelectionChanged += _comboBoxSortResultsDynamicTable_SelectionChanged;
