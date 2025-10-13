@@ -350,6 +350,14 @@ namespace OsEngine.OsOptimizer
                     decimal profitSum = reportsOfKey.Sum(r => r.TotalProfit);
                     inSampleReport.TotalOOSProfit = profitSum;
                 });
+
+                Parallel.ForEach(firstFazeReport.Reports, inSampleReport =>
+                {
+                    if (inSampleReport.PositionsCount < 10)
+                    {
+                        inSampleReport.WinRate = 0;
+                    }
+                });
             }
             else
             {
