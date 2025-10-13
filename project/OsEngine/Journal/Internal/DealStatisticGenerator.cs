@@ -570,7 +570,7 @@ namespace OsEngine.Journal.Internal
         /// take the average profit in% from profitable transactions
         /// взять средний профит в % у прибыльных сделок
         /// </summary>
-        private static decimal GetAllMiddleProfitInProfitInPercent(Position[] deals)
+        public static decimal GetAllMiddleProfitInProfitInPercent(Position[] deals)
         {
             decimal profit = 0;
 
@@ -767,7 +767,7 @@ namespace OsEngine.Journal.Internal
         /// take the average loss in points
         /// взять средний убыток в пунктах
         /// </summary>
-        private static decimal GetAllMiddleLossInLossInPunktOnDeposit(Position[] deals)
+        public static decimal GetAllMiddleLossInLossInPunktOnDeposit(Position[] deals)
         {
             decimal loss = 0;
 
@@ -1083,11 +1083,6 @@ namespace OsEngine.Journal.Internal
         private static decimal Round(decimal number)
         {
             return Decimal.Round(number, 6);
-        }
-
-        public static decimal CalculateRRProfit(IEnumerable<Position> positions)
-        {
-            return positions.Where(p => p.ProfitPortfolioPunkt > 0).Sum(p => p.ProfitPortfolioPunkt) / positions.Sum(p => Math.Abs(p.ProfitPortfolioPunkt));
         }
 
         public static decimal CalculateWinRate(int profitDealCount, int totalDealCount)
