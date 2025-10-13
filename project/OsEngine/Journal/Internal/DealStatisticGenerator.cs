@@ -570,7 +570,7 @@ namespace OsEngine.Journal.Internal
         /// take the average profit in% from profitable transactions
         /// взять средний профит в % у прибыльных сделок
         /// </summary>
-        public static decimal GetAllMiddleProfitInProfitInPercent(Position[] deals)
+        private static decimal GetAllMiddleProfitInProfitInPercent(Position[] deals)
         {
             decimal profit = 0;
 
@@ -598,7 +598,7 @@ namespace OsEngine.Journal.Internal
         /// take the average profit in points from profitable transactions
         /// взять средний профит в пунктах у прибыльных сделок
         /// </summary>
-        private static decimal GetAllMiddleProfitInProfitInPunktOnDeposit(Position[] deals)
+        public static decimal GetAllMiddleProfitInProfitInPunktOnDeposit(Position[] deals)
         {
             decimal profit = 0;
 
