@@ -1088,7 +1088,7 @@ namespace OsEngine.Journal.Internal
         public static decimal CalculateWinRate(int profitDealCount, int totalDealCount)
         {
             decimal result = 0;
-            if (totalDealCount >= 10)
+            if (totalDealCount > 0)
             {
                 result = (decimal)profitDealCount / (decimal)totalDealCount;
             }
