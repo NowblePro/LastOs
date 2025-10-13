@@ -429,7 +429,7 @@ namespace OsEngine.OsOptimizer
                 SharpRatio = TabsReports[0].SharpRatio;
                 SmaDeviation = TabsReports[0].SmaDeviation;
                 ProfitDealCount = allPositionsForAllTabs.Count(p => p.ProfitPortfolioPunkt > 0);
-                RRProfit = PositionStatisticGenerator.GetAllMiddleProfitInProfitInPercent(posesArray) / Math.Max(Math.Abs(PositionStatisticGenerator.GetAllMiddleLossInLossInPunktOnDeposit(posesArray)), 0.01m);
+                RRProfit = PositionStatisticGenerator.GetAllMiddleProfitInProfitInPunktOnDeposit(posesArray) / Math.Max(Math.Abs(PositionStatisticGenerator.GetAllMiddleLossInLossInPunktOnDeposit(posesArray)), 0.01m);
                 WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
                 Eval = PositionStatisticGenerator.GetEval(WinRate, RRProfit);
             }
@@ -451,7 +451,7 @@ namespace OsEngine.OsOptimizer
                 SharpRatio = PositionStatisticGenerator.GetSharpRatio(posesArray, 7);
                 SmaDeviation = PositionStatisticGenerator.GetSmaDeviation(posesArray);
                 ProfitDealCount = posesArray.Count(p => p.ProfitPortfolioPunkt > 0);
-                RRProfit = PositionStatisticGenerator.GetAllMiddleProfitInProfitInPercent(posesArray) / Math.Max(Math.Abs(PositionStatisticGenerator.GetAllMiddleLossInLossInPunktOnDeposit(posesArray)), 0.01m);
+                RRProfit = PositionStatisticGenerator.GetAllMiddleProfitInProfitInPunktOnDeposit(posesArray) / Math.Max(Math.Abs(PositionStatisticGenerator.GetAllMiddleLossInLossInPunktOnDeposit(posesArray)), 0.01m);
                 WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
                 Eval = PositionStatisticGenerator.GetEval(WinRate, RRProfit);
             }
