@@ -343,20 +343,19 @@ namespace OsEngine.OsOptimizer
 
             if (CustomFazes)
             {
-                // Расчёт Total Profit за все периоды Out of sample
                 Parallel.ForEach(firstFazeReport.Reports, inSampleReport =>
                 {
+                    // Расчёт Total Profit за все периоды Out of sample
                     IEnumerable<OptimizerReport> reportsOfKey = outsamples.SelectMany(f => f.Reports.Where(r => r.GetParamsToDataTable() == inSampleReport.GetParamsToDataTable()));
                     decimal profitSum = reportsOfKey.Sum(r => r.TotalProfit);
                     inSampleReport.TotalOOSProfit = profitSum;
-                });
 
-                Parallel.ForEach(firstFazeReport.Reports, inSampleReport =>
-                {
                     if (inSampleReport.PositionsCount < 10)
                     {
                         inSampleReport.WinRate = 0;
                     }
+
+                    inSampleReport.BestOOSWinRate = reportsOfKey.Max(r => r.PositionsCount >= _minimumPositionsCountForWinRateCalculateing ? r.WinRate : 0);
                 });
             }
             else
@@ -1783,6 +1782,12 @@ namespace OsEngine.OsOptimizer
                 _gprWeight = resultsCharting.GPRWeight;
                 Save();
             }
+        }
+
+        private int _minimumPositionsCountForWinRateCalculateing = 5;
+        internal void SetMinimuPositionsCountForWinRate(int count)
+        {
+            _minimumPositionsCountForWinRateCalculateing = count;
         }
 
         /// <summary>

@@ -3567,6 +3567,18 @@ namespace OsEngine.OsOptimizer
         {
             _resultsCharting.IsPhazeGroupingByPeriods = cbGroupPhazePeriods.IsChecked.Value;
         }
+
+        private void TextBoxPositionsCountForWinRate_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (int.TryParse(TextBoxPositionsCountForWinRate.Text, out int count))
+            {
+                _master?.SetMinimuPositionsCountForWinRate(count);
+            }
+            else
+            {
+                _master?.SetMinimuPositionsCountForWinRate(1);
+            }
+        }
     }
 
     /// <summary>
