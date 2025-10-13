@@ -155,7 +155,7 @@ namespace OsEngine.OsOptimizer
             {
                 reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
                 {
-                    return rep2.WinRate.CompareTo(rep1.WinRate);
+                    return rep2.BestOOSWinRate.CompareTo(rep1.BestOOSWinRate);
                 });
             }
             else if (sortType == SortBotsType.OOSProfit)
@@ -486,6 +486,11 @@ namespace OsEngine.OsOptimizer
         public int ProfitDealCount;
 
         public decimal WinRate;
+
+        /// <summary>
+        /// Для In Sample фазовой прогонки (для сортировки)
+        /// </summary>
+        public decimal BestOOSWinRate;
 
         public decimal TotalOOSProfit;
 

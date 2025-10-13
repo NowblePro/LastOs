@@ -955,7 +955,7 @@ namespace OsEngine.OsOptimizer
                     period.Report.Reports[0].MaxDrowDawn = group.Min(p => p.Report.Reports[_sortTypeDynamicTableNum].MaxDrowDawn);
                     period.Report.Reports[0].AverageProfit = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].AverageProfit) / group.Count();
                     period.Report.Reports[0].RRProfit = group.Max(p => p.Report.Reports[_sortTypeDynamicTableNum].RRProfit);
-                    period.Report.Reports[0].WinRate = group.Max(p => p.Report.Reports[_sortTypeDynamicTableNum].WinRate);
+                    period.Report.Reports[0].WinRate = group.Average(p => p.Report.Reports[_sortTypeDynamicTableNum].WinRate);
                     period.Report.Reports[0].Eval = group.Average(p => p.Report.Reports[_sortTypeDynamicTableNum].Eval);
                     FillPeriod(period, "Out Of Sample", true);
                 }
