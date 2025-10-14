@@ -1,9 +1,10 @@
-using System.Collections.Generic;
+using OsEngine.Common;
 using OsEngine.Entity;
 using OsEngine.Indicators;
-using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Attributes;
+using OsEngine.OsTrader.Panels.Tab;
+using System.Collections.Generic;
 
 /// <summary>
 /// Trend strategy at the intersection of the indicator RVI
@@ -28,6 +29,12 @@ public class RviTrade : BotPanel
         _rvi = (Aindicator)_tab.CreateCandleIndicator(_rvi, "MacdArea");
         _rvi.ParametersDigit[0].Value = RviLength.ValueInt;
         _rvi.Save();
+
+        _filterN = CreateParameter("Filter N", 0, 0, 100, 1);
+
+        new TakeProfitDecoration(this);
+        new StopLossDecoration(this);
+        new TrailingStopDecoration(this);
 
         _tab.CandleFinishedEvent += Strateg_CandleFinishedEvent;
         ParametrsChangeByUser += RviTrade_ParametrsChangeByUser;
@@ -104,6 +111,9 @@ public class RviTrade : BotPanel
     private decimal _lastRviUp;
     private decimal _lastRviDown;
 
+    private StrategyParameterInt _filterN;
+    private int _lastCrossIndex = 0;
+
     // logic / логика
 
     /// <summary>
@@ -126,6 +136,11 @@ public class RviTrade : BotPanel
         _lastRviUp = _rvi.DataSeries[0].Values[_rvi.DataSeries[0].Values.Count - 1];
         _lastRviDown = _rvi.DataSeries[1].Values[_rvi.DataSeries[1].Values.Count - 1];
 
+        if (candles.Count - _lastCrossIndex < _filterN.ValueInt)
+        {
+            return;
+        }
+
         List<Position> openPositions = _tab.PositionsOpenAll;
 
         if (openPositions != null && openPositions.Count != 0)
@@ -133,7 +148,6 @@ public class RviTrade : BotPanel
             for (int i = 0; i < openPositions.Count; i++)
             {
                 LogicClosePosition(candles, openPositions[i]);
-
             }
         }
 
@@ -141,6 +155,7 @@ public class RviTrade : BotPanel
         {
             return;
         }
+
         if (openPositions == null || openPositions.Count == 0)
         {
             LogicOpenPosition(candles, openPositions);
@@ -156,11 +171,13 @@ public class RviTrade : BotPanel
         if (_lastRviDown < 0 && _lastRviUp > _lastRviDown && Regime.ValueString != "OnlyShort")
         {
             _tab.BuyAtLimit(Volume.ValueDecimal, _lastPrice + Slippage.ValueInt * _tab.Security.PriceStep);
+            _lastCrossIndex = candles.Count - 1;
         }
 
         if (_lastRviDown > 0 && _lastRviUp < _lastRviDown && Regime.ValueString != "OnlyLong")
         {
             _tab.SellAtLimit(Volume.ValueDecimal, _lastPrice - Slippage.ValueInt * _tab.Security.PriceStep);
+            _lastCrossIndex = candles.Count - 1;
         }
     }
 
@@ -180,6 +197,7 @@ public class RviTrade : BotPanel
                 {
                     _tab.SellAtLimit(Volume.ValueDecimal, _lastPrice - Slippage.ValueInt * _tab.Security.PriceStep);
                 }
+                _lastCrossIndex = candles.Count - 1;
             }
         }
 
@@ -193,6 +211,7 @@ public class RviTrade : BotPanel
                 {
                     _tab.BuyAtLimit(Volume.ValueDecimal, _lastPrice + Slippage.ValueInt * _tab.Security.PriceStep);
                 }
+                _lastCrossIndex = candles.Count - 1;
             }
         }
     }
