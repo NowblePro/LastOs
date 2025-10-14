@@ -476,6 +476,12 @@ namespace OsEngine.OsOptimizer
             column11.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
             gridDynamicStepsTable.Columns.Add(column11);
 
+            DataGridViewButtonColumn column12 = new DataGridViewButtonColumn();
+            column12.CellTemplate = new DataGridViewButtonCell();
+            column12.ReadOnly = true;
+            column12.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            gridDynamicStepsTable.Columns.Add(column12);
+
             gridDynamicStepsTable.Rows.Add(null, null);
             return gridDynamicStepsTable;
         }
@@ -514,6 +520,38 @@ namespace OsEngine.OsOptimizer
                 }
 
                 if (e.ColumnIndex == 15)
+                {
+                    OptimazerFazeReport fazeReport;
+
+                    if (dgv.CurrentCell == null ||
+                      dgv.CurrentCell.RowIndex == 0)
+                    {
+                        fazeReport = _reports[0];
+                    }
+                    else
+                    {
+                        if (dgv.CurrentCell.RowIndex >= _reports.Count)
+                        {
+                            return;
+                        }
+
+                        fazeReport = _reports[dgv.CurrentCell.RowIndex];
+                    }
+
+                    if (e.RowIndex >= fazeReport.Reports.Count)
+                    {
+                        return;
+                    }
+                    string paramsStr = dgv.Rows[e.RowIndex].Cells[4].Value.ToString();
+                    OptimizerReport report = fazeReport.Reports.Where(r => r.GetParamsToDataTable() == paramsStr).SingleOrDefault();
+                    if (report != null)
+                    {
+                        OptimizerBotParametersSimpleUi ui = new OptimizerBotParametersSimpleUi(report, fazeReport, _master.StrategyName);
+                        ui.Show();
+                    }
+                }
+
+                if (e.ColumnIndex == 16)
                 {
                     OptimazerFazeReport fazeReport = new OptimazerFazeReport(_reports[e.RowIndex]);
 
@@ -1043,6 +1081,12 @@ namespace OsEngine.OsOptimizer
 
                         if (columnIndex == 15)
                         {
+                            // Параметры
+                            cellVAlue = $"Параметры";
+                        }
+
+                        if (columnIndex == 16)
+                        {
                             // График
                             cellVAlue = $"Полный график";
                         }
@@ -1103,11 +1147,10 @@ namespace OsEngine.OsOptimizer
                                     // Параметры
                                     DataGridFactory.AddTextBoxCell(row, parameters);
                                 }
-                                else if (i == 14 || i == 15)
+                                else if (i == 14 || i == 15 || i == 16)
                                 {
                                     // График
                                     DataGridViewButtonCell cellChart = new DataGridViewButtonCell();
-                                    cellChart.Value = $"График";
                                     row.Cells.Add(cellChart);
                                     cellChart.ReadOnly = true;
                                 }
@@ -1153,9 +1196,12 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-        private void CalculateAndUpdateDynamicTable(DataGridView table)
+        private void CalculateAndUpdateDynamicTable(DataGridView table, bool sort = true)
         {
-            SortDynamicResults(_reports);
+            if (sort)
+            {
+                SortDynamicResults(_reports);
+            }
 
             List<OptimazerFazeReport> reportsForChart = FillDynamicTable(_gridDynamicTable, IsPhazeGroupingByPeriods);
             if (IsPhazeGroupingByPeriods)
@@ -2684,7 +2730,7 @@ namespace OsEngine.OsOptimizer
                 _sortTypeDynamicTableNum = Math.Min(_reports.First().Reports.Count - 1, _sortTypeDynamicTableNum);
                 if (_reports != null)
                 {
-                    CalculateAndUpdateDynamicTable(_gridDynamicTable);
+                    CalculateAndUpdateDynamicTable(_gridDynamicTable, false);
                 }
             }
             catch
