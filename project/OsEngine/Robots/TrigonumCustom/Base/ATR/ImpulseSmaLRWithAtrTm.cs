@@ -58,6 +58,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
         private int _iterator = 1;
 
         private bool _atrResult = false;
+        private StrategyParameterBool _saveJson;
 
         public ImpulseSmaLRWithAtrTm(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -73,7 +74,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
             TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
 
             _regimeTrendFilter = CreateParameter("Regime trend filter", "candle", new[] { "candle", "CenterLRC" }, "Base");
-
+            _saveJson = CreateParameter("Save Json Data", false, "Base");
             _periodSma = CreateParameter("SMA period", 100, 50, 400, 10, "Robot parameters");
 
             _lenghtLR = CreateParameter("Lenght LR", 100, 50, 200, 20, "Robot parameters");
@@ -130,6 +131,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base.ATR
 
         private void LRegBot_ParametrsChangeByUser()
         {
+            _tab.setSaveData(_saveJson.ValueBool);
             StopOrActivateIndicators();
 
             if (_LinearRegression.ParametersDigit[0].Value != _lenghtLR.ValueInt ||

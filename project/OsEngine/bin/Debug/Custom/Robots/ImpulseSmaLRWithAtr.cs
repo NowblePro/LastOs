@@ -55,6 +55,8 @@ public class ImpulseSmaLRWithAtr : BotPanel
     private bool _needUpdateIterator;
     private int _iterator = 1;
 
+    private StrategyParameterBool _saveJson;
+
     public ImpulseSmaLRWithAtr(string name, StartProgram startProgram) : base(name, startProgram)
     {
         TabCreate(BotTabType.Simple);
@@ -69,6 +71,7 @@ public class ImpulseSmaLRWithAtr : BotPanel
         TimeEnd = CreateParameterTimeOfDay("End Trade Time", 24, 0, 0, 0, "Base");
 
         _regimeTrendFilter = CreateParameter("Regime trend filter", "candle", new[] { "candle", "CenterLRC" }, "Base");
+        _saveJson = CreateParameter("Save Json Data", false, "Base");
 
         _periodSma = CreateParameter("SMA period", 100, 50, 400, 10, "Robot parameters");
 
@@ -126,6 +129,7 @@ public class ImpulseSmaLRWithAtr : BotPanel
 
     private void LRegBot_ParametrsChangeByUser()
     {
+        _tab.setSaveData(_saveJson.ValueBool);
         StopOrActivateIndicators();
 
         if (_LinearRegression.ParametersDigit[0].Value != _lenghtLR.ValueInt ||
