@@ -1187,11 +1187,11 @@ namespace OsEngine.OsOptimizer
                 List<OptimazerFazeReport> reportsForChart = FillDynamicTable(_gridDynamicTable, value);
                 if (value)
                 {
-                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, 0, reportsForChart, true);
+                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, 0, reportsForChart, _showInsampleInDynamicChart);
                 }
                 else
                 {
-                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
+                    UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, _showInsampleInDynamicChart);
                 }  
             }
         }
@@ -1206,11 +1206,11 @@ namespace OsEngine.OsOptimizer
             List<OptimazerFazeReport> reportsForChart = FillDynamicTable(_gridDynamicTable, IsPhazeGroupingByPeriods);
             if (IsPhazeGroupingByPeriods)
             {
-                UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, 0, reportsForChart, true);
+                UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, 0, reportsForChart, _showInsampleInDynamicChart);
             }
             else
             {
-                UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
+                UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, _showInsampleInDynamicChart);
             }
 
             _master.OnPeriodsChanged();
@@ -1786,14 +1786,14 @@ namespace OsEngine.OsOptimizer
             _comboBoxProfitTypeCustomPhazes.SelectedItem = "Absolute";
             _chartTotalProfitDynamic = GetTotalProfitChart();
             hostTotalProfit.Child = _chartTotalProfitDynamic;
-            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, _showInsampleInDynamicChart);
 
             _comboBoxProfitTypeCustomPhazes.SelectionChanged += _comboBoxProfitTypeCustomPhazes_SelectionChanged;
         }
 
         private void _comboBoxProfitTypeCustomPhazes_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, true);
+            UpdateTotalProfitChart(_gridDynamicTable, _chartTotalProfitDynamic, _comboBoxProfitTypeCustomPhazes, _sortTypeDynamicTableNum, _reports, _showInsampleInDynamicChart);
         }
 
         private void _comboBoxprofitType_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -2752,6 +2752,14 @@ namespace OsEngine.OsOptimizer
             {
                 SendLogMessage(ex.ToString(), LogMessageType.Error);
             }
+        }
+
+        private bool _showInsampleInDynamicChart = false;
+        internal void PhaseShowInSample(bool? isChecked)
+        {
+            _showInsampleInDynamicChart = (bool)isChecked;
+
+            PaintDynamicTable(_reports);
         }
 
         /// <summary>

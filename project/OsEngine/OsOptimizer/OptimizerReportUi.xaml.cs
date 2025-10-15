@@ -1047,5 +1047,10 @@ namespace OsEngine.OsOptimizer
         {
             _resultsCharting.IsPhazeGroupingByPeriods = cbGroupPhazePeriods.IsChecked.Value;
         }
+
+        private void cbShowInSample_Checked(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.PhaseShowInSample(cbShowInSample.IsChecked);
+        }
     }
 }

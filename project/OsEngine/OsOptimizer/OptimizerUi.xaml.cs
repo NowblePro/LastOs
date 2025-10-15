@@ -3579,6 +3579,11 @@ namespace OsEngine.OsOptimizer
                 _master?.SetMinimuPositionsCountForWinRate(1);
             }
         }
+
+        private void cbShowInSample_Checked(object sender, RoutedEventArgs e)
+        {
+            _resultsCharting.PhaseShowInSample(cbShowInSample.IsChecked);
+        }
     }
 
     /// <summary>
