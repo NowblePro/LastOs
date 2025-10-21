@@ -14,6 +14,9 @@ namespace OsEngine.Indicators.TrigonumCustom
     {
         private Aindicator _sma;
         private IndicatorDataSeries _seriesZ;
+        /// <summary>
+        /// Ширина окна для расчёта отклонения
+        /// </summary>
         private IndicatorParameterInt _window_sigma;
         public override void OnProcess(List<Candle> source, int index)
         {
@@ -36,9 +39,8 @@ namespace OsEngine.Indicators.TrigonumCustom
                     decimal sma = _sma.DataSeries[0].Values[i];
                     int startIndex = i - _window_sigma.ValueInt + 1;
                     decimal sigma = GetSigma(source.Skip(startIndex).Take(_window_sigma.ValueInt).Select(candle => candle.Close));
-                    sigma = (decimal)Math.Max((double)sigma, 0.001);
                     decimal value = (price - sma) / sigma;
-                    _seriesZ.Values.Add(value);
+                    _seriesZ.Values[i] = value;
                 }
             }
         }
@@ -53,6 +55,10 @@ namespace OsEngine.Indicators.TrigonumCustom
             }
 
             decimal result = (decimal)Math.Sqrt(sum / (source.Count() - 1));
+            if (result == 0)
+            {
+                result = 0.000001m;
+            }
             return result;
         }
 
@@ -60,15 +66,17 @@ namespace OsEngine.Indicators.TrigonumCustom
         {
             if (state == IndicatorState.Configure)
             {
+                PaintOn = true;
                 TypeIndicator = IndicatorChartPaintType.Line;
                 NeedToResetDataEvent += Reset;
                 _seriesZ = CreateSeries("_seriesZZHighPoints", Color.GreenYellow, IndicatorChartPaintType.Point, true);
                 _seriesZ.CanReBuildHistoricalValues = false;
+                _seriesZ.ChartPaintType = IndicatorChartPaintType.Line;
 
                 _sma = IndicatorsFactory.CreateIndicatorByName("Sma", "Sma", false);
+                _sma.TypeIndicator = IndicatorChartPaintType.Line;
                 _window_sigma = CreateParameterInt("Window Sigma", 30);
                 ProcessIndicator("ZigZag", _sma);
-                TypeIndicator = IndicatorChartPaintType.Line;
             }
         }
 

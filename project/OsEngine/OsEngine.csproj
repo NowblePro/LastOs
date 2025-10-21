@@ -1413,7 +1413,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseMoveLongBotExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseSmaLRTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseTwoSmaRsi.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\MeanReversion2.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MeanReversionSma2.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversionSma.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ParabolicSarClassicTradeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
