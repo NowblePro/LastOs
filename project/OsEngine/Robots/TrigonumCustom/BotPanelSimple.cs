@@ -1,4 +1,6 @@
-﻿using OsEngine.Common;
+﻿using OsEngine.Charts.CandleChart;
+using OsEngine.Charts.CandleChart.Indicators;
+using OsEngine.Common;
 using OsEngine.Entity;
 using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Tab;
@@ -7,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace OsEngine.Robots.TrigonumCustom
 {
@@ -22,6 +25,11 @@ namespace OsEngine.Robots.TrigonumCustom
         protected StrategyParameterBool _saveJson;
         protected BotRegime _regime = BotRegime.Off;
         protected StrategyParameterString _orderType;
+        private ChartCandleMaster _chartMaster;
+        /// <summary>
+        /// Если true - разрешено заходить в несколько позиций, false - только одна позиция
+        /// </summary>
+        protected bool _multiplePosition = false;
 
         public BotPanelSimple(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -39,7 +47,68 @@ namespace OsEngine.Robots.TrigonumCustom
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
             ParametrsChangeByUser += BotPanelSimple_ParametrsChangeByUser;
             BotPanelSimple_ParametrsChangeByUser();
+            ChartMaster = _tab.GetChartMaster();
         }
+
+        #region Chart Painting
+        public ChartCandleMaster ChartMaster
+        {
+            get => _chartMaster;
+            set
+            {
+                _chartMaster = value;
+                if (_chartMaster.ChartCandle == null)
+                {
+                    _chartMaster.ChartCandleCreated += _chartMaster_ChartCandleCreated;
+                }
+                else
+                {
+                    BindChart();
+                }
+            }
+        }
+
+        private void _chartMaster_ChartCandleCreated(object sender, EventArgs e)
+        {
+            BindChart();
+        }
+
+        private void ChartCandle_ChartCreated(object sender, Chart e)
+        {
+            e.PostPaint += Chart_PostPaint;
+        }
+
+        private void ChartCandle_ChartDeleting(object sender, Chart e)
+        {
+            e.PostPaint -= Chart_PostPaint;
+        }
+
+        private void BindChart()
+        {
+            Chart chart = _chartMaster.ChartCandle.GetChart();
+            _chartMaster.ChartCandle.ChartCreated += ChartCandle_ChartCreated;
+            _chartMaster.ChartCandle.ChartDeleting += ChartCandle_ChartDeleting;
+            if (chart != null)
+            {
+                chart.PostPaint += Chart_PostPaint;
+            }
+        }
+
+        /// <summary>
+        /// На случай, если нужно что то отрисовать на графике
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected virtual void OnChartPostPaint(object sender, ChartPaintEventArgs e)
+        {
+
+        }
+
+        private void Chart_PostPaint(object sender, ChartPaintEventArgs e)
+        {
+            OnChartPostPaint(sender, e);
+        }
+        #endregion
 
         private void BotPanelSimple_ParametrsChangeByUser()
         {
@@ -125,7 +194,7 @@ namespace OsEngine.Robots.TrigonumCustom
                     }
                 }
             }
-            else
+            if (positions.Count == 0 || _multiplePosition)
             {
                 if (_regime != BotRegime.OnlyShort && CheckOpenLongPosition(candles))
                 {

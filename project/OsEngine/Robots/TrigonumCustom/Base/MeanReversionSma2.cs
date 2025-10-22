@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
@@ -25,6 +26,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         public MeanReversionSma2(string name, StartProgram startProgram) : base(name, startProgram)
         {
+            _multiplePosition = true;
             _periodSma = CreateParameter("SMA period", 20, 20, 400, 1, "Robot parameters");
             _periodEma = CreateParameter("EMA period", 200, 14, 250, 1, "Robot parameters");
 
@@ -49,7 +51,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void SetEmaPeriod()
         {
-            if (_ema.Parameters[0] is IndicatorParameterInt parameter)
+            if (_ema?.Parameters[0] is IndicatorParameterInt parameter)
             {
                 parameter.ValueInt = _periodEma.ValueInt;
             }
@@ -90,6 +92,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 (candles) => { return candles.Count >= _periodSma.ValueInt; }
             };
+        }
+
+        protected override void OnChartPostPaint(object sender, ChartPaintEventArgs e)
+        {
+
         }
 
         protected override void ParametersChangedByUser()

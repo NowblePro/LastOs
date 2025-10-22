@@ -35,6 +35,7 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
 
         public SessionBot(string name, StartProgram startProgram) : base(name, startProgram)
         {
+            _multiplePosition = true;
             foreach (Period period in SessionEditor.Sessions.Where(s => s.IsDefined))
             {
                 StrategyParameterInt p = CreateParameter(period.Name, (int)3, 1, 3, 1, "Sessions");
@@ -99,61 +100,6 @@ namespace OsEngine.Robots.TrigonumCustom.Periodic
                 result |= IsStopBySessionEnd(candles, position);
             }
             return result;
-        }
-
-        protected override void CandleFinishedEvent(List<Candle> candles)
-        {
-            if (GetCheckers().Any(p => !p(candles))) return;
-            decimal lastPrice = candles.Last().Close;
-            List<Position> positions = _tab.PositionsOpenAll;
-            decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
-            OrderType orderType = OrderType.Limit;
-
-            if (_regime == BotRegime.Off) return;
-
-            if (Enum.TryParse(_orderType.ValueString, true, out OrderType ot))
-            {
-                orderType = ot;
-            }
-            if (positions.Count > 0)
-            {
-                foreach (Position pos in positions)
-                {
-                    if (CheckClosePosition(candles, pos))
-                    {
-                        if (pos.Direction == Side.Buy)
-                        {
-                            _tab.CloseAtStop(pos, lastPrice, lastPrice - slippage);
-                        }
-                        else if (pos.Direction == Side.Sell)
-                        {
-                            _tab.CloseAtStop(pos, lastPrice, lastPrice + slippage);
-                        }
-                    }
-                }
-            }
-            if (_regime != BotRegime.OnlyShort && CheckOpenLongPosition(candles))
-            {
-                if (orderType == OrderType.Market)
-                {
-                    _tab.BuyAtMarket(GetVolume());
-                }
-                else if (orderType == OrderType.Limit)
-                {
-                    _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
-                }
-            }
-            else if (_regime != BotRegime.OnlyLong && CheckOpenShortPosition(candles))
-            {
-                if (orderType == OrderType.Market)
-                {
-                    _tab.SellAtMarket(GetVolume());
-                }
-                else if (orderType == OrderType.Limit)
-                {
-                    _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
-                }
-            }
         }
 
         private bool IsStartSession(PeriodSession session, List<Candle> candles)
