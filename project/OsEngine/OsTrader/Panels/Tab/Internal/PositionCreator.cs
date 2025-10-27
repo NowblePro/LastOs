@@ -18,7 +18,7 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         /// </summary>
         public Position CreatePosition(string botName, Side direction, decimal priceOrder, 
             decimal volume, OrderPriceType priceType, TimeSpan timeLife,
-            Security security, Portfolio portfolio, StartProgram startProgram, OrderTypeTime orderTypeTime)
+            Security security, Portfolio portfolio, StartProgram startProgram, OrderTypeTime orderTypeTime, TPSLMode tpslMode = TPSLMode.None)
         {
             Position newDeal = new Position();
 
@@ -28,7 +28,7 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             newDeal.State = PositionStateType.Opening;
 
             newDeal.AddNewOpenOrder(CreateOrder(security, botName, direction, priceOrder, volume, 
-                priceType, timeLife, startProgram,OrderPositionConditionType.Open, orderTypeTime));
+                priceType, timeLife, startProgram,OrderPositionConditionType.Open, orderTypeTime, tpslMode));
 
             newDeal.NameBot = botName;
             newDeal.Lots = security.Lot;
@@ -55,7 +55,7 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
         public Order CreateOrder(Security security,
             string nameBot, Side direction, decimal priceOrder, decimal volume, 
             OrderPriceType priceType, TimeSpan timeLife, StartProgram startProgram,
-                OrderPositionConditionType positionConditionType, OrderTypeTime orderTypeTime)
+                OrderPositionConditionType positionConditionType, OrderTypeTime orderTypeTime, TPSLMode tpslMode = TPSLMode.None)
         {
             Order newOrder = new Order();
 
@@ -70,6 +70,7 @@ namespace OsEngine.OsTrader.Panels.Tab.Internal
             newOrder.SecurityNameCode = security.Name;
             newOrder.SecurityClassCode = security.NameClass;
             newOrder.OrderTypeTime = orderTypeTime;
+            newOrder.TPSLMode = tpslMode;
 
             return newOrder;
         }

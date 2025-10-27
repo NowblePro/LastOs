@@ -23,7 +23,7 @@ namespace OsEngine.Entity
             TimeCreate = DateTime.MinValue;
             TimeCallBack = DateTime.MinValue;
             TimeCancel = DateTime.MinValue;
-            TimeDone =  DateTime.MinValue;
+            TimeDone = DateTime.MinValue;
             NumberMarket = "";
             Side = Side.None;
         }
@@ -75,7 +75,7 @@ namespace OsEngine.Entity
         {
             get
             {
-                if((State == OrderStateType.None 
+                if ((State == OrderStateType.None
                     || State == OrderStateType.Active
                     || State == OrderStateType.Cancel)
                     && _trades == null)
@@ -102,17 +102,17 @@ namespace OsEngine.Entity
                 if (_trades != null && (_volumeExecute == 0 || _volumeExecuteChange))
                 {
                     _volumeExecute = 0;
-                    
-                    for(int i = 0;i < _trades.Count;i++)
+
+                    for (int i = 0; i < _trades.Count; i++)
                     {
-                        if(_trades[i] == null)
+                        if (_trades[i] == null)
                         {
                             continue;
                         }
 
                         _volumeExecute += _trades[i].Volume;
                     }
-                    
+
                     _volumeExecuteChange = false;
                     return _volumeExecute;
                 }
@@ -142,13 +142,13 @@ namespace OsEngine.Entity
         /// <summary>
         /// Order status: None, Pending, Done, Patrial, Fail
         /// </summary>
-        public OrderStateType State 
+        public OrderStateType State
         {
             get { return _state; }
             set
             {
                 _state = value;
-            } 
+            }
         }
 
         private OrderStateType _state;
@@ -198,7 +198,7 @@ namespace OsEngine.Entity
                 if (TimeCallBack == DateTime.MinValue ||
                     TimeCreate == DateTime.MinValue)
                 {
-                    return new TimeSpan(0,0,0,0);
+                    return new TimeSpan(0, 0, 0, 0);
                 }
 
                 return (TimeCallBack - TimeCreate);
@@ -247,6 +247,11 @@ namespace OsEngine.Entity
         public ServerType ServerType;
 
         public TimeFrame TimeFrameInTester;
+
+        /// <summary>
+        /// For Bybit only
+        /// </summary>
+        public TPSLMode TPSLMode = TPSLMode.None;
 
         // deals with which the order was opened and calculation of the order execution price
 
@@ -310,12 +315,12 @@ namespace OsEngine.Entity
 
             for (int i = 0; i < _trades.Count; i++)
             {
-                if(_trades[i] == null)
+                if (_trades[i] == null)
                 {
                     continue;
                 }
 
-                price += _trades[i].Volume*_trades[i].Price;
+                price += _trades[i].Volume * _trades[i].Price;
                 volumeExecute += _trades[i].Volume;
             }
 
@@ -324,7 +329,7 @@ namespace OsEngine.Entity
                 return Price;
             }
 
-            price = price/volumeExecute;
+            price = price / volumeExecute;
 
             return price;
         }
@@ -356,7 +361,7 @@ namespace OsEngine.Entity
         {
             get
             {
-                if (_trades == null 
+                if (_trades == null
                     || _trades.Count == 0)
                 {
                     return false;
@@ -364,7 +369,7 @@ namespace OsEngine.Entity
                 else
                 {
                     return true;
-                }              
+                }
             }
         }
 
@@ -397,7 +402,7 @@ namespace OsEngine.Entity
             result.Append(TimeCallBack.ToString(CultureInfo) + "@");
             result.Append(SecurityNameCode + "@");
 
-            if(PortfolioNumber != null)
+            if (PortfolioNumber != null)
             {
                 result.Append(PortfolioNumber.Replace('@', '%') + "@");
             }
@@ -422,7 +427,7 @@ namespace OsEngine.Entity
             {
                 for (int i = 0; i < _trades.Count; i++)
                 {
-                    if(_trades[i] == null)
+                    if (_trades[i] == null)
                     {
                         continue;
                     }
@@ -501,7 +506,7 @@ namespace OsEngine.Entity
             Comment = saveArray[18];
             TimeDone = Convert.ToDateTime(saveArray[19], CultureInfo);
 
-            if(saveArray.Length > 21)
+            if (saveArray.Length > 21)
             {
                 Enum.TryParse(saveArray[20], true, out OrderTypeTime);
             }
@@ -610,5 +615,19 @@ namespace OsEngine.Entity
         /// Order will be throughout the day. If the exchange has such possibilities
         /// </summary>
         Day
+    }
+
+    public enum TPSLMode
+    {
+        None,
+        /// <summary>
+        /// Full: entire position for TP/SL. Then, tpOrderType or slOrderType must be Market
+        /// </summary>
+        Full,
+        /// <summary>
+        /// Partial: partial position tp/sl (as there is no size option, so it will create tp/sl orders with the qty you actually fill).
+        /// Limit TP/SL order are supported. Note: When create limit tp/sl, tpslMode is required and it must be Partial
+        /// </summary>
+        Partial
     }
 }

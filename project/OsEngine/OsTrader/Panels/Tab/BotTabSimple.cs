@@ -1394,6 +1394,8 @@ namespace OsEngine.OsTrader.Panels.Tab
             }
         }
 
+        public TPSLMode TPSLMode { get; set; } = TPSLMode.None;
+
         /// <summary>
         /// Stop-limit orders
         /// </summary>
@@ -1864,7 +1866,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 if (_connector.MarketOrdersIsSupport)
                 {
-                    return LongCreate(price, volume, type, timeLife, false);
+                    return LongCreate(price, volume, type, timeLife, false, TPSLMode);
                 }
                 else
                 {
@@ -1913,7 +1915,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     return null;
                 }
 
-                return LongCreate(priceLimit, volume, OrderPriceType.Limit, ManualPositionSupport.SecondToOpen, false);
+                return LongCreate(priceLimit, volume, OrderPriceType.Limit, ManualPositionSupport.SecondToOpen, false, TPSLMode);
             }
             catch (Exception error)
             {
@@ -2751,7 +2753,7 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 if (_connector.MarketOrdersIsSupport)
                 {
-                    return ShortCreate(price, volume, type, timeLife, false);
+                    return ShortCreate(price, volume, type, timeLife, false, TPSLMode);
                 }
                 else
                 {
@@ -2798,7 +2800,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                     return null;
                 }
 
-                return ShortCreate(priceLimit, volume, OrderPriceType.Limit, ManualPositionSupport.SecondToOpen, false);
+                return ShortCreate(priceLimit, volume, OrderPriceType.Limit, ManualPositionSupport.SecondToOpen, false, TPSLMode);
             }
             catch (Exception error)
             {
@@ -4482,7 +4484,7 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <param name="timeLife">life time</param>
         /// <param name="isStopOrProfit">whether the order is a result of a stop or a profit </param>
         private Position ShortCreate(decimal price, decimal volume, OrderPriceType priceType, TimeSpan timeLife,
-            bool isStopOrProfit)
+            bool isStopOrProfit, TPSLMode tpslMode = TPSLMode.None)
         {
             try
             {
@@ -4509,8 +4511,13 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 price = RoundPrice(price, Security, Side.Sell);
 
+                if (priceType != OrderPriceType.Limit)
+                {
+                    tpslMode = TPSLMode.None;
+                }
+
                 Position newDeal = _dealCreator.CreatePosition(TabName, direction, price, volume, priceType,
-                    timeLife, Security, Portfolio, StartProgram, ManualPositionSupport.OrderTypeTime);
+                    timeLife, Security, Portfolio, StartProgram, ManualPositionSupport.OrderTypeTime, tpslMode);
                 newDeal.OpenOrders[0].IsStopOrProfit = isStopOrProfit;
                 _journal.SetNewDeal(newDeal);
 
@@ -4626,7 +4633,7 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// <param name="timeLife">life time</param>
         /// <param name="isStopOrProfit">whether the order is a result of a stop or a profit</param>
         private Position LongCreate(decimal price, decimal volume, OrderPriceType priceType, TimeSpan timeLife,
-            bool isStopOrProfit)
+            bool isStopOrProfit, TPSLMode tpslMode = TPSLMode.None)
         {
             try
             {
@@ -4652,8 +4659,13 @@ namespace OsEngine.OsTrader.Panels.Tab
 
                 price = RoundPrice(price, Security, Side.Buy);
 
+                if (priceType != OrderPriceType.Limit)
+                {
+                    tpslMode = TPSLMode.None;
+                }
+
                 Position newDeal = _dealCreator.CreatePosition(TabName, direction, price, volume, priceType,
-                    timeLife, Security, Portfolio, StartProgram, ManualPositionSupport.OrderTypeTime);
+                    timeLife, Security, Portfolio, StartProgram, ManualPositionSupport.OrderTypeTime, tpslMode);
                 newDeal.OpenOrders[0].IsStopOrProfit = isStopOrProfit;
                 _journal.SetNewDeal(newDeal);
 
@@ -5742,7 +5754,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                             PositionOpenerToStopLimit opener = PositionOpenerToStop[i];
                             Position pos = LongCreate(PositionOpenerToStop[i].PriceOrder, 
                                 PositionOpenerToStop[i].Volume, PositionOpenerToStop[i].OrderPriceType,
-                                ManualPositionSupport.SecondToOpen, true);
+                                ManualPositionSupport.SecondToOpen, true, TPSLMode);
 
                             if (pos != null
                                 && !string.IsNullOrEmpty(opener.SignalType))
@@ -5769,7 +5781,7 @@ namespace OsEngine.OsTrader.Panels.Tab
                             PositionOpenerToStopLimit opener = PositionOpenerToStop[i];
                             Position pos = ShortCreate(PositionOpenerToStop[i].PriceOrder, 
                                 PositionOpenerToStop[i].Volume, PositionOpenerToStop[i].OrderPriceType,
-                                ManualPositionSupport.SecondToOpen, true);
+                                ManualPositionSupport.SecondToOpen, true, TPSLMode);
 
                             if (pos != null
                                 && !string.IsNullOrEmpty(opener.SignalType))

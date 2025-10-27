@@ -489,6 +489,7 @@
     <Compile Include="Indicators\TrigonumCustom\TmLinearRegressionChannel.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustom.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustomExtrems.cs" />
+    <Compile Include="Indicators\TrigonumCustom\ZScore.cs" />
     <Compile Include="Logging\RequestCounterLogger.cs" />
     <Compile Include="Logging\ServerTelegram.cs" />
     <Compile Include="Logging\ServerTelegramUi.xaml.cs">
@@ -1412,6 +1413,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseMoveLongBotExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseSmaLRTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseTwoSmaRsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MeanReversionSma2.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversionSma.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ParabolicSarClassicTradeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
