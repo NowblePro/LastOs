@@ -2309,6 +2309,12 @@ namespace OsEngine.Market.Servers.Bybit
                     type = "Market";
                 }
 
+                string tpslMode = "";
+                if (type == "Limit" && order.TPSLMode == TPSLMode.Partial)
+                {
+                    tpslMode = "Partial";
+                }
+
                 Dictionary<string, object> parameters = new Dictionary<string, object>();
 
                 if ((order.SecurityClassCode != null && order.SecurityClassCode.ToLower().Contains(Category.linear.ToString())) || order.SecurityNameCode.EndsWith(".P"))
@@ -2357,6 +2363,11 @@ namespace OsEngine.Market.Servers.Bybit
                 if (_hedgeMode)
                 {
                     parameters["reduceOnly"] = reduceOnly;
+                }
+
+                if (tpslMode != "")
+                {
+                    parameters["tpslMode"] = tpslMode;
                 }
 
                 DateTime startTime = DateTime.Now;

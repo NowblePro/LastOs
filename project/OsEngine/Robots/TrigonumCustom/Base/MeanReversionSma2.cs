@@ -31,6 +31,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         public MeanReversionSma2(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
+            _tab.TPSLMode = TPSLMode.Partial;
             _periodSma = CreateParameter("SMA period", 20, 20, 400, 1, "Robot parameters");
             _periodEma = CreateParameter("EMA period", 200, 100, 300, 1, "Robot parameters");
 
@@ -66,7 +67,69 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             base.CandleFinishedEvent(candles);
             if (_tab.PositionsOpenAll.Count == 0)
             {
-                _currentGrid = null;
+                if (_currentGrid != null)
+                {
+                    foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
+                    {
+                        ClosePosition(pair.Value);
+                    }
+                    _currentGrid = null;
+                }
+            }
+            else
+            {
+                if (_currentGrid != null)
+                {
+                    List<int> keysToDelete = new List<int>();
+                    foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
+                    {
+                        Position pos = pair.Value;
+                        if (!CanEnterPositionByEma(pos.EntryPrice, pos.Direction))
+                        {
+                            if (pos.State == PositionStateType.Opening)
+                            {
+                                keysToDelete.Add(pair.Key);
+                                ClosePosition(pos);
+                            }
+                        }
+                    }
+
+                    foreach (int key in keysToDelete)
+                    {
+                        _currentGrid.DeleteByKey(key);
+                    }
+                }
+            }
+        }
+
+        private void ClosePosition(Position position)
+        {
+            if (position.State == PositionStateType.Open)
+            {
+                _tab.CloseAtMarket(position, position.OpenVolume);
+            }
+            else
+            {
+                foreach (Order order in position.OpenOrders)
+                {
+                    if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
+                    {
+                        _tab.Connector.OrderCancel(order);
+                    }
+                }
+            }
+        }
+
+        private bool CanEnterPositionByEma(decimal price, Side side)
+        {
+            decimal ema = _ema.DataSeries[0].Last;
+            if (side == Side.Buy)
+            {
+                return price > ema;
+            }
+            else
+            {
+                return price < ema;
             }
         }
 
@@ -75,6 +138,43 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_currentGrid == null)
             {
                 _currentGrid = new MeanReverseGrid(obj.EntryPrice, _spread.ValueDecimal, _zScore.CurrentSigma, 7, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                Dictionary<int, decimal> grid = _currentGrid.GetGrid();
+                List<int> keysToDelete = new List<int>();
+                foreach (KeyValuePair<int, decimal> pair in grid)
+                {
+                    try
+                    {
+                        if (!CanEnterPositionByEma(pair.Value, _currentGrid.Direction))
+                        {
+                            keysToDelete.Add(pair.Key);
+                            continue;
+                        }
+                        Position position = null;
+                        if (_currentGrid.Direction == Side.Buy)
+                        {
+                            position = _tab.BuyAtLimit(GetVolume(), pair.Value);
+                        }
+                        else if (_currentGrid.Direction == Side.Sell)
+                        {
+                            position = _tab.SellAtLimit(GetVolume(), pair.Value);
+                        }
+                        else
+                        {
+                            throw new Exception("Неизвестное направление позиции");
+                        }
+
+                        _currentGrid.SetPosition(pair.Key, position);
+                    }
+                    catch (Exception ex)
+                    {
+                        SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                    }
+                }
+
+                foreach (int key in keysToDelete)
+                {
+                    _currentGrid.DeleteByKey(key);
+                }
             }
         }
 
@@ -109,25 +209,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (_currentGrid != null && _currentGrid.Direction == Side.Sell) return false;
 
-            if (_currentGrid != null)
-            {
-                decimal price = candles.Last().Low;
-                decimal ema = _ema.DataSeries[0].Last;
-                Dictionary<int, bool> dict = _currentGrid.GetDict();
-                Dictionary<int, decimal> grid = _currentGrid.GetGrid();
-                IEnumerable<KeyValuePair<int, decimal>> pairs = grid.Where(pair => pair.Value >= price && pair.Value > ema);
-                bool result = false;
-                foreach (KeyValuePair<int, decimal> pair in pairs)
-                {
-                    if (!dict[pair.Key])
-                    {
-                        dict[pair.Key] = true;
-                        result |= true;
-                    }
-                }
-                return result;
-            }
-            else
+            if (_currentGrid == null)
             {
                 decimal z = _zScore.CurrentZ;
                 decimal ema = _ema.DataSeries[0].Last;
@@ -145,26 +227,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (_currentGrid != null && _currentGrid.Direction == Side.Buy) return false;
 
-
-            if (_currentGrid != null)
-            {
-                decimal price = candles.Last().High;
-                decimal ema = _ema.DataSeries[0].Last;
-                Dictionary<int, bool> dict = _currentGrid.GetDict();
-                Dictionary<int, decimal> grid = _currentGrid.GetGrid();
-                IEnumerable<KeyValuePair<int, decimal>> pairs = grid.Where(pair => pair.Value <= price && pair.Value < ema);
-                bool result = false;
-                foreach (KeyValuePair<int, decimal> pair in pairs)
-                {
-                    if (!dict[pair.Key])
-                    {
-                        dict[pair.Key] = true;
-                        result |= true;
-                    }
-                }
-                return result;
-            }
-            else
+            if (_currentGrid == null)
             {
                 decimal z = _zScore.CurrentZ;
                 decimal ema = _ema.DataSeries[0].Last;
@@ -211,7 +274,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     area.AxisY.Maximum = area.AxisY2.Maximum;
 
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
-                    Dictionary<int, bool> dict = _currentGrid.GetDict();
+                    Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     using (Brush brush = new SolidBrush(Color.Gray))
                     using (Pen pen = new Pen(brush))
@@ -223,9 +286,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             float x1 = (float)xAxis.ValueToPixelPosition(index - 3);
                             float x2 = (float)xAxis.ValueToPixelPosition(maxX);
                             float y = (float)yAxis.ValueToPixelPosition((float)pair.Value);
-                            if (dict[pair.Key])
+                            if (positions.ContainsKey(pair.Key) && positions[pair.Key].State == PositionStateType.Open)
                             {
-
                                 g.DrawLine(penGreen, x1, y, x2, y);
                             }
                             else
@@ -251,11 +313,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     class MeanReverseGrid
     {
         private Side _side;
-        /// <summary>
-        /// Словарь, key - индекс уровня в гриде, value - исполнен ли ордер
-        /// </summary>
-        private Dictionary<int, bool> _dict = new Dictionary<int, bool>();
         private Dictionary<int, decimal> _grid = new Dictionary<int, decimal>();
+        private Dictionary<int, Position> _positions = new Dictionary<int, Position>();
         private int _index;
 
         public MeanReverseGrid(decimal price, decimal spread, decimal sigma, int levelsCount, Side side, int index)
@@ -269,7 +328,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 for (int i = 1; i < levelsCount + 1; i++)
                 {
                     _grid.Add(i, price - delta * i);
-                    _dict.Add(i, false);
                 }
             }
             else
@@ -277,7 +335,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 for (int i = 1 ; i < levelsCount + 1; i++)
                 {
                     _grid.Add(i, price + delta * i);
-                    _dict.Add(i, false);
                 }
             }
         }
@@ -291,9 +348,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             return _grid;
         }
 
-        public Dictionary<int, bool> GetDict()
+        internal void SetPosition(int key, Position position)
         {
-            return _dict;
+            _positions.Add(key, position);
+        }
+
+        public Dictionary<int, Position> GetPositions()
+        {
+            return _positions;
+        }
+
+        internal void DeleteByKey(int key)
+        {
+            _grid.Remove(key);
+            // Позиция к этому моменту должна быть закрыта
+            _positions.Remove(key);
         }
     }
 }
