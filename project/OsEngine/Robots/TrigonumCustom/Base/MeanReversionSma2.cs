@@ -32,8 +32,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             _multiplePosition = true;
             _tab.TPSLMode = TPSLMode.Partial;
-            _periodSma = CreateParameter("SMA period", 20, 20, 400, 1, "Robot parameters");
-            _periodEma = CreateParameter("EMA period", 200, 100, 300, 1, "Robot parameters");
+            _periodSma = CreateParameter("SMA period", 20, 20, 400, 1, "Robot");
+            _periodEma = CreateParameter("EMA period", 200, 100, 300, 1, "Robot");
 
             _sma = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, nameArea: "Prime");
