@@ -16,6 +16,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     {
         private StrategyParameterInt _period;
         private StrategyParameterInt _rsiPeriod;
+        private StrategyParameterInt _rsiOverSold;
+        private StrategyParameterInt _rsiOverBought;
+
         /// <summary>
         /// Минимальное расстояние в индексах между пиками цены.
         /// </summary>
@@ -36,12 +39,16 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         public DivergenceBot(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _rsiPeriod = CreateParameter("RSI Period", 14, 7, 28, 1, "Robot");
+            _period = CreateParameter("Period", 50, 10, 100, 1, "Robot");
+            _rsiOverSold = CreateParameter("RSI OverSold", 30, 20, 40, 5, "Robot");
+            _rsiOverBought = CreateParameter("RSI OverBought", 70, 60, 80, 5, "Robot");
             _minDistance = CreateParameter("Min Distance", 5, 5, 30, 1, "Robot");
             _maxDistance = CreateParameter("Max Distance", 40, 40, 200, 1, "Robot");
             _syncTolerance = CreateParameter("Sync Tolerance", 40, 40, 200, 1, "Robot");
             _extremaOrder = CreateParameter("Extrema Order", 5, 5, 30, 1, "Robot");
             _minDivergenceStrength = CreateParameter("Min Divergence Strength", 50, 50, 90, 5, "Robot");
             _rsi = IndicatorsFactory.CreateIndicatorByName("RSI", name + "RSI", false);
+            _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, "RSI");
             new TakeProfitDecoration(this);
             new StopLossDecoration(this);
             ParametersChangedByUser();
@@ -60,39 +67,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal strength = 0;
             if (DivergenceDetector.IsBullDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out Dictionary<int, decimal> priceDic, out Dictionary<int, decimal> rsiDic))
             {
-
+                strength = GetDivergenceLongStrength(priceDic, rsiDic);
             }
 
             return strength >= _minDivergenceStrength.ValueInt;
         }
 
-        private decimal GetDivergenceStrength(Dictionary<int, decimal> priceDic, Dictionary<int, decimal> rsiDic)
+        private decimal GetDivergenceLongStrength(Dictionary<int, decimal> priceDic, Dictionary<int, decimal> rsiDic)
         {
-            List<int> sortedPriceIndexes = priceMin.Keys.ToList();
-            sortedPriceIndexes.Sort();
-            List<int> sortedIndicatorIndexes = indicatorMin.Keys.ToList();
-            sortedIndicatorIndexes.Sort();
-            for (int i = 0; i < sortedPriceIndexes.Count; i++)
-            {
-                int priceIndex = sortedPriceIndexes[i];
-                int indicatorIndex = sortedIndicatorIndexes[i];
-                if (Math.Abs(priceIndex - indicatorIndex) > syncTolerance)
-                {
-                    // Если экстремумы индикатора и цены не совпадают по времени больше чем на syncTolerance
-                    return false;
-                }
-            }
+            decimal result = 0;
+            decimal price1 = priceDic[0];
+            decimal price2 = priceDic[1];
+            decimal ind1 = rsiDic[0];
+            decimal ind2 = rsiDic[1];
 
-            decimal price1 = priceMin[sortedPriceIndexes[0]];
-            decimal price2 = priceMin[sortedPriceIndexes[1]];
-            decimal ind1 = indicatorMin[sortedIndicatorIndexes[0]];
-            decimal ind2 = indicatorMin[sortedIndicatorIndexes[1]];
-
-            if (price1 < price2 || ind1 > ind2)
-            {
-                return false;
-            }
-
+            // Величина расхождения
             decimal pricePercent = (price1 - price2) / price1;
             decimal indicatorPercent = (ind2 - ind1) / ind2;
 
@@ -102,16 +91,45 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 divergenceValue = 30;
             }
+            result += divergenceValue;
 
-            decimal indicatorPower = 0;
-            if (indicatorPowerFunc != null)
+            // Экстремальность rsi
+            decimal rsiExtrem = 0;
+            rsiExtrem = _rsiOverSold.ValueInt - _rsi.DataSeries[0].Values.Last();
+            if (rsiExtrem > 25)
             {
-                indicatorPower = indicatorPowerFunc(ind2);
-                if (indicatorPower > 25)
-                {
-                    indicatorPower = 25;
-                }
+                rsiExtrem = 25;
             }
+            if (rsiExtrem < 0)
+            {
+                rsiExtrem = 0;
+            }
+            result += rsiExtrem;
+            // Длительность паттерна
+            decimal lengthPoints = 0;
+            int minIndex = priceDic.Keys.Union(rsiDic.Keys).Min();
+            int maxIndex = priceDic.Keys.Union(rsiDic.Keys).Max();
+            int length = maxIndex - minIndex;
+            if (length >= 30)
+            {
+                lengthPoints = 20;
+            }
+            else if (length > 20 && length < 30)
+            {
+                lengthPoints = 15;
+            }
+            else if (length > 15 && length <= 20)
+            {
+                lengthPoints = 10;
+            }
+            else if (length <= 15 && length > 10)
+            {
+                lengthPoints = 5;
+            }
+            result += lengthPoints;
+            // Угол/наклон ?
+
+            return result;
         }
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
@@ -133,7 +151,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override void ParametersChangedByUser()
         {
-            _rsi.ParametersDigit[0].Value = _rsiPeriod.ValueInt;
+            if (_rsi != null)
+            {
+                _rsi.ParametersDigit[0].Value = _rsiPeriod.ValueInt;
+            }
         }
     }
 }

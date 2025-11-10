@@ -123,7 +123,8 @@ namespace OsEngine.Common
 
         public static bool IsBearDivergence(decimal[] price, decimal[] indicator, int minDistance, int maxDistance, int syncTolerance, int order)
         {
-            GetMaximums()
+            //GetMaximums()
+            return false;
         }
 
         public static bool IsBullDivergence(decimal[] price, decimal[] indicator, int minDistance, int maxDistance, int syncTolerance, int order, out Dictionary<int, decimal> priceExtremums, out Dictionary<int, decimal> indicatorExtremums)
@@ -166,26 +167,6 @@ namespace OsEngine.Common
             if (price1 < price2 || ind1 > ind2)
             {
                 return false;
-            }
-
-            decimal pricePercent = (price1 - price2) / price1;
-            decimal indicatorPercent = (ind2 - ind1) / ind2;
-
-            decimal averagePercent = (pricePercent + indicatorPercent) / 2;
-            decimal divergenceValue = averagePercent * 3;
-            if (divergenceValue > 30)
-            {
-                divergenceValue = 30;
-            }
-
-            decimal indicatorPower = 0;
-            if (indicatorPowerFunc != null)
-            {
-                indicatorPower = indicatorPowerFunc(ind2);
-                if (indicatorPower > 25)
-                {
-                    indicatorPower = 25;
-                }
             }
 
             return true;
