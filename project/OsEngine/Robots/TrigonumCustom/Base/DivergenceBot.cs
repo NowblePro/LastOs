@@ -76,14 +76,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private decimal GetDivergenceLongStrength(Dictionary<int, decimal> priceDic, Dictionary<int, decimal> rsiDic)
         {
             decimal result = 0;
-            decimal price1 = priceDic[0];
-            decimal price2 = priceDic[1];
-            decimal ind1 = rsiDic[0];
-            decimal ind2 = rsiDic[1];
+            int minIndex = priceDic.Keys.Min();
+            int maxIndex = priceDic.Keys.Max();
+            decimal price1 = priceDic[minIndex];
+            decimal price2 = priceDic[maxIndex];
+            minIndex = rsiDic.Keys.Min();
+            maxIndex = rsiDic.Keys.Max();
+            decimal ind1 = rsiDic[minIndex];
+            decimal ind2 = rsiDic[maxIndex];
 
             // Величина расхождения
-            decimal pricePercent = (price1 - price2) / price1;
-            decimal indicatorPercent = (ind2 - ind1) / ind2;
+            decimal pricePercent = (price1 - price2) / price1 * 100;
+            decimal indicatorPercent = ind2 - ind1;
 
             decimal averagePercent = (pricePercent + indicatorPercent) / 2;
             decimal divergenceValue = averagePercent * 3;
@@ -95,20 +99,29 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             // Экстремальность rsi
             decimal rsiExtrem = 0;
-            rsiExtrem = _rsiOverSold.ValueInt - _rsi.DataSeries[0].Values.Last();
-            if (rsiExtrem > 25)
+            decimal rsi = _rsi.DataSeries[0].Values.Last();
+            rsiExtrem = 0;
+            if (rsi < 30)
             {
                 rsiExtrem = 25;
             }
-            if (rsiExtrem < 0)
+            else if (rsi < 35)
             {
-                rsiExtrem = 0;
+                rsiExtrem = 20;
+            }
+            else if (rsi < 40)
+            {
+                rsiExtrem = 15;
+            }
+            else if (rsi < 45)
+            {
+                rsiExtrem = 10;
             }
             result += rsiExtrem;
             // Длительность паттерна
             decimal lengthPoints = 0;
-            int minIndex = priceDic.Keys.Union(rsiDic.Keys).Min();
-            int maxIndex = priceDic.Keys.Union(rsiDic.Keys).Max();
+            minIndex = priceDic.Keys.Min();
+            maxIndex = priceDic.Keys.Max();
             int length = maxIndex - minIndex;
             if (length >= 30)
             {
@@ -127,17 +140,103 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 lengthPoints = 5;
             }
             result += lengthPoints;
-            // Угол/наклон ?
-
+            // Угол/наклон
+            decimal priceSlope = (price2 - price1) / price1 / length;
+            decimal rsiSlope = (ind2 - ind1) / length;
+            decimal angleStrength = Math.Abs(priceSlope) * 100 + Math.Abs(rsiSlope) / 10;
+            result += Math.Min(angleStrength * 5, 25);
             return result;
         }
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
             int skip = candles.Count - _period.ValueInt;
-            decimal[] price = candles.Skip(skip).Select(c => c.Low).ToArray();
+            decimal[] price = candles.Skip(skip).Select(c => c.High).ToArray();
             decimal[] rsi = _rsi.DataSeries[0].Values.Skip(skip).ToArray();
-            return DivergenceDetector.IsBearDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt);
+
+            decimal strength = 0;
+            if (DivergenceDetector.IsBearDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out Dictionary<int, decimal> priceDic, out Dictionary<int, decimal> rsiDic))
+            {
+                strength = GetDivergenceShortStrength(priceDic, rsiDic);
+            }
+
+            return strength >= _minDivergenceStrength.ValueInt;
+        }
+
+        private decimal GetDivergenceShortStrength(Dictionary<int, decimal> priceDic, Dictionary<int, decimal> rsiDic)
+        {
+            decimal result = 0;
+            int minIndex = priceDic.Keys.Min();
+            int maxIndex = priceDic.Keys.Max();
+            decimal price1 = priceDic[minIndex];
+            decimal price2 = priceDic[maxIndex];
+            minIndex = rsiDic.Keys.Min();
+            maxIndex = rsiDic.Keys.Max();
+            decimal ind1 = rsiDic[minIndex];
+            decimal ind2 = rsiDic[maxIndex];
+
+            // Величина расхождения
+            decimal pricePercent = (price2 - price1) / price2 * 100;
+            decimal indicatorPercent = ind1 - ind2;
+
+            decimal averagePercent = (pricePercent + indicatorPercent) / 2;
+            decimal divergenceValue = averagePercent * 3;
+            if (divergenceValue > 30)
+            {
+                divergenceValue = 30;
+            }
+            result += divergenceValue;
+
+            // Экстремальность rsi
+            decimal rsiExtrem = 0;
+            decimal rsi = _rsi.DataSeries[0].Values.Last();
+            rsiExtrem = 0;
+            if (rsi > 70)
+            {
+                rsiExtrem = 25;
+            }
+            else if (rsi > 65)
+            {
+                rsiExtrem = 20;
+            }
+            else if (rsi > 60)
+            {
+                rsiExtrem = 15;
+            }
+            else if (rsi > 55)
+            {
+                rsiExtrem = 10;
+            }
+            result += rsiExtrem;
+            // Длительность паттерна
+            decimal lengthPoints = 0;
+            minIndex = priceDic.Keys.Min();
+            maxIndex = priceDic.Keys.Max();
+            int length = maxIndex - minIndex;
+            if (length >= 30)
+            {
+                lengthPoints = 20;
+            }
+            else if (length > 20 && length < 30)
+            {
+                lengthPoints = 15;
+            }
+            else if (length > 15 && length <= 20)
+            {
+                lengthPoints = 10;
+            }
+            else if (length <= 15 && length > 10)
+            {
+                lengthPoints = 5;
+            }
+            result += lengthPoints;
+            // Угол/наклон
+            decimal priceSlope = (price2 - price1) / price1 / length;
+            decimal rsiSlope = (ind2 - ind1) / length;
+            decimal angleStrength = Math.Abs(priceSlope) * 100 + Math.Abs(rsiSlope) / 10;
+            result += Math.Min(angleStrength * 5, 25);
+
+            return result;
         }
 
         protected override List<Func<List<Candle>, bool>> GetCheckers()
