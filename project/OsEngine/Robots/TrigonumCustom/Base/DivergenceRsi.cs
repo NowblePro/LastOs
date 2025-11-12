@@ -11,8 +11,8 @@ using System.Threading.Tasks;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
-    [Bot("DivergenceBot")]
-    public class DivergenceBot : BotPanelSimple
+    [Bot("DivergenceRsi")]
+    public class DivergenceRsi : BotPanelSimple
     {
         private StrategyParameterInt _period;
         private StrategyParameterInt _rsiPeriod;
@@ -36,7 +36,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private Aindicator _rsi;
 
-        public DivergenceBot(string name, StartProgram startProgram) : base(name, startProgram)
+        public DivergenceRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _rsiPeriod = CreateParameter("RSI Period", 14, 7, 28, 1, "Robot");
             _period = CreateParameter("Period", 50, 10, 100, 1, "Robot");
