@@ -56,20 +56,35 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
+            if (position.Direction == Side.Buy && IsBearDivergence(candles, out _))
+            {
+                return true;
+            }
+            else if (position.Direction == Side.Sell && IsBullDivergence(candles, out _))
+            {
+                return true;
+            }
             return false;
         }
 
-        protected override bool CheckOpenLongPosition(List<Candle> candles)
+        private bool IsBullDivergence(List<Candle> candles, out decimal strength)
         {
             int skip = candles.Count - _period.ValueInt;
             decimal[] price = candles.Skip(skip).Select(c => c.Low).ToArray();
             decimal[] rsi = _rsi.DataSeries[0].Values.Skip(skip).ToArray();
-            decimal strength = 0;
+            strength = 0;
+            bool result = false;
             if (DivergenceDetector.IsBullDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out Dictionary<int, decimal> priceDic, out Dictionary<int, decimal> rsiDic))
             {
                 strength = GetDivergenceLongStrength(priceDic, rsiDic);
+                result = true;
             }
+            return result;
+        }
 
+        protected override bool CheckOpenLongPosition(List<Candle> candles)
+        {
+            IsBullDivergence(candles, out decimal strength);
             return strength >= _minDivergenceStrength.ValueInt;
         }
 
@@ -148,18 +163,24 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             return result;
         }
 
-        protected override bool CheckOpenShortPosition(List<Candle> candles)
+        bool IsBearDivergence(List<Candle> candles, out decimal strength)
         {
             int skip = candles.Count - _period.ValueInt;
             decimal[] price = candles.Skip(skip).Select(c => c.High).ToArray();
             decimal[] rsi = _rsi.DataSeries[0].Values.Skip(skip).ToArray();
-
-            decimal strength = 0;
+            strength = 0;
+            bool result = false;
             if (DivergenceDetector.IsBearDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out Dictionary<int, decimal> priceDic, out Dictionary<int, decimal> rsiDic))
             {
                 strength = GetDivergenceShortStrength(priceDic, rsiDic);
+                result = true;
             }
+            return result;
+        }
 
+        protected override bool CheckOpenShortPosition(List<Candle> candles)
+        {
+            IsBearDivergence(candles, out decimal strength);
             return strength >= _minDivergenceStrength.ValueInt;
         }
 
