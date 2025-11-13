@@ -1,4 +1,5 @@
 ﻿using OsEngine.Charts.CandleChart;
+using OsEngine.Common;
 using OsEngine.Entity;
 
 using OsEngine.Indicators;
@@ -76,9 +77,60 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
             _stopLossOffset = CreateParameter("StopLossOffset", 0m, 0m, 100m, 1m, "Breaker");
             _rrTarget = CreateParameter("RRTarget", 1m, 1m, 3m, 0.5m, "Breaker");
             _ob.ChartMaster = _tab.GetChartMaster();
-
             _lengthZZ.ValueChange += _lengthZZ_ValueChange;
+            TabsSimple[0].PositionOpeningSuccesEvent += Breaker_PositionOpeningSuccesEvent;
             _ob.Save();
+        }
+
+        private void Breaker_PositionOpeningSuccesEvent(Position position)
+        {
+            // SL
+            OrderType orderType = OrderType.Limit;
+            decimal stopPrice = 0;
+            decimal stopOrderPrice = 0;
+            if (position.Direction == Side.Buy)
+            {
+                stopPrice = _currentLong.Bottom - _currentLong.Bottom * (_stopLossOffset.ValueDecimal / 100);
+                stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage.ValueDecimal;
+            }
+            else if (position.Direction == Side.Sell)
+            {
+                stopPrice = _currentShort.Top + _currentShort.Top * (_stopLossOffset.ValueDecimal / 100);
+                stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage.ValueDecimal;
+            }
+
+            if (orderType == OrderType.Limit)
+            {
+                _tab.CloseAtStop(position, stopPrice, stopOrderPrice);
+            }
+            else if (orderType == OrderType.Market)
+            {
+                _tab.CloseAtStopMarket(position, stopPrice);
+            }
+
+            // TP
+            stopPrice = 0;
+            stopOrderPrice = 0;
+
+            if (position.Direction == Side.Buy)
+            {
+                stopPrice = position.EntryPrice + position.EntryPrice * (_rrTarget.ValueDecimal / 100);
+                stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage.ValueDecimal;
+            }
+            else if (position.Direction == Side.Sell)
+            {
+                stopPrice = position.EntryPrice - position.EntryPrice * (_rrTarget.ValueDecimal / 100);
+                stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage.ValueDecimal;
+            }
+
+            if (orderType == OrderType.Limit)
+            {
+                _tab.CloseAtProfit(position, stopPrice, stopOrderPrice);
+            }
+            else if (orderType == OrderType.Market)
+            {
+                _tab.CloseAtProfitMarket(position, stopPrice);
+            }
         }
 
         private void _lengthZZ_ValueChange()
@@ -276,95 +328,9 @@ namespace OsEngine.Robots.TrigonumCustom.Channel
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
-            Candle last = candles.Last();
-            if (StopLoss(last) || TakeProfit(last, position))
-            {
-                return true;
-            }
-
             return false;
         }
 
-        private bool TakeProfit(Candle candle, Position position)
-        {
-            bool result = false;
-            decimal price = candle.Close;
-            decimal slLevel = GetStopLossLevel();
-            
-            if (position.Direction == Side.Buy)
-            {
-                decimal risk = position.EntryPrice - slLevel;
-                decimal target = risk * _rrTarget.ValueDecimal;
-                result = price >= position.EntryPrice + target;
-                if (_currentLong != null)
-                {
-                    _currentLong.Visible = !result;
-                }
-            }
-            else if (position.Direction == Side.Sell)
-            {
-                decimal risk = slLevel - position.EntryPrice;
-                decimal target = risk * _rrTarget.ValueDecimal;
-                result = price <= position.EntryPrice - target;
-                if (_currentShort != null)
-                {
-                    _currentShort.Visible = !result;
-                }
-            }
-            return result;
-        }
-
-        private decimal GetStopLossLevel()
-        {
-            decimal result = 0;
-            if (_currentLong != null)
-            {
-                result = _currentLong.Bottom - _stopLossOffset.ValueDecimal;
-            }
-            else if (_currentShort != null)
-            {
-                result = _currentShort.Top + _stopLossOffset.ValueDecimal;
-            }
-            return result;
-        }
-
-        private bool StopLoss(Candle candle)
-        {
-            bool result = false;
-            decimal min;
-            decimal max;
-            PriceBasis basis;
-            Enum.TryParse(_entryTouchBasis.ValueString, out basis);
-            switch (basis)
-            {
-                case PriceBasis.Full:
-                    min = candle.Low;
-                    max = candle.High;
-                    break;
-                case PriceBasis.Body:
-                    min = Math.Min(candle.Close, candle.Open);
-                    max = Math.Max(candle.Close, candle.Open);
-                    break;
-                default:
-                    min = candle.Low;
-                    max = candle.High;
-                    break;
-            }
-
-            decimal slLevel = GetStopLossLevel();
-
-            if (_currentLong != null)
-            {
-                result = min < slLevel;
-                _currentLong.Visible = !result;
-            }
-            else if (_currentShort != null)
-            {
-                result = max > slLevel;
-                _currentShort.Visible = !result;
-            }
-            return result;
-        }
 
         enum EntryConfirmType {None, CloseBackAboveNear, NConfirmBars }
     }
