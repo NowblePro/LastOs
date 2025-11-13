@@ -1,13 +1,14 @@
-﻿using OsEngine.Charts.CandleChart.Indicators;
-using OsEngine.Common;
+﻿using OsEngine.Common;
 using OsEngine.Entity;
 using OsEngine.Indicators;
 using OsEngine.OsTrader.Panels.Attributes;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reflection;
+using System.Windows.Controls;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
@@ -16,8 +17,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     {
         private StrategyParameterInt _period;
         private StrategyParameterInt _rsiPeriod;
-        private StrategyParameterInt _rsiOverSold;
-        private StrategyParameterInt _rsiOverBought;
+        //private StrategyParameterInt _rsiOverSold;
+        //private StrategyParameterInt _rsiOverBought;
 
         /// <summary>
         /// Минимальное расстояние в индексах между пиками цены.
@@ -33,6 +34,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterInt _syncTolerance;
         private StrategyParameterInt _extremaOrder;
         private StrategyParameterInt _minDivergenceStrength;
+        Dictionary<int, decimal> currentDivergencePriceBear = new Dictionary<int, decimal>();
+        Dictionary<int, decimal> currentDivergenceRsiBear = new Dictionary<int, decimal>();
+        Dictionary<int, decimal> currentDivergencePriceBull = new Dictionary<int, decimal>();
+        Dictionary<int, decimal> currentDivergenceRsiBull = new Dictionary<int, decimal>();
 
         private Aindicator _rsi;
 
@@ -40,11 +45,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             _rsiPeriod = CreateParameter("RSI Period", 14, 7, 28, 1, "Robot");
             _period = CreateParameter("Period", 50, 10, 100, 1, "Robot");
-            _rsiOverSold = CreateParameter("RSI OverSold", 30, 20, 40, 5, "Robot");
-            _rsiOverBought = CreateParameter("RSI OverBought", 70, 60, 80, 5, "Robot");
+            //_rsiOverSold = CreateParameter("RSI OverSold", 30, 20, 40, 5, "Robot");
+            //_rsiOverBought = CreateParameter("RSI OverBought", 70, 60, 80, 5, "Robot");
             _minDistance = CreateParameter("Min Distance", 5, 5, 30, 1, "Robot");
             _maxDistance = CreateParameter("Max Distance", 40, 40, 200, 1, "Robot");
-            _syncTolerance = CreateParameter("Sync Tolerance", 40, 40, 200, 1, "Robot");
+            _syncTolerance = CreateParameter("Sync Tolerance", 3, 2, 8, 1, "Robot");
             _extremaOrder = CreateParameter("Extrema Order", 5, 5, 30, 1, "Robot");
             _minDivergenceStrength = CreateParameter("Min Divergence Strength", 50, 50, 90, 5, "Robot");
             _rsi = IndicatorsFactory.CreateIndicatorByName("RSI", name + "RSI", false);
@@ -74,8 +79,19 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal[] rsi = _rsi.DataSeries[0].Values.Skip(skip).ToArray();
             strength = 0;
             bool result = false;
+            
             if (DivergenceDetector.IsBullDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out Dictionary<int, decimal> priceDic, out Dictionary<int, decimal> rsiDic))
             {
+                currentDivergencePriceBull.Clear();
+                currentDivergenceRsiBull.Clear();
+                foreach (var pair in priceDic)
+                {
+                    currentDivergencePriceBull.Add(pair.Key + skip, pair.Value);
+                }
+                foreach (var pair in rsiDic)
+                {
+                    currentDivergenceRsiBull.Add(pair.Key + skip, pair.Value);
+                }
                 strength = GetDivergenceLongStrength(priceDic, rsiDic);
                 result = true;
             }
@@ -172,6 +188,16 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             bool result = false;
             if (DivergenceDetector.IsBearDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out Dictionary<int, decimal> priceDic, out Dictionary<int, decimal> rsiDic))
             {
+                currentDivergencePriceBear.Clear();
+                currentDivergenceRsiBear.Clear();
+                foreach (var pair in priceDic)
+                {
+                    currentDivergencePriceBear.Add(pair.Key + skip, pair.Value);
+                }
+                foreach (var pair in rsiDic)
+                {
+                    currentDivergenceRsiBear.Add(pair.Key + skip, pair.Value);
+                }
                 strength = GetDivergenceShortStrength(priceDic, rsiDic);
                 result = true;
             }
@@ -274,6 +300,42 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_rsi != null)
             {
                 _rsi.ParametersDigit[0].Value = _rsiPeriod.ValueInt;
+            }
+        }
+
+        protected override void OnChartPostPaint(object sender, ChartPaintEventArgs e)
+        {
+            try
+            {
+                if (sender is Chart chart)
+                {
+                    Graphics g = e.ChartGraphics.Graphics;
+                    ChartArea areaPrime = chart?.ChartAreas?.Where(a => a.Name == "Prime").SingleOrDefault();
+                    ChartArea areaRsi = chart?.ChartAreas?.Where(a => a.Name == "RSI").SingleOrDefault();
+                    PaintDic(currentDivergencePriceBull, areaPrime, Color.Green, g);
+                    PaintDic(currentDivergencePriceBear, areaPrime, Color.Green, g);
+                    PaintDic(currentDivergenceRsiBull, areaRsi, Color.Green, g);
+                    PaintDic(currentDivergenceRsiBear, areaRsi, Color.Green, g);
+                }
+            }
+            catch { }
+
+            void PaintDic(Dictionary<int, decimal> dic, ChartArea area, Color color, Graphics g)
+            {
+                if (dic.Count < 2 || area == null) return;
+                Axis xAxis = area.AxisX;
+                Axis yAxis = area.AxisY;
+                area.AxisY.Minimum = area.AxisY2.Minimum;
+                area.AxisY.Maximum = area.AxisY2.Maximum;
+                using (Brush brush = new SolidBrush(color))
+                using (Pen pen = new Pen(brush))
+                {
+                    float x1 = (float)xAxis.ValueToPixelPosition(dic.Keys.First());
+                    float x2 = (float)xAxis.ValueToPixelPosition(dic.Keys.Last());
+                    float y1 = (float)yAxis.ValueToPixelPosition((float)dic[dic.Keys.First()]);
+                    float y2 = (float)yAxis.ValueToPixelPosition((float)dic[dic.Keys.Last()]);
+                    g.DrawLine(pen, x1, y1, x2, y2);
+                }
             }
         }
     }
