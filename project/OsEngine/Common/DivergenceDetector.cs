@@ -163,6 +163,18 @@ namespace OsEngine.Common
                 return false;
             }
 
+            int priceDeltaIndexes = sortedPriceIndexes[1] - sortedPriceIndexes[0];
+            decimal derivative = (price2 - price1) / priceDeltaIndexes;
+            for (int i = sortedPriceIndexes[0] + 1; i < sortedPriceIndexes[1] - 1; i++)
+            {
+                decimal lineValue = price1 + derivative * (i - sortedPriceIndexes[0]);
+                if (price[i] > lineValue)
+                {
+                    // Если цена пересекает линию между пиками
+                    return false;
+                }
+            }
+
             return true;
         }
 
@@ -206,6 +218,18 @@ namespace OsEngine.Common
             if (price1 < price2 || ind1 > ind2)
             {
                 return false;
+            }
+
+            int priceDeltaIndexes = sortedPriceIndexes[1] - sortedPriceIndexes[0];
+            decimal derivative = (price2 - price1) / priceDeltaIndexes;
+            for (int i = sortedPriceIndexes[0] + 1; i < sortedPriceIndexes[1] - 1; i++)
+            {
+                decimal lineValue = price1 + derivative * (i - sortedPriceIndexes[0]);
+                if (price[i] < lineValue)
+                {
+                    // Если цена пересекает линию между впадинами
+                    return false;
+                }
             }
 
             return true;
