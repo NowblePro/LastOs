@@ -446,6 +446,9 @@
     <Compile Include="Common\StopLossDecoration.cs" />
     <Compile Include="Common\TakeProfitDecoration.cs" />
     <Compile Include="Common\TrailingStopDecoration.cs" />
+    <Compile Include="Common\UI\PhaseDirectories.xaml.cs">
+      <DependentUpon>PhaseDirectories.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Common\UI\SessionEditor.xaml.cs">
       <DependentUpon>SessionEditor.xaml</DependentUpon>
     </Compile>
@@ -1656,6 +1659,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Charts\CandleChart\Indicators\IndicarotCreateUi.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Common\UI\PhaseDirectories.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

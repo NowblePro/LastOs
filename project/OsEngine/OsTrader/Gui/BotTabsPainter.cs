@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Globalization;
 using System.Text;
+using OsEngine.Common.UI;
 
 namespace OsEngine.OsTrader.Gui
 {
@@ -33,6 +34,7 @@ namespace OsEngine.OsTrader.Gui
             _master.UserClickOnPositionShowBotInTableEvent += _master_UserClickOnPositionShowBotInTableEvent;
             Thread painterThread = new Thread(UpdaterThreadArea);
             painterThread.Start();
+            PhaseDirectories.Load();
         }
 
         private void _master_BotDeleteEvent(Panels.BotPanel obj)
@@ -296,6 +298,18 @@ namespace OsEngine.OsTrader.Gui
                 {
                     LoadBotVolumesFromExcel();
                 }
+                else if (coluIndex == 7 && rowIndex == botsCount + 2)
+                {
+                    SetLongShortButtons();
+                }
+                else if (coluIndex == 8 && rowIndex == botsCount + 2)
+                {
+                    ChooseLongPhase();
+                }
+                else if (coluIndex == 9 && rowIndex == botsCount + 2)
+                {
+                    ChooseShortPhase();
+                }
 
                 if (_grid.Rows.Count <= _prevActiveRow)
                 {
@@ -329,137 +343,142 @@ namespace OsEngine.OsTrader.Gui
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     if (string.IsNullOrEmpty(dialog.FileName) || !File.Exists(dialog.FileName)) return;
-                    Excel.Application excelApp = new Excel.Application(); // Создание экземпляра Excel-приложения
-                    Excel.Workbooks workbooks = excelApp.Workbooks;
-                    Excel.Workbook workbook = workbooks.Open(dialog.FileName); // Открытие файла
+                    LoadVolumeFile(dialog.FileName);
+                }
+            }
+        }
 
-                    try
+        private void LoadVolumeFile(string path)
+        {
+            Excel.Application excelApp = new Excel.Application(); // Создание экземпляра Excel-приложения
+            Excel.Workbooks workbooks = excelApp.Workbooks;
+            Excel.Workbook workbook = workbooks.Open(path); // Открытие файла
+
+            try
+            {
+                foreach (Excel.Worksheet sheet in workbook.Sheets)
+                {
+                    Excel.Range usedRange = sheet.UsedRange; // Получение диапазона используемых ячеек
+
+                    int rowsCount = usedRange.Rows.Count;
+
+
+                    List<string> portfolios = new List<string>();
+                    for (int i = 1; i <= rowsCount + 1; i++)
                     {
-                        foreach (Excel.Worksheet sheet in workbook.Sheets)
+                        object cell = ((Excel.Range)usedRange.Cells[i, 1]).Value2;
+                        string portfolio = $"{cell}";
+                        if (!string.IsNullOrEmpty(portfolio))
                         {
-                            Excel.Range usedRange = sheet.UsedRange; // Получение диапазона используемых ячеек
+                            portfolios.Add(portfolio);
+                        }
+                    }
 
-                            int rowsCount = usedRange.Rows.Count;
+                    VolumeSelection selection = new VolumeSelection();
+                    selection.SetPortfolios(portfolios);
+                    bool selected = selection.ShowDialog() ?? false;
 
+                    if (!selected)
+                    {
+                        return;
+                    }
+                    string portfolioName = selection.SelectedPortfolio;
+                    int volumeRowIndex = -1;
+                    for (int i = 1; i <= rowsCount + 1; i++)
+                    {
+                        object cell = ((Excel.Range)usedRange.Cells[i, 1]).Value2;
+                        if (cell != null && $"{cell}" == portfolioName)
+                        {
+                            volumeRowIndex = i;
+                            break;
+                        }
+                    }
+                    if (volumeRowIndex < 0) throw new Exception("Не найдена строка с объёмами");
 
-                            List<string> portfolios = new List<string>();
-                            for (int i = 1; i <= rowsCount + 1; i++)
+                    int namesRowIndex = 1;
+                    int namesColumnStart = 2;
+                    Dictionary<string, string> errors = new Dictionary<string, string>();
+                    List<string> nameList = new List<string>();
+                    for (int i = namesColumnStart; i < usedRange.Columns.Count + 1; i++)
+                    {
+                        object botName = ((Excel.Range)usedRange.Cells[namesRowIndex, i]).Value2;
+                        try
+                        {
+                            object volume = ((Excel.Range)usedRange.Cells[volumeRowIndex, i]).Value2;
+                            string botNameStr = $"{botName}";
+                            nameList.Add(botNameStr);
+                            BotPanel bot = GetBot(botNameStr);
+                            if (bot == null) continue;
+                            if (decimal.TryParse($"{volume}".Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalVolume))
                             {
-                                object cell = ((Excel.Range)usedRange.Cells[i, 1]).Value2;
-                                string portfolio = $"{cell}";
-                                if (!string.IsNullOrEmpty(portfolio))
-                                {
-                                    portfolios.Add(portfolio);
-                                }
+                                bot.SetVolume(decimalVolume, VolumeType.Percent);
                             }
-
-                            VolumeSelection selection = new VolumeSelection();
-                            selection.SetPortfolios(portfolios);
-                            bool selected = selection.ShowDialog() ?? false;
-
-                            if (!selected)
+                            else
                             {
-                                return;
+                                throw new Exception("Не удалось спарсить значение объёма");
                             }
-                            string portfolioName = selection.SelectedPortfolio;
-                            int volumeRowIndex = -1;
-                            for (int i = 1; i <= rowsCount + 1; i++)
-                            {
-                                object cell = ((Excel.Range)usedRange.Cells[i, 1]).Value2;
-                                if (cell != null && $"{cell}" == portfolioName)
-                                {
-                                    volumeRowIndex = i;
-                                    break;
-                                }
-                            }
-                            if (volumeRowIndex < 0) throw new Exception("Не найдена строка с объёмами");
+                        }
+                        catch (Exception ex)
+                        {
+                            errors.Add($"{botName}", $"{botName}: {ex.Message}");
+                        }
+                    }
 
-                            int namesRowIndex = 1;
-                            int namesColumnStart = 2;
-                            Dictionary<string, string> errors = new Dictionary<string, string>();
-                            List<string> nameList = new List<string>();
-                            for (int i = namesColumnStart; i < usedRange.Columns.Count + 1; i++)
+                    List<BotPanel> zeroVolumes = GetBots(b => !nameList.Contains(b.NameStrategyUniq));
+                    foreach (BotPanel bot in zeroVolumes)
+                    {
+                        try
+                        {
+                            bot.SetVolume(0, VolumeType.Percent);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (errors.ContainsKey($"{bot.FileName}"))
                             {
-                                object botName = ((Excel.Range)usedRange.Cells[namesRowIndex, i]).Value2;
-                                try
-                                {
-                                    object volume = ((Excel.Range)usedRange.Cells[volumeRowIndex, i]).Value2;
-                                    string botNameStr = $"{botName}";
-                                    nameList.Add(botNameStr);
-                                    BotPanel bot = GetBot(botNameStr);
-                                    if (bot == null) continue;
-                                    if (decimal.TryParse($"{volume}".Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalVolume))
-                                    {
-                                        bot.SetVolume(decimalVolume, VolumeType.Percent);
-                                    }
-                                    else
-                                    {
-                                        throw new Exception("Не удалось спарсить значение объёма");
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    errors.Add($"{botName}", $"{botName}: {ex.Message}");
-                                }
+                                errors[$"{bot.FileName}"] += $"\r\n{bot.FileName}: {ex.Message}";
                             }
-
-                            List<BotPanel> zeroVolumes = GetBots(b => !nameList.Contains(b.NameStrategyUniq));
-                            foreach (BotPanel bot in zeroVolumes)
+                            else
                             {
-                                try
-                                {
-                                    bot.SetVolume(0, VolumeType.Percent);
-                                }
-                                catch (Exception ex)
-                                {
-                                    if (errors.ContainsKey($"{bot.FileName}"))
-                                    {
-                                        errors[$"{bot.FileName}"] += $"\r\n{bot.FileName}: {ex.Message}";
-                                    }
-                                    else
-                                    {
-                                        errors.Add($"{bot.FileName}", $"{bot.FileName}: {ex.Message}");
-                                    }
-                                }
-                            }
-
-                            StringBuilder errorBuilder = new StringBuilder();
-                            foreach (var pair in errors)
-                            {
-                                errorBuilder.AppendLine($"{pair.Key}: {pair.Value}");
-                            }
-
-                            if (errorBuilder.Length > 0)
-                            {
-                                throw new Exception(errorBuilder.ToString());
-                            }
-
-                            List<BotPanel> GetBots(Func<BotPanel, bool> predicate)
-                            {
-                                if (predicate == null) return null;
-                                return _master.PanelsArray.FindAll(p => predicate(p));
-                            }
-
-                            BotPanel GetBot(string name)
-                            {
-                                for (int i = 0; i < _grid.Rows.Count; i++)
-                                {
-                                    string botName = _grid.Rows[i].Cells[1].Value?.ToString() ?? "";
-                                    if (name == botName)
-                                    {
-                                        return _master.PanelsArray[i];
-                                    }
-                                }
-                                return null;
+                                errors.Add($"{bot.FileName}", $"{bot.FileName}: {ex.Message}");
                             }
                         }
                     }
-                    finally
+
+                    StringBuilder errorBuilder = new StringBuilder();
+                    foreach (var pair in errors)
                     {
-                        workbook.Close(false); // Закрываем книгу без сохранения изменений
-                        excelApp.Quit();       // Завершаем приложение Excel
+                        errorBuilder.AppendLine($"{pair.Key}: {pair.Value}");
+                    }
+
+                    if (errorBuilder.Length > 0)
+                    {
+                        throw new Exception(errorBuilder.ToString());
+                    }
+
+                    List<BotPanel> GetBots(Func<BotPanel, bool> predicate)
+                    {
+                        if (predicate == null) return null;
+                        return _master.PanelsArray.FindAll(p => predicate(p));
+                    }
+
+                    BotPanel GetBot(string name)
+                    {
+                        for (int i = 0; i < _grid.Rows.Count; i++)
+                        {
+                            string botName = _grid.Rows[i].Cells[1].Value?.ToString() ?? "";
+                            if (name == botName)
+                            {
+                                return _master.PanelsArray[i];
+                            }
+                        }
+                        return null;
                     }
                 }
+            }
+            finally
+            {
+                workbook.Close(false); // Закрываем книгу без сохранения изменений
+                excelApp.Quit();       // Завершаем приложение Excel
             }
         }
 
@@ -538,6 +557,49 @@ namespace OsEngine.OsTrader.Gui
             catch (Exception ex)
             {
                 _master.SendNewLogMessage(ex.ToString(), Logging.LogMessageType.Error);
+            }
+        }
+
+        private void SetLongShortButtons()
+        {
+            PhaseDirectories.Instance.ShowDialog();
+        }
+
+        private void ChooseLongPhase()
+        {
+            if (!string.IsNullOrEmpty(PhaseDirectories.LongPortfolioPath))
+            {
+                if (File.Exists(PhaseDirectories.LongPortfolioPath))
+                {
+                    LoadVolumeFile(PhaseDirectories.LongPortfolioPath);
+                }
+                else
+                {
+                    MessageBox.Show($"Файл не найден {PhaseDirectories.LongPortfolioPath}");
+                }
+            }
+            else
+            {
+                MessageBox.Show($"Укажите файл");
+            }
+        }
+
+        private void ChooseShortPhase()
+        {
+            if (!string.IsNullOrEmpty(PhaseDirectories.ShortPortfolioPath))
+            {
+                if (File.Exists(PhaseDirectories.ShortPortfolioPath))
+                {
+                    LoadVolumeFile(PhaseDirectories.ShortPortfolioPath);
+                }
+                else
+                {
+                    MessageBox.Show($"Файл не найден {PhaseDirectories.ShortPortfolioPath}");
+                }
+            }
+            else
+            {
+                MessageBox.Show($"Укажите файл");
             }
         }
 
@@ -941,7 +1003,7 @@ namespace OsEngine.OsTrader.Gui
                 _grid.Rows.Add(GetNullRow());
 
                 _grid.Rows.Add(GetAddRow());
-
+                _grid.Rows.Add(GetPhaseRow());
                 if (lastShowRowIndex > 0 &&
                     lastShowRowIndex < _grid.Rows.Count)
                 {
@@ -1091,6 +1153,32 @@ colum9.HeaderText = "Journal";
             row.Cells[8].Value = OsLocalization.Trader.Label40; //"Journal";
             row.Cells.Add(new DataGridViewButtonCell());
             row.Cells[9].Value = OsLocalization.Trader.Label38; //"Add New...";
+
+            return row;
+        }
+
+        private DataGridViewRow GetPhaseRow()
+        {
+            DataGridViewRow row = new DataGridViewRow();
+
+            row.Cells.Add(new DataGridViewTextBoxCell());
+            row.Cells.Add(new DataGridViewTextBoxCell());
+            row.Cells.Add(new DataGridViewTextBoxCell());
+            row.Cells.Add(new DataGridViewTextBoxCell());
+            row.Cells.Add(new DataGridViewTextBoxCell());
+
+            row.Cells.Add(new DataGridViewTextBoxCell());
+            row.Cells[5].Value = "";
+
+            row.Cells.Add(new DataGridViewTextBoxCell());
+            row.Cells[6].Value = "";
+
+            row.Cells.Add(new DataGridViewButtonCell());
+            row.Cells[7].Value = "Выбрать лонг/шорт";
+            row.Cells.Add(new DataGridViewButtonCell());
+            row.Cells[8].Value = "Лонг";
+            row.Cells.Add(new DataGridViewButtonCell());
+            row.Cells[9].Value = "Шорт";
 
             return row;
         }

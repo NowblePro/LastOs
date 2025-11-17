@@ -1,0 +1,18 @@
+﻿<Window x:Class="OsEngine.Common.UI.PhaseDirectories"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:OsEngine.Common.UI"
+        mc:Ignorable="d"
+        Title="Выбор портфелей" Height="188" Width="420"
+        Style="{StaticResource WindowStyleCanResize}" ResizeMode="NoResize">
+    <Grid>
+        <Button Name="ButtonLong" Content="Лонг" Height="22" Click="ButtonLong_Click" VerticalAlignment="Top" HorizontalAlignment="Left" Width="60" Margin="10,10,0,0"/>
+        <Label x:Name="LabelLong" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="99,10,0,0"/>
+        <Button x:Name="ButtonShort" Content="Шорт" Height="22" Click="ButtonShort_Click" VerticalAlignment="Top" HorizontalAlignment="Left" Width="60" Margin="10,40,0,0"/>
+        <Label x:Name="LabelShort" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="99,40,0,0"/>
+        <Button x:Name="ButtonLongClear" Content="x" Height="22" Click="ButtonLongClear_Click" VerticalAlignment="Top" HorizontalAlignment="Left" Width="19" Margin="75,10,0,0" Foreground="Red"/>
+        <Button x:Name="ButtonShortClear" Content="x" Height="22" Click="ButtonShortClear_Click" VerticalAlignment="Top" HorizontalAlignment="Left" Width="19" Margin="75,40,0,0" Foreground="Red"/>
+    </Grid>
+</Window>
