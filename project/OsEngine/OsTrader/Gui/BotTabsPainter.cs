@@ -343,12 +343,24 @@ namespace OsEngine.OsTrader.Gui
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     if (string.IsNullOrEmpty(dialog.FileName) || !File.Exists(dialog.FileName)) return;
-                    LoadVolumeFile(dialog.FileName);
+                    List<string> portfolios = PhaseDirectories.GetPortfolioNames(dialog.FileName);
+
+                    VolumeSelection selection = new VolumeSelection();
+                    selection.SetPortfolios(portfolios);
+                    bool selected = selection.ShowDialog() ?? false;
+
+                    if (!selected)
+                    {
+                        return;
+                    }
+                    string portfolioName = selection.SelectedPortfolio;
+
+                    LoadVolumeFile(dialog.FileName, portfolioName);
                 }
             }
         }
 
-        private void LoadVolumeFile(string path)
+        private void LoadVolumeFile(string path, string portfolioName)
         {
             Excel.Application excelApp = new Excel.Application(); // Создание экземпляра Excel-приложения
             Excel.Workbooks workbooks = excelApp.Workbooks;
@@ -356,12 +368,12 @@ namespace OsEngine.OsTrader.Gui
 
             try
             {
+                bool volumeSheetFound = false;
                 foreach (Excel.Worksheet sheet in workbook.Sheets)
                 {
                     Excel.Range usedRange = sheet.UsedRange; // Получение диапазона используемых ячеек
 
                     int rowsCount = usedRange.Rows.Count;
-
 
                     List<string> portfolios = new List<string>();
                     for (int i = 1; i <= rowsCount + 1; i++)
@@ -374,15 +386,6 @@ namespace OsEngine.OsTrader.Gui
                         }
                     }
 
-                    VolumeSelection selection = new VolumeSelection();
-                    selection.SetPortfolios(portfolios);
-                    bool selected = selection.ShowDialog() ?? false;
-
-                    if (!selected)
-                    {
-                        return;
-                    }
-                    string portfolioName = selection.SelectedPortfolio;
                     int volumeRowIndex = -1;
                     for (int i = 1; i <= rowsCount + 1; i++)
                     {
@@ -412,6 +415,7 @@ namespace OsEngine.OsTrader.Gui
                             if (decimal.TryParse($"{volume}".Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalVolume))
                             {
                                 bot.SetVolume(decimalVolume, VolumeType.Percent);
+                                volumeSheetFound = true;
                             }
                             else
                             {
@@ -473,6 +477,7 @@ namespace OsEngine.OsTrader.Gui
                         }
                         return null;
                     }
+                    if (volumeSheetFound) break;
                 }
             }
             finally

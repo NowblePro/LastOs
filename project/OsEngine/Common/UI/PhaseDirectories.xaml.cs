@@ -2,6 +2,7 @@
 using OsEngine.Entity;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -15,6 +16,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Excel = Microsoft.Office.Interop.Excel;
 
 namespace OsEngine.Common.UI
 {
@@ -23,7 +25,7 @@ namespace OsEngine.Common.UI
     /// </summary>
     public partial class PhaseDirectories : Window
     {
-        private static PortfolioLongShortSettings Settings { get; set; } = new PortfolioLongShortSettings();
+        public static PortfolioLongShortSettings Settings { get; set; } = new PortfolioLongShortSettings();
 
         protected PhaseDirectories()
         {
@@ -126,6 +128,7 @@ namespace OsEngine.Common.UI
                 dialog.Filter = "Excel Files|*.xls;*.xlsx;*.xlsm|All files (*.*)|*.*";
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
+                    // 
                     LongPortfolioPath = dialog.FileName;
                     LabelLong.Content = LongPortfolioPath;
                 }
@@ -139,6 +142,7 @@ namespace OsEngine.Common.UI
                 dialog.Filter = "Excel Files|*.xls;*.xlsx;*.xlsm|All files (*.*)|*.*";
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
+                    //
                     ShortPortfolioPath = dialog.FileName;
                     LabelShort.Content = ShortPortfolioPath;
                 }
@@ -154,11 +158,53 @@ namespace OsEngine.Common.UI
         {
             ShortPortfolioPath = "";
         }
+
+        public static List<string> GetPortfolioNames(string path)
+        {
+            List<string> result = new List<string>();
+            Excel.Application excelApp = new Excel.Application(); // Создание экземпляра Excel-приложения
+            Excel.Workbooks workbooks = excelApp.Workbooks;
+            Excel.Workbook workbook = workbooks.Open(path); // Открытие файла
+
+            try
+            {
+                if (workbook.Sheets.Count < 1) throw new Exception();
+                Excel.Worksheet sheet = workbook.Sheets[0];
+                Excel.Range usedRange = sheet.UsedRange; // Получение диапазона используемых ячеек
+
+                int rowsCount = usedRange.Rows.Count;
+
+                for (int i = 1; i <= rowsCount + 1; i++)
+                {
+                    object cell = ((Excel.Range)usedRange.Cells[i, 1]).Value2;
+                    string portfolio = $"{cell}";
+                    if (!string.IsNullOrEmpty(portfolio))
+                    {
+                        result.Add(portfolio);
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                workbook.Close(false); // Закрываем книгу без сохранения изменений
+                excelApp.Quit();       // Завершаем приложение Excel
+            }
+
+            return result;
+        }
     }
 
-    class PortfolioLongShortSettings
+    public class PortfolioLongShortSettings
     {
         public string LongPath { get; set; }
         public string ShortPath { get; set; }
+
+        public string LongPortfolio { get; set; }
+
+        public string ShortPortfolio { get; set; }
     }
 }
