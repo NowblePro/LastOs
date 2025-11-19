@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using OsEngine.Entity;
+using OsEngine.OsTrader.Gui;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,6 +17,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using WebSocketSharp;
 using Excel = Microsoft.Office.Interop.Excel;
 
 namespace OsEngine.Common.UI
@@ -30,28 +32,6 @@ namespace OsEngine.Common.UI
         protected PhaseDirectories()
         {
             InitializeComponent();
-        }
-
-        public static string LongPortfolioPath
-        {
-            get => Settings.LongPath;
-            set
-            {
-                Settings.LongPath = value;
-                UpdateView();
-                Save();
-            }
-        }
-
-        public static string ShortPortfolioPath
-        {
-            get => Settings.ShortPath;
-            set
-            {
-                Settings.ShortPath = value;
-                UpdateView();
-                Save();
-            }
         }
 
         public static void Load()
@@ -88,15 +68,29 @@ namespace OsEngine.Common.UI
                     _instance.Dispatcher.Invoke(UpdateView);
                     return;
                 }
+                if (!string.IsNullOrEmpty(Settings.LongPath))
+                {
+                    _instance.LabelLong.Content = $"{System.IO.Path.GetFileNameWithoutExtension(Settings.LongPath)}, {Settings.LongPortfolio}";
+                    _instance.LabelLong.ToolTip = $"{Settings.LongPath}, {Settings.LongPortfolio}";
+                }
+                else
+                {
+                    _instance.LabelLong.Content = $"";
+                    _instance.LabelLong.ToolTip = $"";
+                }
+                if (!string.IsNullOrEmpty(Settings.ShortPath))
+                {
+                    _instance.LabelShort.Content = $"{System.IO.Path.GetFileNameWithoutExtension(Settings.ShortPath)}, {Settings.ShortPortfolio}";
+                    _instance.LabelShort.ToolTip = $"{Settings.ShortPath}, {Settings.ShortPortfolio}";
+                }
+                else
+                {
+                    _instance.LabelShort.Content = $"";
+                    _instance.LabelShort.ToolTip = $"";
+                }
 
-                _instance.LabelLong.Content = LongPortfolioPath;
-                _instance.LabelShort.Content = ShortPortfolioPath;
-
-                _instance.LabelLong.ToolTip = LongPortfolioPath;
-                _instance.LabelShort.ToolTip = ShortPortfolioPath;
-
-                _instance.ButtonLongClear.Visibility = string.IsNullOrEmpty(LongPortfolioPath) ? Visibility.Hidden : Visibility.Visible;
-                _instance.ButtonShortClear.Visibility = string.IsNullOrEmpty(ShortPortfolioPath) ? Visibility.Hidden : Visibility.Visible;
+                _instance.ButtonLongClear.Visibility = string.IsNullOrEmpty(Settings.LongPath) ? Visibility.Hidden : Visibility.Visible;
+                _instance.ButtonShortClear.Visibility = string.IsNullOrEmpty(Settings.ShortPath) ? Visibility.Hidden : Visibility.Visible;
             }
         }
 
@@ -123,40 +117,88 @@ namespace OsEngine.Common.UI
 
         private void ButtonLong_Click(object sender, RoutedEventArgs e)
         {
-            using (OpenFileDialog dialog = new OpenFileDialog())
+            try
             {
-                dialog.Filter = "Excel Files|*.xls;*.xlsx;*.xlsm|All files (*.*)|*.*";
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                using (OpenFileDialog dialog = new OpenFileDialog())
                 {
-                    // 
-                    LongPortfolioPath = dialog.FileName;
-                    LabelLong.Content = LongPortfolioPath;
+                    dialog.Filter = "Excel Files|*.xls;*.xlsx;*.xlsm|All files (*.*)|*.*";
+                    if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    {
+                        List<string> portfolios = GetPortfolioNames(dialog.FileName);
+                        VolumeSelection selection = new VolumeSelection();
+                        selection.SetPortfolios(portfolios);
+                        bool selected = selection.ShowDialog() ?? false;
+
+                        if (!selected)
+                        {
+                            return;
+                        }
+                        string portfolioName = selection.SelectedPortfolio;
+
+                        Settings.LongPath = dialog.FileName;
+                        Settings.LongPortfolio = portfolioName;
+                        string labelContent = $"{Settings.LongPath}, {portfolioName}";
+                        LabelLong.Content = labelContent;
+                        UpdateView();
+                        Save();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.Message);
             }
         }
 
         private void ButtonShort_Click(object sender, RoutedEventArgs e)
         {
-            using (OpenFileDialog dialog = new OpenFileDialog())
+            try
             {
-                dialog.Filter = "Excel Files|*.xls;*.xlsx;*.xlsm|All files (*.*)|*.*";
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                using (OpenFileDialog dialog = new OpenFileDialog())
                 {
-                    //
-                    ShortPortfolioPath = dialog.FileName;
-                    LabelShort.Content = ShortPortfolioPath;
+                    dialog.Filter = "Excel Files|*.xls;*.xlsx;*.xlsm|All files (*.*)|*.*";
+                    if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    {
+                        List<string> portfolios = GetPortfolioNames(dialog.FileName);
+                        VolumeSelection selection = new VolumeSelection();
+                        selection.SetPortfolios(portfolios);
+                        bool selected = selection.ShowDialog() ?? false;
+
+                        if (!selected)
+                        {
+                            return;
+                        }
+                        string portfolioName = selection.SelectedPortfolio;
+
+                        Settings.ShortPath = dialog.FileName;
+                        Settings.ShortPortfolio = portfolioName;
+                        string labelContent = $"{Settings.ShortPath}, {portfolioName}";
+                        LabelShort.Content = labelContent;
+                        UpdateView();
+                        Save();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.Message);
             }
         }
 
         private void ButtonLongClear_Click(object sender, RoutedEventArgs e)
         {
-            LongPortfolioPath = "";
+            Settings.LongPath = "";
+            Settings.LongPortfolio = "";
+            UpdateView();
+            Save();
         }
 
         private void ButtonShortClear_Click(object sender, RoutedEventArgs e)
         {
-            ShortPortfolioPath = "";
+            Settings.ShortPath = "";
+            Settings.ShortPortfolio = "";
+            UpdateView();
+            Save();
         }
 
         public static List<string> GetPortfolioNames(string path)
@@ -169,7 +211,7 @@ namespace OsEngine.Common.UI
             try
             {
                 if (workbook.Sheets.Count < 1) throw new Exception();
-                Excel.Worksheet sheet = workbook.Sheets[0];
+                Excel.Worksheet sheet = workbook.Sheets[1];
                 Excel.Range usedRange = sheet.UsedRange; // Получение диапазона используемых ячеек
 
                 int rowsCount = usedRange.Rows.Count;

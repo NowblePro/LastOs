@@ -365,7 +365,7 @@ namespace OsEngine.OsTrader.Gui
             Excel.Application excelApp = new Excel.Application(); // Создание экземпляра Excel-приложения
             Excel.Workbooks workbooks = excelApp.Workbooks;
             Excel.Workbook workbook = workbooks.Open(path); // Открытие файла
-
+            List<BotPanel> zeroVolumes = new List<BotPanel>();
             try
             {
                 bool volumeSheetFound = false;
@@ -428,7 +428,7 @@ namespace OsEngine.OsTrader.Gui
                         }
                     }
 
-                    List<BotPanel> zeroVolumes = GetBots(b => !nameList.Contains(b.NameStrategyUniq));
+                    zeroVolumes = GetBots(b => !nameList.Contains(string.IsNullOrEmpty(b.PublicName) ? b.NameStrategyUniq : b.PublicName));
                     foreach (BotPanel bot in zeroVolumes)
                     {
                         try
@@ -477,7 +477,18 @@ namespace OsEngine.OsTrader.Gui
                         }
                         return null;
                     }
+
                     if (volumeSheetFound) break;
+                }
+                if (zeroVolumes.Count > 0)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    foreach (var volume in zeroVolumes)
+                    {
+                        string botName = string.IsNullOrEmpty(volume.PublicName) ? volume.NameStrategyUniq : volume.PublicName;
+                        sb.AppendLine(botName);
+                    }
+                    MessageBox.Show($"Роботы с нулевым объёмом:\r\n{sb}");
                 }
             }
             finally
@@ -567,20 +578,20 @@ namespace OsEngine.OsTrader.Gui
 
         private void SetLongShortButtons()
         {
-            PhaseDirectories.Instance.ShowDialog();
+            PhaseDirectories.Instance.Show();
         }
 
         private void ChooseLongPhase()
         {
-            if (!string.IsNullOrEmpty(PhaseDirectories.LongPortfolioPath))
+            if (!string.IsNullOrEmpty(PhaseDirectories.Settings.LongPath))
             {
-                if (File.Exists(PhaseDirectories.LongPortfolioPath))
+                if (File.Exists(PhaseDirectories.Settings.LongPath))
                 {
-                    LoadVolumeFile(PhaseDirectories.LongPortfolioPath);
+                    LoadVolumeFile(PhaseDirectories.Settings.LongPath, PhaseDirectories.Settings.LongPortfolio);
                 }
                 else
                 {
-                    MessageBox.Show($"Файл не найден {PhaseDirectories.LongPortfolioPath}");
+                    MessageBox.Show($"Файл не найден {PhaseDirectories.Settings.LongPath}");
                 }
             }
             else
@@ -591,15 +602,15 @@ namespace OsEngine.OsTrader.Gui
 
         private void ChooseShortPhase()
         {
-            if (!string.IsNullOrEmpty(PhaseDirectories.ShortPortfolioPath))
+            if (!string.IsNullOrEmpty(PhaseDirectories.Settings.ShortPath))
             {
-                if (File.Exists(PhaseDirectories.ShortPortfolioPath))
+                if (File.Exists(PhaseDirectories.Settings.ShortPath))
                 {
-                    LoadVolumeFile(PhaseDirectories.ShortPortfolioPath);
+                    LoadVolumeFile(PhaseDirectories.Settings.ShortPath, PhaseDirectories.Settings.ShortPortfolio);
                 }
                 else
                 {
-                    MessageBox.Show($"Файл не найден {PhaseDirectories.ShortPortfolioPath}");
+                    MessageBox.Show($"Файл не найден {PhaseDirectories.Settings.ShortPath}");
                 }
             }
             else
