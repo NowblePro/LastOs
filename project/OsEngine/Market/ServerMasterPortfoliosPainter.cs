@@ -96,6 +96,11 @@ namespace OsEngine.Market
         /// </summary>
         public void StopPaint()
         {
+            if (!_hostPortfolio.Dispatcher.CheckAccess())
+            {
+                _hostPortfolio.Dispatcher.Invoke(StopPaint);
+                return;
+            }
             _hostPortfolio.Child = null;
         }
 
