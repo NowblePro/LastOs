@@ -14,14 +14,14 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace OsEngine.Common
 {
-    public class StopAtrDecoration
+    public class AtrDecoration
     {
         private BotTabSimple _tab;
         private BotPanel _bot;
 
         private StrategyParameterInt LengthAtr;
         private StrategyParameterDecimal MultiplierAtr;
-        private StrategyParameterBool AtrFilterIsOn;
+        private StrategyParameterBool _atrFilterIsOn;
         private Aindicator _ATR;
 
         private decimal _lastAtr;
@@ -31,27 +31,30 @@ namespace OsEngine.Common
         private bool _needUpdateIterator;
         private int _iterator = 1;
 
-        public StopAtrDecoration(BotPanel bot)
+        public AtrDecoration(BotPanel bot)
         {
             _bot = bot;
             _tab = bot.TabsSimple[0];
 
             LengthAtr = bot.CreateParameter("Length ATR", 96, 7, 1000, 1, "ATR");
             MultiplierAtr = bot.CreateParameter("Multiplier Atr", 1, 1m, 10, 1, "ATR");
-            AtrFilterIsOn = bot.CreateParameter("Is Atr Filter On", false, "ATR");
+            _atrFilterIsOn = bot.CreateParameter("Is Atr Filter On", false, "ATR");
             _ATR = IndicatorsFactory.CreateIndicatorByName("ATR", (string.IsNullOrEmpty(bot.PublicName) ?  bot.NameStrategyUniq : bot.PublicName) + "Atr", false);
             _ATR = (Aindicator)_tab.CreateCandleIndicator(_ATR, "NewArea");
             bot.ParametrsChangeByUser += Bot_ParametrsChangeByUser;
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
         }
 
-        public event EventHandler AtrStop;
+        public event EventHandler<bool> SignalCalculated;
+        public event EventHandler<bool> AtrFilterIsOnChanged;
+
+        public bool AtrFilterIsOn => _atrFilterIsOn.ValueBool;
 
         private void _tab_CandleFinishedEvent(List<Candle> candles)
         {
             List<Position> positions = _tab.PositionsOpenAll;
             decimal lastCandle = candles.Last().Close;
-            if (positions.Count > 0 && AtrFilterIsOn.ValueBool)
+            if (positions.Count > 0 && _atrFilterIsOn.ValueBool)
             {
                 if (_ATR.DataSeries[0].Last == 0 && _needUpdateIterator)
                 {
@@ -63,6 +66,7 @@ namespace OsEngine.Common
 
                 if (candles.Count < LengthAtr.ValueInt)
                 {
+                    SignalCalculated?.Invoke(this, true);
                     return;
                 }
 
@@ -93,9 +97,10 @@ namespace OsEngine.Common
                         _tab.SellAtStopCancel();
                     }
                     _needUpdateLastIndex = true;
+                    SignalCalculated?.Invoke(this, true);
                     return;
                 }
-                AtrStop?.Invoke(this, EventArgs.Empty);
+                SignalCalculated?.Invoke(this, false);
             }
         }
 
@@ -104,6 +109,7 @@ namespace OsEngine.Common
             ((IndicatorParameterInt)_ATR.Parameters[0]).ValueInt = LengthAtr.ValueInt;
             _ATR.Save();
             _ATR.Reload();
+            AtrFilterIsOnChanged?.Invoke(this, _atrFilterIsOn.ValueBool);
         }
     }
 }

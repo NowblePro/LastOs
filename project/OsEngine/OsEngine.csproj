@@ -443,7 +443,7 @@
     <Compile Include="Charts\Extensions.cs" />
     <Compile Include="Common\DivergenceDetector.cs" />
     <Compile Include="Common\OrderType.cs" />
-    <Compile Include="Common\StopAtrDecoration.cs" />
+    <Compile Include="Common\AtrDecoration.cs" />
     <Compile Include="Common\StopLossDecoration.cs" />
     <Compile Include="Common\TakeProfitDecoration.cs" />
     <Compile Include="Common\TrailingStopDecoration.cs" />

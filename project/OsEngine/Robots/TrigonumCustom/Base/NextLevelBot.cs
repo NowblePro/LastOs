@@ -19,7 +19,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private Aindicator _sma;
         private StrategyParameterInt _smaPeriod;
         private StrategyParameterBool _smaFilter;
-        private bool _atrStop = false;
+        private StrategyParameterBool _reverseLogic;
+        private bool _atrSignal = true;
+        private bool _atrFilterIsOn = false;
 
         public NextLevelBot(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -27,6 +29,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _minSize = CreateParameter("Min Size", 1m, 1m, 20m, 0.1m, "Robot");
 
             _smaFilter = CreateParameter("Sma Filter", false, "Robot");
+            _reverseLogic = CreateParameter("Reverse Logic", false, "Robot");
             _smaPeriod = CreateParameter("SMA Period", 10, 100, 150, 10, "Robot");
             _sma = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma", false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, "Prime");
@@ -35,21 +38,31 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             new TakeProfitDecoration(this);
             new StopLossDecoration(this);
             new TrailingStopDecoration(this);
-            StopAtrDecoration atrStop = new StopAtrDecoration(this);
-            atrStop.AtrStop += AtrStop_AtrStop;
+            AtrDecoration atrStop = new AtrDecoration(this);
+            atrStop.SignalCalculated += AtrStop_AtrStop;
+            atrStop.AtrFilterIsOnChanged += AtrStop_AtrFilterIsOnChanged;
+            _atrFilterIsOn = atrStop.AtrFilterIsOn;
             ParametersChangedByUser();
         }
 
-        private void AtrStop_AtrStop(object sender, EventArgs e)
+        private void AtrStop_AtrFilterIsOnChanged(object sender, bool e)
         {
-            _atrStop = true;
+            _atrFilterIsOn = e;
+        }
+
+        private void AtrStop_AtrStop(object sender, bool e)
+        {
+            _atrSignal = e;
         }
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
-            if (_atrStop)
+            if (_atrFilterIsOn)
             {
-                _atrStop = false;
+                if (_atrSignal)
+                {
+                    return false;
+                }
                 return true;
             }
             return false;
@@ -57,21 +70,49 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
+            //if (_atrFilterIsOn && _atrSignal)
+            //{
+            //    return false;
+            //}
+            decimal sma = _sma.DataSeries[0].Values.Last();
+            if (_smaFilter.ValueBool && candles.Last().Close < sma) return false;
+
+            if (_reverseLogic.ValueBool)
+            {
+                return IsBearSignal(candles);
+            }
+            return IsBullSignal(candles);
+        }
+
+        private bool IsBullSignal(List<Candle> candles)
+        {
             int x = _x.ValueInt;
             if (candles.Count < x) return false;
             int skip = candles.Count - x;
-            decimal sma = _sma.DataSeries[0].Values.Last();
-            if (candles.Last().Close < sma) return false;
             return candles.Skip(skip).All(c => c.Close > c.Open && GetCandleSize(c) >= _minSize.ValueDecimal);
         }
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
+            //if (_atrFilterIsOn && _atrSignal)
+            //{
+            //    return false;
+            //}
+            decimal sma = _sma.DataSeries[0].Values.Last();
+            if (_smaFilter.ValueBool && candles.Last().Close > sma) return false;
+
+            if (_reverseLogic.ValueBool)
+            {
+                return IsBullSignal(candles);
+            }
+            return IsBearSignal(candles);
+        }
+
+        private bool IsBearSignal(List<Candle> candles)
+        {
             int x = _x.ValueInt;
             if (candles.Count < x) return false;
             int skip = candles.Count - x;
-            decimal sma = _sma.DataSeries[0].Values.Last();
-            if (candles.Last().Close > sma) return false;
             return candles.Skip(skip).All(c => c.Close < c.Open && GetCandleSize(c) >= _minSize.ValueDecimal);
         }
 
@@ -85,6 +126,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             return new List<Func<List<Candle>, bool>>() 
             {
                 candles => candles.Count >= _x.ValueInt,
+                candles => 
+                {
+                    if (_smaFilter.ValueBool)
+                    {
+                        return candles.Count >= _smaPeriod.ValueInt;
+                    }
+                    return true;
+                }
             };
         }
 
