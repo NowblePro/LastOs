@@ -443,6 +443,7 @@
     <Compile Include="Charts\Extensions.cs" />
     <Compile Include="Common\DivergenceDetector.cs" />
     <Compile Include="Common\OrderType.cs" />
+    <Compile Include="Common\AtrDecoration.cs" />
     <Compile Include="Common\StopLossDecoration.cs" />
     <Compile Include="Common\TakeProfitDecoration.cs" />
     <Compile Include="Common\TrailingStopDecoration.cs" />
@@ -1412,6 +1413,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\NextLevelBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\CoinGlass\BreakHighLowByAdxRsiCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\DivergenceRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseHmaRsi.cs" />
