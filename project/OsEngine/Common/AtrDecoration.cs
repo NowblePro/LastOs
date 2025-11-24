@@ -21,7 +21,7 @@ namespace OsEngine.Common
 
         private StrategyParameterInt LengthAtr;
         private StrategyParameterDecimal MultiplierAtr;
-        private StrategyParameterBool _atrFilterIsOn;
+        private StrategyParameterString _atrRegime;
         private Aindicator _ATR;
 
         private decimal _lastAtr;
@@ -38,7 +38,7 @@ namespace OsEngine.Common
 
             LengthAtr = bot.CreateParameter("Length ATR", 96, 7, 1000, 1, "ATR");
             MultiplierAtr = bot.CreateParameter("Multiplier Atr", 1, 1m, 10, 1, "ATR");
-            _atrFilterIsOn = bot.CreateParameter("Is Atr Filter On", false, "ATR");
+            _atrRegime = bot.CreateParameter("Atr Regime", AtrRegime.Off.ToString(), Enum.GetNames(typeof(AtrRegime)), "ATR");
             _ATR = IndicatorsFactory.CreateIndicatorByName("ATR", (string.IsNullOrEmpty(bot.PublicName) ?  bot.NameStrategyUniq : bot.PublicName) + "Atr", false);
             _ATR = (Aindicator)_tab.CreateCandleIndicator(_ATR, "NewArea");
             bot.ParametrsChangeByUser += Bot_ParametrsChangeByUser;
@@ -46,15 +46,15 @@ namespace OsEngine.Common
         }
 
         public event EventHandler<bool> SignalCalculated;
-        public event EventHandler<bool> AtrFilterIsOnChanged;
+        public event EventHandler<AtrRegime> AtrFilterIsOnChanged;
 
-        public bool AtrFilterIsOn => _atrFilterIsOn.ValueBool;
+        public AtrRegime AtrRegime => (AtrRegime)Enum.Parse(typeof(AtrRegime), _atrRegime.ValueString);
 
         private void _tab_CandleFinishedEvent(List<Candle> candles)
         {
             List<Position> positions = _tab.PositionsOpenAll;
             decimal lastCandle = candles.Last().Close;
-            if (positions.Count > 0 && _atrFilterIsOn.ValueBool)
+            if ((AtrRegime)Enum.Parse(typeof(AtrRegime), _atrRegime.ValueString) != AtrRegime.Off)
             {
                 if (_ATR.DataSeries[0].Last == 0 && _needUpdateIterator)
                 {
@@ -109,7 +109,9 @@ namespace OsEngine.Common
             ((IndicatorParameterInt)_ATR.Parameters[0]).ValueInt = LengthAtr.ValueInt;
             _ATR.Save();
             _ATR.Reload();
-            AtrFilterIsOnChanged?.Invoke(this, _atrFilterIsOn.ValueBool);
+            AtrFilterIsOnChanged?.Invoke(this, (AtrRegime)Enum.Parse(typeof(AtrRegime), _atrRegime.ValueString));
         }
     }
+
+    public enum AtrRegime { Off, On, EntryOnly, ExitOnly }
 }
