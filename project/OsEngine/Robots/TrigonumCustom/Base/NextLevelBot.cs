@@ -21,7 +21,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterBool _smaFilter;
         private StrategyParameterBool _reverseLogic;
         private bool _atrSignal = true;
-        private bool _atrFilterIsOn = false;
+        private AtrRegime _atrRegime = AtrRegime.Off;
 
         public NextLevelBot(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -41,13 +41,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             AtrDecoration atrStop = new AtrDecoration(this);
             atrStop.SignalCalculated += AtrStop_AtrStop;
             atrStop.AtrFilterIsOnChanged += AtrStop_AtrFilterIsOnChanged;
-            _atrFilterIsOn = atrStop.AtrFilterIsOn;
+            _atrRegime = atrStop.AtrRegime;
             ParametersChangedByUser();
         }
 
-        private void AtrStop_AtrFilterIsOnChanged(object sender, bool e)
+        private void AtrStop_AtrFilterIsOnChanged(object sender, AtrRegime e)
         {
-            _atrFilterIsOn = e;
+            _atrRegime = e;
         }
 
         private void AtrStop_AtrStop(object sender, bool e)
@@ -57,23 +57,22 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
-            if (_atrFilterIsOn)
+            if (_atrRegime == AtrRegime.On || _atrRegime == AtrRegime.ExitOnly)
             {
-                if (_atrSignal)
+                if (!_atrSignal)
                 {
-                    return false;
+                    return true;
                 }
-                return true;
             }
             return false;
         }
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
-            //if (_atrFilterIsOn && _atrSignal)
-            //{
-            //    return false;
-            //}
+            if ((_atrRegime == AtrRegime.On || _atrRegime == AtrRegime.EntryOnly) && _atrSignal)
+            {
+                return false;
+            }
             decimal sma = _sma.DataSeries[0].Values.Last();
             if (_smaFilter.ValueBool && candles.Last().Close < sma) return false;
 
@@ -94,10 +93,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
-            //if (_atrFilterIsOn && _atrSignal)
-            //{
-            //    return false;
-            //}
+            if ((_atrRegime == AtrRegime.On || _atrRegime == AtrRegime.EntryOnly) && _atrSignal)
+            {
+                return false;
+            }
             decimal sma = _sma.DataSeries[0].Values.Last();
             if (_smaFilter.ValueBool && candles.Last().Close > sma) return false;
 
