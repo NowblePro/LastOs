@@ -34,11 +34,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterInt _syncTolerance;
         private StrategyParameterInt _extremaOrder;
         private StrategyParameterInt _minDivergenceStrength;
-        Dictionary<int, decimal> currentDivergencePriceBear = new Dictionary<int, decimal>();
-        Dictionary<int, decimal> currentDivergenceRsiBear = new Dictionary<int, decimal>();
-        Dictionary<int, decimal> currentDivergencePriceBull = new Dictionary<int, decimal>();
-        Dictionary<int, decimal> currentDivergenceRsiBull = new Dictionary<int, decimal>();
+        private Dictionary<int, decimal> currentDivergencePriceBear = new Dictionary<int, decimal>();
+        private Dictionary<int, decimal> currentDivergenceRsiBear = new Dictionary<int, decimal>();
+        private Dictionary<int, decimal> currentDivergencePriceBull = new Dictionary<int, decimal>();
+        private Dictionary<int, decimal> currentDivergenceRsiBull = new Dictionary<int, decimal>();
+        private List<Candle> candles4Hour = new List<Candle>();
+        private int candlesCountMerge = 16;
+        /// <summary>
+        /// Длительность актуальности имбаланса в 4-х-часовых свечах
+        /// </summary>
+        private int imbalanceMemoryCount = 6;
 
+        private List<ImbalanceData> _imbalances = new List<ImbalanceData>();
+        private StrategyParameterDecimal _imbalanceMin;
+        private StrategyParameterInt _imbalanceLiveTimeHours;
         private Aindicator _rsi;
 
         public DivergenceRsi(string name, StartProgram startProgram) : base(name, startProgram)
@@ -52,11 +61,55 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _syncTolerance = CreateParameter("Sync Tolerance", 3, 2, 8, 1, "Robot");
             _extremaOrder = CreateParameter("Extrema Order", 5, 5, 30, 1, "Robot");
             _minDivergenceStrength = CreateParameter("Min Divergence Strength", 50, 50, 90, 5, "Robot");
+            _imbalanceMin = CreateParameter("Imbalance Minimum", 100m, 1m, 1000m, 10, "Robot");
+            _imbalanceLiveTimeHours = CreateParameter("Imbalance Live Time Hours", 24, 24, 120, 4, "Robot");
             _rsi = IndicatorsFactory.CreateIndicatorByName("RSI", name + "RSI", false);
             _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, "RSI");
             new TakeProfitDecoration(this);
             new StopLossDecoration(this);
             ParametersChangedByUser();
+        }
+
+        protected override void CandleFinishedEvent(List<Candle> candles)
+        {
+            if (candles.Count < candlesCountMerge)
+            {
+                candles4Hour.Clear();
+            }
+            else
+            {
+                if (candles4Hour.Count > 2)
+                {
+                    int canleTime = (int)(candles4Hour[1].TimeStart - candles4Hour[0].TimeStart).Add(TimeSpan.FromSeconds(1)).TotalHours;
+                    imbalanceMemoryCount = _imbalanceLiveTimeHours.ValueInt / canleTime;
+                }
+
+                int expect = candles.Count / candlesCountMerge;
+                int need = expect - candles4Hour.Count;
+                if (need > 0)
+                {
+                    // Заполнение 4-х-часовых свечей
+                    int start = candles4Hour.Count * candlesCountMerge;
+                    List<Candle> newCandles = CandleMerger.Merge(candles.Skip(start).Take(candlesCountMerge).ToList(), candlesCountMerge);
+                    candles4Hour.AddRange(newCandles);
+
+                    if (candles4Hour.Count > 3)
+                    {
+                        _imbalances.Clear();
+                        int startImb = candles4Hour.Count - imbalanceMemoryCount;
+                        List<Candle> last4Hour = candles4Hour.Skip(startImb).Take(imbalanceMemoryCount).ToList();
+                        for (int i = 0; i < last4Hour.Count - 2; i++)
+                        {
+                            if (ImbalanceDetector.GetImbalance(last4Hour.Skip(i).Take(3), out decimal low, out decimal high) && (high - low) > _imbalanceMin.ValueDecimal)
+                            {
+                                _imbalances.Add(new ImbalanceData() { High = high, Low = low, IndexStart = (startImb + i) * candlesCountMerge });
+                            }
+                        }
+                    }
+                }
+            }
+
+            base.CandleFinishedEvent(candles);
         }
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
@@ -316,6 +369,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     PaintDic(currentDivergencePriceBear, areaPrime, Color.Green, g);
                     PaintDic(currentDivergenceRsiBull, areaRsi, Color.Green, g);
                     PaintDic(currentDivergenceRsiBear, areaRsi, Color.Green, g);
+                    if (_imbalances.Count > 0)
+                    {
+                        foreach (ImbalanceData i in _imbalances)
+                        {
+                            PaintImbalance(i, areaPrime, Color.White, g);
+                        }
+                    }
                 }
             }
             catch { }
@@ -337,6 +397,39 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     g.DrawLine(pen, x1, y1, x2, y2);
                 }
             }
+
+            void PaintImbalance(ImbalanceData imbalance, ChartArea area, Color color, Graphics g)
+            {
+                Axis xAxis = area.AxisX;
+                Axis yAxis = area.AxisY;
+                area.AxisY.Minimum = area.AxisY2.Minimum;
+                area.AxisY.Maximum = area.AxisY2.Maximum;
+                using (Brush brush = new SolidBrush(color))
+                using (Brush fill = new SolidBrush(Color.FromArgb(5, Color.Blue)))
+                using (Pen pen = new Pen(brush) { DashPattern = new float[] { 5, 3 } })
+                {
+                    float x1 = (float)xAxis.ValueToPixelPosition(imbalance.IndexStart);
+                    float x2 = (float)xAxis.ValueToPixelPosition((float)area.AxisX.Maximum);
+                    float y1 = (float)yAxis.ValueToPixelPosition((double)imbalance.Low);
+                    float y2 = y1;
+
+                    float x3 = x1;
+                    float x4 = x2;
+                    float y3 = (float)yAxis.ValueToPixelPosition((double)imbalance.High);
+                    float y4 = y3;
+                    g.FillRectangle(fill, new RectangleF(x1, y3, x2 - x1, Math.Abs(y4 - y2)));
+                    g.DrawLine(pen, x1, y1, x2, y2);
+                    g.DrawLine(pen, x3, y3, x4, y4);
+                }
+            }
         }
+    }
+
+    struct ImbalanceData
+    {
+        public decimal High { get; set; }
+        public decimal Low { get; set; }
+
+        public int IndexStart { get; set; }
     }
 }

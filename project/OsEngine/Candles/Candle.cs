@@ -14,6 +14,22 @@ namespace OsEngine.Entity
     /// </summary>
     public class Candle
     {
+
+        public Candle() { }
+
+        public Candle(Candle candle)
+        {
+            Open = candle.Open;
+            Close = candle.Close;
+            High = candle.High;
+            Low = candle.Low;
+            TimeStart = candle.TimeStart;
+            if (candle.Trades != null)
+            {
+                Trades.AddRange(candle.Trades);
+            }
+            Volume = candle.Volume;
+        }
         /// <summary>
         /// Candle start time
         /// </summary>
