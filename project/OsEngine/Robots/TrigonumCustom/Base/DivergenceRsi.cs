@@ -34,11 +34,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterInt _syncTolerance;
         private StrategyParameterInt _extremaOrder;
         private StrategyParameterInt _minDivergenceStrength;
-        Dictionary<int, decimal> currentDivergencePriceBear = new Dictionary<int, decimal>();
-        Dictionary<int, decimal> currentDivergenceRsiBear = new Dictionary<int, decimal>();
-        Dictionary<int, decimal> currentDivergencePriceBull = new Dictionary<int, decimal>();
-        Dictionary<int, decimal> currentDivergenceRsiBull = new Dictionary<int, decimal>();
+        private List<LiquiditySweep> currentDivergencePriceBear = new List<LiquiditySweep>();
+        private List<LiquiditySweep> currentDivergenceRsiBear = new List<LiquiditySweep>();
+        private List<LiquiditySweep> currentDivergencePriceBull = new List<LiquiditySweep>();
+        private List<LiquiditySweep> currentDivergenceRsiBull = new List<LiquiditySweep>();
+        private List<Candle> candles4Hour = new List<Candle>();
+        private int candlesCountMerge = 16;
+        /// <summary>
+        /// Длительность актуальности имбаланса в 4-х-часовых свечах
+        /// </summary>
+        private int imbalanceMemoryCount = 6;
 
+        private List<ImbalanceData> _imbalances = new List<ImbalanceData>();
+        private StrategyParameterDecimal _imbalanceMin;
+        private StrategyParameterInt _imbalanceLiveTimeHours;
+        private StrategyParameterBool _imbalanceFilter;
         private Aindicator _rsi;
 
         public DivergenceRsi(string name, StartProgram startProgram) : base(name, startProgram)
@@ -52,6 +62,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _syncTolerance = CreateParameter("Sync Tolerance", 3, 2, 8, 1, "Robot");
             _extremaOrder = CreateParameter("Extrema Order", 5, 5, 30, 1, "Robot");
             _minDivergenceStrength = CreateParameter("Min Divergence Strength", 50, 50, 90, 5, "Robot");
+            _imbalanceMin = CreateParameter("Imbalance Minimum", 100m, 1m, 1000m, 10, "Robot");
+            _imbalanceLiveTimeHours = CreateParameter("Imbalance Live Time Hours", 24, 24, 120, 4, "Robot");
+            _imbalanceFilter = CreateParameter("Imbalance Filter On", false, "Robot");
             _rsi = IndicatorsFactory.CreateIndicatorByName("RSI", name + "RSI", false);
             _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, "RSI");
             new TakeProfitDecoration(this);
@@ -59,52 +72,99 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             ParametersChangedByUser();
         }
 
+        protected override void CandleFinishedEvent(List<Candle> candles)
+        {
+            if (_imbalanceFilter.ValueBool)
+            {
+                if (candles.Count < candlesCountMerge)
+                {
+                    candles4Hour.Clear();
+                }
+                else
+                {
+                    if (candles4Hour.Count > 2)
+                    {
+                        int canleTime = (int)(candles4Hour[1].TimeStart - candles4Hour[0].TimeStart).Add(TimeSpan.FromSeconds(1)).TotalHours;
+                        imbalanceMemoryCount = _imbalanceLiveTimeHours.ValueInt / canleTime;
+                    }
+
+                    int expect = candles.Count / candlesCountMerge;
+                    int need = expect - candles4Hour.Count;
+                    if (need > 0)
+                    {
+                        // Заполнение 4-х-часовых свечей
+                        int start = candles4Hour.Count * candlesCountMerge;
+                        List<Candle> newCandles = CandleMerger.Merge(candles.Skip(start).Take(candlesCountMerge).ToList(), candlesCountMerge);
+                        candles4Hour.AddRange(newCandles);
+
+                        if (candles4Hour.Count > 3)
+                        {
+                            _imbalances.Clear();
+                            int startImb = candles4Hour.Count - imbalanceMemoryCount;
+                            List<Candle> last4Hour = candles4Hour.Skip(startImb).Take(imbalanceMemoryCount).ToList();
+                            for (int i = 0; i < last4Hour.Count - 2; i++)
+                            {
+                                if (ImbalanceDetector.GetImbalance(last4Hour.Skip(i).Take(3), out decimal low, out decimal high) && (high - low) > _imbalanceMin.ValueDecimal)
+                                {
+                                    _imbalances.Add(new ImbalanceData() { High = high, Low = low, IndexStart = (startImb + i) * candlesCountMerge });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            base.CandleFinishedEvent(candles);
+        }
+
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
-            if (position.Direction == Side.Buy && IsBearDivergence(candles, out _))
+            if (position.Direction == Side.Buy && IsBearDivergence(candles))
             {
                 return true;
             }
-            else if (position.Direction == Side.Sell && IsBullDivergence(candles, out _))
+            else if (position.Direction == Side.Sell && IsBullDivergence(candles))
             {
                 return true;
             }
             return false;
         }
 
-        private bool IsBullDivergence(List<Candle> candles, out decimal strength)
+        private bool IsBullDivergence(List<Candle> candles/*, out decimal strength*/)
         {
             int skip = candles.Count - _period.ValueInt;
-            decimal[] price = candles.Skip(skip).Select(c => c.Low).ToArray();
+            decimal[] price = candles.Skip(skip).Select(c => c.High).ToArray();
             decimal[] rsi = _rsi.DataSeries[0].Values.Skip(skip).ToArray();
-            strength = 0;
+            //strength = 0;
             bool result = false;
             
-            if (DivergenceDetector.IsBullDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out Dictionary<int, decimal> priceDic, out Dictionary<int, decimal> rsiDic))
+            if (DivergenceDetector.IsBullDivergence2(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out List<LiquiditySweep> priceDic, out List<LiquiditySweep> rsiDic))
             {
-                currentDivergencePriceBull.Clear();
-                currentDivergenceRsiBull.Clear();
-                foreach (var pair in priceDic)
+                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High))))
                 {
-                    currentDivergencePriceBull.Add(pair.Key + skip, pair.Value);
+                    // Если какой то из экстремумов лежит в зоне актуального имбаланса
+                    currentDivergencePriceBull.Clear();
+                    currentDivergenceRsiBull.Clear();
+                    foreach (LiquiditySweep sweep in priceDic)
+                    {
+                        currentDivergencePriceBull.Add(new LiquiditySweep() { Index1 = sweep.Index1 + skip, Index2 = sweep.Index2 + skip, Value1 = sweep.Value1, Value2 = sweep.Value2 });
+                    }
+                    foreach (LiquiditySweep sweep in rsiDic)
+                    {
+                        currentDivergenceRsiBull.Add(new LiquiditySweep() { Index1 = sweep.Index1 + skip, Index2 = sweep.Index2 + skip, Value1 = sweep.Value1, Value2 = sweep.Value2 });
+                    }
+                    result = true;
                 }
-                foreach (var pair in rsiDic)
-                {
-                    currentDivergenceRsiBull.Add(pair.Key + skip, pair.Value);
-                }
-                strength = GetDivergenceLongStrength(priceDic, rsiDic);
-                result = true;
             }
             return result;
         }
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
-            IsBullDivergence(candles, out decimal strength);
-            return strength >= _minDivergenceStrength.ValueInt;
+            return IsBullDivergence(candles/*, out decimal strength*/);
         }
 
-        private decimal GetDivergenceLongStrength(Dictionary<int, decimal> priceDic, Dictionary<int, decimal> rsiDic)
+        /*private decimal GetDivergenceLongStrength(Dictionary<int, decimal> priceDic, Dictionary<int, decimal> rsiDic)
         {
             decimal result = 0;
             int minIndex = priceDic.Keys.Min();
@@ -178,39 +238,42 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             result += Math.Min(angleStrength * 5, 25);
             return result;
         }
+        */
 
-        bool IsBearDivergence(List<Candle> candles, out decimal strength)
+        bool IsBearDivergence(List<Candle> candles/*, out decimal strength*/)
         {
             int skip = candles.Count - _period.ValueInt;
-            decimal[] price = candles.Skip(skip).Select(c => c.High).ToArray();
+            decimal[] price = candles.Skip(skip).Select(c => c.Low).ToArray();
             decimal[] rsi = _rsi.DataSeries[0].Values.Skip(skip).ToArray();
-            strength = 0;
+            //strength = 0;
             bool result = false;
-            if (DivergenceDetector.IsBearDivergence(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out Dictionary<int, decimal> priceDic, out Dictionary<int, decimal> rsiDic))
+            if (DivergenceDetector.IsBearDivergence2(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out List<LiquiditySweep> priceDic, out List<LiquiditySweep> rsiDic))
             {
-                currentDivergencePriceBear.Clear();
-                currentDivergenceRsiBear.Clear();
-                foreach (var pair in priceDic)
+                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High))))
                 {
-                    currentDivergencePriceBear.Add(pair.Key + skip, pair.Value);
+                    // Если какой то из экстремумов лежит в зоне актуального имбаланса
+                    currentDivergencePriceBear.Clear();
+                    currentDivergenceRsiBear.Clear();
+                    foreach (LiquiditySweep sweep in priceDic)
+                    {
+                        currentDivergencePriceBear.Add(new LiquiditySweep() { Index1 = sweep.Index1 + skip, Index2 = sweep.Index2 + skip, Value1 = sweep.Value1, Value2 = sweep.Value2 });
+                    }
+                    foreach (LiquiditySweep sweep in rsiDic)
+                    {
+                        currentDivergenceRsiBear.Add(new LiquiditySweep() { Index1 = sweep.Index1 + skip, Index2 = sweep.Index2 + skip, Value1 = sweep.Value1, Value2 = sweep.Value2 });
+                    }
+                    result = true;
                 }
-                foreach (var pair in rsiDic)
-                {
-                    currentDivergenceRsiBear.Add(pair.Key + skip, pair.Value);
-                }
-                strength = GetDivergenceShortStrength(priceDic, rsiDic);
-                result = true;
             }
             return result;
         }
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
-            IsBearDivergence(candles, out decimal strength);
-            return strength >= _minDivergenceStrength.ValueInt;
+            return IsBearDivergence(candles/*, out decimal strength*/);
         }
 
-        private decimal GetDivergenceShortStrength(Dictionary<int, decimal> priceDic, Dictionary<int, decimal> rsiDic)
+        /*private decimal GetDivergenceShortStrength(Dictionary<int, decimal> priceDic, Dictionary<int, decimal> rsiDic)
         {
             decimal result = 0;
             int minIndex = priceDic.Keys.Min();
@@ -285,6 +348,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             return result;
         }
+        */
 
         protected override List<Func<List<Candle>, bool>> GetCheckers()
         {
@@ -316,27 +380,70 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     PaintDic(currentDivergencePriceBear, areaPrime, Color.Green, g);
                     PaintDic(currentDivergenceRsiBull, areaRsi, Color.Green, g);
                     PaintDic(currentDivergenceRsiBear, areaRsi, Color.Green, g);
+                    if (_imbalances.Count > 0)
+                    {
+                        foreach (ImbalanceData i in _imbalances)
+                        {
+                            PaintImbalance(i, areaPrime, Color.White, g);
+                        }
+                    }
                 }
             }
             catch { }
 
-            void PaintDic(Dictionary<int, decimal> dic, ChartArea area, Color color, Graphics g)
+            void PaintDic(List<LiquiditySweep> sweeps, ChartArea area, Color color, Graphics g)
             {
-                if (dic.Count < 2 || area == null) return;
+                if (sweeps.Count < 1 || area == null) return;
+                foreach (LiquiditySweep sweep in sweeps)
+                {
+                    Axis xAxis = area.AxisX;
+                    Axis yAxis = area.AxisY;
+                    area.AxisY.Minimum = area.AxisY2.Minimum;
+                    area.AxisY.Maximum = area.AxisY2.Maximum;
+                    using (Brush brush = new SolidBrush(color))
+                    using (Pen pen = new Pen(brush))
+                    {
+                        float x1 = (float)xAxis.ValueToPixelPosition(sweep.Index1);
+                        float x2 = (float)xAxis.ValueToPixelPosition(sweep.Index2);
+                        float y1 = (float)yAxis.ValueToPixelPosition((float)sweep.Value1);
+                        float y2 = (float)yAxis.ValueToPixelPosition((float)sweep.Value2);
+                        g.DrawLine(pen, x1, y1, x2, y2);
+                    }
+                }
+            }
+
+            void PaintImbalance(ImbalanceData imbalance, ChartArea area, Color color, Graphics g)
+            {
                 Axis xAxis = area.AxisX;
                 Axis yAxis = area.AxisY;
                 area.AxisY.Minimum = area.AxisY2.Minimum;
                 area.AxisY.Maximum = area.AxisY2.Maximum;
                 using (Brush brush = new SolidBrush(color))
-                using (Pen pen = new Pen(brush))
+                using (Brush fill = new SolidBrush(Color.FromArgb(5, Color.Blue)))
+                using (Pen pen = new Pen(brush) { DashPattern = new float[] { 5, 3 } })
                 {
-                    float x1 = (float)xAxis.ValueToPixelPosition(dic.Keys.First());
-                    float x2 = (float)xAxis.ValueToPixelPosition(dic.Keys.Last());
-                    float y1 = (float)yAxis.ValueToPixelPosition((float)dic[dic.Keys.First()]);
-                    float y2 = (float)yAxis.ValueToPixelPosition((float)dic[dic.Keys.Last()]);
+                    float x1 = (float)xAxis.ValueToPixelPosition(imbalance.IndexStart);
+                    float x2 = (float)xAxis.ValueToPixelPosition((float)area.AxisX.Maximum);
+                    float y1 = (float)yAxis.ValueToPixelPosition((double)imbalance.Low);
+                    float y2 = y1;
+
+                    float x3 = x1;
+                    float x4 = x2;
+                    float y3 = (float)yAxis.ValueToPixelPosition((double)imbalance.High);
+                    float y4 = y3;
+                    g.FillRectangle(fill, new RectangleF(x1, y3, x2 - x1, Math.Abs(y4 - y2)));
                     g.DrawLine(pen, x1, y1, x2, y2);
+                    g.DrawLine(pen, x3, y3, x4, y4);
                 }
             }
         }
+    }
+
+    struct ImbalanceData
+    {
+        public decimal High { get; set; }
+        public decimal Low { get; set; }
+
+        public int IndexStart { get; set; }
     }
 }
