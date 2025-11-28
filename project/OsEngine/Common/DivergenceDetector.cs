@@ -264,12 +264,25 @@ namespace OsEngine.Common
             List<int> sortedPriceIndexes = extremums.Keys.ToList();
             sortedPriceIndexes.Sort();
 
+            // Отфильтровывание пересвипов, которые пересекаются свечами
+            Func<decimal, decimal, bool> sweepFilter;
+            switch (type)
+            {
+                case ExtremumType.Peek:
+                    sweepFilter = (lineValue, data) => { return data > lineValue; };
+                    break;
+                case ExtremumType.Trough:
+                    sweepFilter = (lineValue, data) => { return data < lineValue; };
+                    break;
+                default: throw new ArgumentException();
+            }
+
             for (int i = 0; i < sortedPriceIndexes.Count - 1; i++)
             {
                 decimal data1 = extremums[sortedPriceIndexes[i]];
                 for (int j = i + 1; j < sortedPriceIndexes.Count; j++)
                 {
-                    decimal data2 = extremums[sortedPriceIndexes[i + 1]];
+                    decimal data2 = extremums[sortedPriceIndexes[j]];
 
                     if (data1 > data2)
                     {
@@ -278,16 +291,21 @@ namespace OsEngine.Common
 
                     int priceDeltaIndexes = sortedPriceIndexes[j] - sortedPriceIndexes[i];
                     decimal derivative = (data2 - data1) / priceDeltaIndexes;
+                    bool result = true;
                     for (int n = sortedPriceIndexes[i] + 1; n < sortedPriceIndexes[j] - 1; n++)
                     {
                         decimal lineValue = data1 + derivative * (n - sortedPriceIndexes[i]);
-                        if (data[n] > lineValue)
+                        if (sweepFilter(lineValue, data[n]))
                         {
                             // Если цена пересекает линию между пиками
-                            continue;
+                            result = false;
+                            break;
                         }
                     }
-                    sweeps.Add(new LiquiditySweep() { Index1 = sortedPriceIndexes[i], Index2 = sortedPriceIndexes[j], Value1 = data1, Value2 = data2 });
+                    if (result)
+                    {
+                        sweeps.Add(new LiquiditySweep() { Index1 = sortedPriceIndexes[i], Index2 = sortedPriceIndexes[j], Value1 = data1, Value2 = data2 });
+                    }
                 }
             }
 
@@ -341,13 +359,25 @@ namespace OsEngine.Common
             List<int> sortedPriceIndexes = extremums.Keys.ToList();
             sortedPriceIndexes.Sort();
 
+            // Отфильтровывание пересвипов, которые пересекаются свечами
+            Func<decimal, decimal, bool> sweepFilter;
+            switch (type)
+            {
+                case ExtremumType.Peek:
+                    sweepFilter = (lineValue, data) => { return data > lineValue; };
+                    break;
+                case ExtremumType.Trough:
+                    sweepFilter = (lineValue, data) => { return data < lineValue; };
+                    break;
+                default: throw new ArgumentException();
+            }
 
             for (int i = 0; i < sortedPriceIndexes.Count - 1; i++)
             {
                 decimal data1 = extremums[sortedPriceIndexes[i]];
                 for (int j = i + 1; j < sortedPriceIndexes.Count; j++)
                 {
-                    decimal data2 = extremums[sortedPriceIndexes[i + 1]];
+                    decimal data2 = extremums[sortedPriceIndexes[j]];
 
                     if (data1 < data2)
                     {
@@ -356,16 +386,21 @@ namespace OsEngine.Common
 
                     int priceDeltaIndexes = sortedPriceIndexes[j] - sortedPriceIndexes[i];
                     decimal derivative = (data2 - data1) / priceDeltaIndexes;
+                    bool result = true;
                     for (int n = sortedPriceIndexes[i] + 1; n < sortedPriceIndexes[j] - 1; n++)
                     {
                         decimal lineValue = data1 + derivative * (n - sortedPriceIndexes[i]);
-                        if (data[n] > lineValue)
+                        if (sweepFilter(lineValue, data[n]))
                         {
                             // Если цена пересекает линию между пиками
-                            continue;
+                            result = false;
+                            break;
                         }
                     }
-                    sweeps.Add(new LiquiditySweep() { Index1 = sortedPriceIndexes[i], Index2 = sortedPriceIndexes[j], Value1 = data1, Value2 = data2 });
+                    if (result)
+                    {
+                        sweeps.Add(new LiquiditySweep() { Index1 = sortedPriceIndexes[i], Index2 = sortedPriceIndexes[j], Value1 = data1, Value2 = data2 });
+                    }
                 }
             }
 

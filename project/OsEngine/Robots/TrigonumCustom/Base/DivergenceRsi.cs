@@ -145,8 +145,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     // Если какой то из экстремумов лежит в зоне актуального имбаланса
                     currentDivergencePriceBull.Clear();
                     currentDivergenceRsiBull.Clear();
-                    currentDivergencePriceBull.AddRange(priceDic);
-                    currentDivergenceRsiBull.AddRange(rsiDic);
+                    foreach (LiquiditySweep sweep in priceDic)
+                    {
+                        currentDivergencePriceBull.Add(new LiquiditySweep() { Index1 = sweep.Index1 + skip, Index2 = sweep.Index2 + skip, Value1 = sweep.Value1, Value2 = sweep.Value2 });
+                    }
+                    foreach (LiquiditySweep sweep in rsiDic)
+                    {
+                        currentDivergenceRsiBull.Add(new LiquiditySweep() { Index1 = sweep.Index1 + skip, Index2 = sweep.Index2 + skip, Value1 = sweep.Value1, Value2 = sweep.Value2 });
+                    }
                     result = true;
                 }
             }
@@ -248,8 +254,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     // Если какой то из экстремумов лежит в зоне актуального имбаланса
                     currentDivergencePriceBear.Clear();
                     currentDivergenceRsiBear.Clear();
-                    currentDivergencePriceBear.AddRange(priceDic);
-                    currentDivergenceRsiBear.AddRange(rsiDic);
+                    foreach (LiquiditySweep sweep in priceDic)
+                    {
+                        currentDivergencePriceBear.Add(new LiquiditySweep() { Index1 = sweep.Index1 + skip, Index2 = sweep.Index2 + skip, Value1 = sweep.Value1, Value2 = sweep.Value2 });
+                    }
+                    foreach (LiquiditySweep sweep in rsiDic)
+                    {
+                        currentDivergenceRsiBear.Add(new LiquiditySweep() { Index1 = sweep.Index1 + skip, Index2 = sweep.Index2 + skip, Value1 = sweep.Value1, Value2 = sweep.Value2 });
+                    }
                     result = true;
                 }
             }
