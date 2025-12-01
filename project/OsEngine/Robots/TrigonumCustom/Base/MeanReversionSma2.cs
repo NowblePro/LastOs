@@ -28,6 +28,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _spread;
         private MeanReverseGrid _currentGrid = null;
 
+        /// <summary>
+        /// Период за который анализируются доходности свечей, чтобы отменять лимитки в случае резкого увеличении доходности в сторону, противоположную позиции
+        /// </summary>
+        private StrategyParameterInt _periodLossFilter;
+        private StrategyParameterInt _lossCandlesCount;
+        private StrategyParameterInt _quantile;
+        private List<decimal> _profits = new List<decimal>();
+        private List<decimal> _profitsLast = new List<decimal>();
+
         public MeanReversionSma2(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
@@ -56,6 +65,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _spread = CreateParameter("Spread", 1m, 0.1m, 1m, 0.1m, "Robot");
 
+            _periodLossFilter = CreateParameter("Period", 100, 100, 500, 100, "Loss Filter");
+            _lossCandlesCount = CreateParameter("Candles Count", 3, 3, 5, 1, "Loss Filter");
+            _quantile = CreateParameter("Quantile", 90, 80, 95, 5, "Loss Filter");
+
             new TakeProfitDecoration(this);
             new StopLossDecoration(this);
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
@@ -64,6 +77,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
+            CandleProfitFilter(candles);
             base.CandleFinishedEvent(candles);
             if (_tab.PositionsOpenAll.Count == 0)
             {
@@ -100,6 +114,36 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Рассчитать доходности последних <see cref="_periodLossFilter"/> свечей для отмены лимиток, в случае резкого движения цены в сторону, противоположную позиции
+        /// </summary>
+        private void CandleProfitFilter(List<Candle> candles)
+        {
+            if (candles == null || candles.Count == 0) return;
+
+            if (candles.Count < _profits.Count)
+            {
+                _profits.Clear();
+            }
+
+            int take = candles.Count - _profits.Count;
+            int skip = candles.Count - take;
+            foreach (Candle candle in candles.Skip(skip).Take(take))
+            {
+                _profits.Add(GetCandleProfit(candle));
+            }
+
+            take = _periodLossFilter.ValueInt;
+            skip = _profits.Count - take;
+
+            _profitsLast = _profits.Skip(skip).Take(take).ToList();
+        }
+
+        private decimal GetCandleProfit(Candle candle)
+        {
+            return (candle.High - candle.Low) / candle.Low;
         }
 
         private void ClosePosition(Position position)
