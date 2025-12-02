@@ -133,7 +133,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private bool IsBullDivergence(List<Candle> candles/*, out decimal strength*/)
         {
             int skip = candles.Count - _period.ValueInt;
-            decimal[] price = candles.Skip(skip).Select(c => c.High).ToArray();
+            decimal[] price = candles.Skip(skip).Select(c => c.Low).ToArray();
             decimal[] rsi = _rsi.DataSeries[0].Values.Skip(skip).ToArray();
             //strength = 0;
             bool result = false;
@@ -243,7 +243,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         bool IsBearDivergence(List<Candle> candles/*, out decimal strength*/)
         {
             int skip = candles.Count - _period.ValueInt;
-            decimal[] price = candles.Skip(skip).Select(c => c.Low).ToArray();
+            decimal[] price = candles.Skip(skip).Select(c => c.High).ToArray();
             decimal[] rsi = _rsi.DataSeries[0].Values.Skip(skip).ToArray();
             //strength = 0;
             bool result = false;

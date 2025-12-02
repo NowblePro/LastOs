@@ -428,7 +428,7 @@ namespace OsEngine.Common
         }
 
         /// <summary>
-        /// Определение дивергенций вторым способом - бычья по пикам хаёв, медвежья по впадинам лоёв
+        /// Определение дивергенций вторым способом - бычья по впадинам лоёв, медвежья по пикам хаёв
         /// </summary>
         /// <param name="price"></param>
         /// <param name="indicator"></param>
@@ -441,10 +441,10 @@ namespace OsEngine.Common
         {
             List<LiquiditySweep> resultPrices = new List<LiquiditySweep>();
             List<LiquiditySweep> resultIndicators = new List<LiquiditySweep>();
-            if ((LiquiditySweep(price, minDistance, maxDistance, order, ExtremumType.Peek, out priceSweeps) &&
-                FailureSwing(indicator, minDistance, maxDistance, order, ExtremumType.Peek, out indicatorSweeps)) ||
-                ((LiquiditySweep(indicator, minDistance, maxDistance, order, ExtremumType.Peek, out indicatorSweeps) &&
-                FailureSwing(price, minDistance, maxDistance, order, ExtremumType.Peek, out priceSweeps))))
+            if ((LiquiditySweep(price, minDistance, maxDistance, order, ExtremumType.Trough, out priceSweeps) &&
+                FailureSwing(indicator, minDistance, maxDistance, order, ExtremumType.Trough, out indicatorSweeps)) ||
+                ((LiquiditySweep(indicator, minDistance, maxDistance, order, ExtremumType.Trough, out indicatorSweeps) &&
+                FailureSwing(price, minDistance, maxDistance, order, ExtremumType.Trough, out priceSweeps))))
             {
                 int maxPriceIndex = priceSweeps.Max(sweep => sweep.Index2);
                 if (maxPriceIndex != price.Length - 1 - order)
@@ -479,7 +479,7 @@ namespace OsEngine.Common
         }
 
         /// <summary>
-        /// Определение дивергенций вторым способом - бычья по пикам хаёв, медвежья по впадинам лоёв
+        /// Определение дивергенций вторым способом - бычья по впадинам лоёв, медвежья по пикам хаёв
         /// </summary>
         /// <param name="price"></param>
         /// <param name="indicator"></param>
@@ -492,10 +492,10 @@ namespace OsEngine.Common
         {
             List<LiquiditySweep> resultPrices = new List<LiquiditySweep>();
             List<LiquiditySweep> resultIndicators = new List<LiquiditySweep>();
-            if ((LiquiditySweep(price, minDistance, maxDistance, order, ExtremumType.Trough, out priceSweeps) &&
-                FailureSwing(indicator, minDistance, maxDistance, order, ExtremumType.Trough, out indicatorSweeps)) ||
-                ((LiquiditySweep(indicator, minDistance, maxDistance, order, ExtremumType.Trough, out indicatorSweeps) &&
-                FailureSwing(price, minDistance, maxDistance, order, ExtremumType.Trough, out priceSweeps))))
+            if ((LiquiditySweep(price, minDistance, maxDistance, order, ExtremumType.Peek, out priceSweeps) &&
+                FailureSwing(indicator, minDistance, maxDistance, order, ExtremumType.Peek, out indicatorSweeps)) ||
+                ((LiquiditySweep(indicator, minDistance, maxDistance, order, ExtremumType.Peek, out indicatorSweeps) &&
+                FailureSwing(price, minDistance, maxDistance, order, ExtremumType.Peek, out priceSweeps))))
             {
                 int maxPriceIndex = priceSweeps.Max(sweep => sweep.Index2);
                 if (maxPriceIndex != price.Length - 1 - order)
