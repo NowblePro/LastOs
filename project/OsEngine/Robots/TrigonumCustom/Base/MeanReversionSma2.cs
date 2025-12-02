@@ -36,6 +36,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterInt _quantile;
         private List<decimal> _profits = new List<decimal>();
         private List<decimal> _profitsLast = new List<decimal>();
+        /// <summary>
+        /// Текущее значение квантиля, куда входят последние <see cref="_lossCandlesCount"/> свечей по доходности
+        /// </summary>
+        private int _currentQuantile = 0;
 
         public MeanReversionSma2(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -65,9 +69,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _spread = CreateParameter("Spread", 1m, 0.1m, 1m, 0.1m, "Robot");
 
-            _periodLossFilter = CreateParameter("Period", 100, 100, 500, 100, "Loss Filter");
-            _lossCandlesCount = CreateParameter("Candles Count", 3, 3, 5, 1, "Loss Filter");
-            _quantile = CreateParameter("Quantile", 90, 80, 95, 5, "Loss Filter");
+            _periodLossFilter = CreateParameter("Period", 100, 100, 500, 100, "Volatile Stop");
+            _lossCandlesCount = CreateParameter("Candles Count", 3, 3, 5, 1, "Volatile Stop");
+            _quantile = CreateParameter("Quantile", 90, 80, 95, 5, "Volatile Stop");
 
             new TakeProfitDecoration(this);
             new StopLossDecoration(this);
@@ -139,6 +143,31 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             skip = _profits.Count - take;
 
             _profitsLast = _profits.Skip(skip).Take(take).ToList();
+
+            take = _lossCandlesCount.ValueInt;
+            skip = _profitsLast.Count - take;
+
+            decimal minProfit = _profitsLast.Skip(skip).Take(take).Min();
+            _currentQuantile = (int)((float)_profitsLast.Where(v => v <= minProfit).Count() / ((float)_periodLossFilter.ValueInt) * 100);
+            if (_currentQuantile >= _quantile.ValueInt)
+            {
+                if (_currentGrid != null)
+                {
+                    List<KeyValuePair<int,Position>> activePositions = _currentGrid.GetPositions().Where(p => p.Value.OpenActiv && p.Value.State != PositionStateType.Open).ToList();
+                    foreach (KeyValuePair<int, Position> p in activePositions)
+                    {
+                        foreach (Order order in p.Value.OpenOrders)
+                        {
+                            if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
+                            {
+                                _tab.Connector.OrderCancel(order);
+                                _currentGrid.DeleteByKey(p.Key);
+                                SendNewLogMessage($"Лимитный ордер отменён из-за того, что доходности последних {_lossCandlesCount.ValueInt} свечей больше доходностей {_quantile.ValueInt}% доходностей {_periodLossFilter.ValueInt} последних свечей", Logging.LogMessageType.Trade);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private decimal GetCandleProfit(Candle candle)
