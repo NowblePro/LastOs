@@ -9,7 +9,7 @@ namespace OsEngine.Common
 {
     public static class ImbalanceDetector
     {
-        public static bool GetImbalance(IEnumerable<Candle> candles, out decimal low, out decimal high)
+        public static ImbalanceType GetImbalance(IEnumerable<Candle> candles, out decimal low, out decimal high)
         {
             if (candles == null || candles.Count() != 3) throw new ArgumentException();
             low = 0;
@@ -26,7 +26,7 @@ namespace OsEngine.Common
                     (high - low) > 0 &&
                     middle.Close > last.Low)
                 {
-                    return true;
+                    return ImbalanceType.Long;
                 }
             }
             else if (candles.All(c => c.IsDown))
@@ -38,10 +38,12 @@ namespace OsEngine.Common
                     (high - low) > 0 &&
                     middle.Close < last.High)
                 {
-                    return true;
+                    return ImbalanceType.Short;
                 }
             }
-            return false;
+            return ImbalanceType.None;
         }
     }
+
+    public enum ImbalanceType { None, Long, Short }
 }

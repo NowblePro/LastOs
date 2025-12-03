@@ -33,7 +33,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// </summary>
         private StrategyParameterInt _syncTolerance;
         private StrategyParameterInt _extremaOrder;
-        private StrategyParameterInt _minDivergenceStrength;
+        //private StrategyParameterInt _minDivergenceStrength;
         private List<LiquiditySweep> currentDivergencePriceBear = new List<LiquiditySweep>();
         private List<LiquiditySweep> currentDivergenceRsiBear = new List<LiquiditySweep>();
         private List<LiquiditySweep> currentDivergencePriceBull = new List<LiquiditySweep>();
@@ -49,6 +49,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _imbalanceMin;
         private StrategyParameterInt _imbalanceLiveTimeHours;
         private StrategyParameterBool _imbalanceFilter;
+        private StrategyParameterBool _imbalanceDirectionFilterOn;
         private Aindicator _rsi;
 
         public DivergenceRsi(string name, StartProgram startProgram) : base(name, startProgram)
@@ -61,10 +62,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _maxDistance = CreateParameter("Max Distance", 40, 40, 200, 1, "Robot");
             _syncTolerance = CreateParameter("Sync Tolerance", 3, 2, 8, 1, "Robot");
             _extremaOrder = CreateParameter("Extrema Order", 5, 5, 30, 1, "Robot");
-            _minDivergenceStrength = CreateParameter("Min Divergence Strength", 50, 50, 90, 5, "Robot");
+            //_minDivergenceStrength = CreateParameter("Min Divergence Strength", 50, 50, 90, 5, "Robot");
             _imbalanceMin = CreateParameter("Imbalance Minimum", 100m, 1m, 1000m, 10, "Robot");
             _imbalanceLiveTimeHours = CreateParameter("Imbalance Live Time Hours", 24, 24, 120, 4, "Robot");
             _imbalanceFilter = CreateParameter("Imbalance Filter On", false, "Robot");
+            _imbalanceDirectionFilterOn = CreateParameter("Imbalance Direction Filter On", false, "Robot");
             _rsi = IndicatorsFactory.CreateIndicatorByName("RSI", name + "RSI", false);
             _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, "RSI");
             new TakeProfitDecoration(this);
@@ -104,9 +106,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             List<Candle> last4Hour = candles4Hour.Skip(startImb).Take(imbalanceMemoryCount).ToList();
                             for (int i = 0; i < last4Hour.Count - 2; i++)
                             {
-                                if (ImbalanceDetector.GetImbalance(last4Hour.Skip(i).Take(3), out decimal low, out decimal high) && (high - low) > _imbalanceMin.ValueDecimal)
+                                ImbalanceType imbalanceType = ImbalanceDetector.GetImbalance(last4Hour.Skip(i).Take(3), out decimal low, out decimal high);
+                                if (imbalanceType != ImbalanceType.None && (high - low) > _imbalanceMin.ValueDecimal)
                                 {
-                                    _imbalances.Add(new ImbalanceData() { High = high, Low = low, IndexStart = (startImb + i) * candlesCountMerge });
+                                    _imbalances.Add(new ImbalanceData() { High = high, Low = low, IndexStart = (startImb + i) * candlesCountMerge, Type = imbalanceType });
                                 }
                             }
                         }
@@ -140,7 +143,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             
             if (DivergenceDetector.IsBullDivergence2(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out List<LiquiditySweep> priceDic, out List<LiquiditySweep> rsiDic))
             {
-                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High))))
+                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (i.Type == ImbalanceType.Long || (!_imbalanceDirectionFilterOn.ValueBool)) && ((price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High)))))
                 {
                     // Если какой то из экстремумов лежит в зоне актуального имбаланса
                     currentDivergencePriceBull.Clear();
@@ -249,7 +252,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             bool result = false;
             if (DivergenceDetector.IsBearDivergence2(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out List<LiquiditySweep> priceDic, out List<LiquiditySweep> rsiDic))
             {
-                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High))))
+                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (i.Type == ImbalanceType.Short || !_imbalanceDirectionFilterOn.ValueBool) && ((price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High)))))
                 {
                     // Если какой то из экстремумов лежит в зоне актуального имбаланса
                     currentDivergencePriceBear.Clear();
@@ -419,7 +422,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 area.AxisY.Minimum = area.AxisY2.Minimum;
                 area.AxisY.Maximum = area.AxisY2.Maximum;
                 using (Brush brush = new SolidBrush(color))
-                using (Brush fill = new SolidBrush(Color.FromArgb(5, Color.Blue)))
+                using (Brush fill = new SolidBrush(Color.FromArgb(5, imbalance.Type == ImbalanceType.Long ? Color.Blue : Color.Red)))
                 using (Pen pen = new Pen(brush) { DashPattern = new float[] { 5, 3 } })
                 {
                     float x1 = (float)xAxis.ValueToPixelPosition(imbalance.IndexStart);
@@ -443,6 +446,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     {
         public decimal High { get; set; }
         public decimal Low { get; set; }
+        public ImbalanceType Type { get; set; }
 
         public int IndexStart { get; set; }
     }
