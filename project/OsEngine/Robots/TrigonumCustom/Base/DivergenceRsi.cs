@@ -390,7 +390,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     if ((DateTime.Now - _lastMessageShow).TotalMilliseconds > 1000)
                     {
-                        MessageBox.Show("Take Profit и Stop Loss включены принудительно, т. к. включён Smart TPSL", "Внимание.", MessageBoxButton.OK, MessageBoxImage.Information);
+                        //MessageBox.Show("Take Profit и Stop Loss включены принудительно, т. к. включён Smart TPSL", "Внимание.", MessageBoxButton.OK, MessageBoxImage.Information);
                         _lastMessageShow = DateTime.Now;
                     }
                 }
