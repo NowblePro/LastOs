@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms.DataVisualization.Charting;
 
@@ -45,12 +46,19 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// </summary>
         private int imbalanceMemoryCount = 6;
 
+        private StrategyParameterBool _TPSLSmartOn;
+        private StrategyParameterDecimal _smartStopLossOffset;
+        private StrategyParameterDecimal _smartTakeProfitMultiplier;
+
         private List<ImbalanceData> _imbalances = new List<ImbalanceData>();
         private StrategyParameterDecimal _imbalanceMin;
         private StrategyParameterInt _imbalanceLiveTimeHours;
         private StrategyParameterBool _imbalanceFilter;
         private StrategyParameterBool _imbalanceDirectionFilterOn;
         private Aindicator _rsi;
+        private TakeProfitDecoration _tp;
+        private StopLossDecoration _sl;
+        private List<Candle> _candles;
 
         public DivergenceRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -67,15 +75,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _imbalanceLiveTimeHours = CreateParameter("Imbalance Live Time Hours", 24, 24, 120, 4, "Robot");
             _imbalanceFilter = CreateParameter("Imbalance Filter On", false, "Robot");
             _imbalanceDirectionFilterOn = CreateParameter("Imbalance Direction Filter On", false, "Robot");
+
+            _TPSLSmartOn = CreateParameter("TPSL Smart On", false, "Smart TPSL");
+            _smartStopLossOffset = CreateParameter("Stop Loss Offset", 0m, 0, 100m, 10m, "Smart TPSL");
+            _smartTakeProfitMultiplier = CreateParameter("Take Profit Multiplier", 1m, 1m, 5m, 0.5m, "Smart TPSL");
+
             _rsi = IndicatorsFactory.CreateIndicatorByName("RSI", name + "RSI", false);
             _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, "RSI");
-            new TakeProfitDecoration(this);
-            new StopLossDecoration(this);
+            _tp = new TakeProfitDecoration(this);
+            _sl = new StopLossDecoration(this);
             ParametersChangedByUser();
         }
 
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
+            _candles = candles;
             if (_imbalanceFilter.ValueBool)
             {
                 if (candles.Count < candlesCountMerge)
@@ -362,12 +376,109 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             };
         }
 
+        private DateTime _lastMessageShow = DateTime.Now;
         protected override void ParametersChangedByUser()
         {
             if (_rsi != null)
             {
                 _rsi.ParametersDigit[0].Value = _rsiPeriod.ValueInt;
             }
+
+            if (_TPSLSmartOn != null && _TPSLSmartOn.ValueBool && _tp != null && _sl != null && (!_tp.On || !_sl.On))
+            {
+                if (!_tp.On || !_sl.On)
+                {
+                    if ((DateTime.Now - _lastMessageShow).TotalMilliseconds > 1000)
+                    {
+                        MessageBox.Show("Take Profit и Stop Loss включены принудительно, т. к. включён Smart TPSL", "Внимание.", MessageBoxButton.OK, MessageBoxImage.Information);
+                        _lastMessageShow = DateTime.Now;
+                    }
+                }
+                _tp.On = true;
+                _sl.On = true;
+            }
+
+            if (_TPSLSmartOn != null && _TPSLSmartOn.ValueBool)
+            {
+                if (_tp != null)
+                {
+                    _tp.ActivationPriceFunc = GetTakeProfitPrice; 
+                }
+                if (_sl != null)
+                {
+                    _sl.StopPriceFunc = GetStopLossPrice;
+                }
+            }
+            else
+            {
+                if (_tp != null)
+                {
+                    _tp.ActivationPriceFunc = null;
+                }
+                if (_sl != null)
+                {
+                    _sl.StopPriceFunc = null;
+                }
+            } 
+        }
+
+        private decimal GetStopLossPrice(Side side)
+        {
+            decimal result = 0;
+            LiquiditySweep sweep = null;
+            switch (side)
+            {
+                case Side.Buy:
+                    sweep = currentDivergencePriceBull.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        result = _candles[sweep.Index2].Low - _smartStopLossOffset.ValueDecimal;
+                    }
+                    break;
+                case Side.Sell:
+                    sweep = currentDivergencePriceBear.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        result = _candles[sweep.Index2].High + _smartStopLossOffset.ValueDecimal;
+                    }
+                    break;
+                default:
+                    result = _candles.Last().Center;
+                    break;
+            }
+            return result;
+        }
+
+        private decimal GetTakeProfitPrice(Side side)
+        {
+            decimal result = 0;
+            LiquiditySweep sweep = null;
+            Candle last = _candles.Last();
+            switch (side)
+            {
+                case Side.Buy:
+                    sweep = currentDivergencePriceBull.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        decimal sl = _candles[sweep.Index2].Low - _smartStopLossOffset.ValueDecimal;
+                        decimal slDelta = Math.Abs(last.Close - sl);
+                        result = last.Close + slDelta * _smartTakeProfitMultiplier.ValueDecimal;
+                    }
+                    break;
+                case Side.Sell:
+                    sweep = currentDivergencePriceBear.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        decimal sl = _candles[sweep.Index2].High + _smartStopLossOffset.ValueDecimal;
+                        decimal slDelta = Math.Abs(sl - last.Close);
+                        result = last.Close - slDelta * _smartTakeProfitMultiplier.ValueDecimal;
+                    }
+                    break;
+                default:
+                    result = _candles.Last().Center;
+                    break;
+            }
+            return result;
         }
 
         protected override void OnChartPostPaint(object sender, ChartPaintEventArgs e)
