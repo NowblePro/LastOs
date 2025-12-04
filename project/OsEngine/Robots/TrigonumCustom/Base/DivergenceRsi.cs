@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms.DataVisualization.Charting;
 
@@ -33,7 +34,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// </summary>
         private StrategyParameterInt _syncTolerance;
         private StrategyParameterInt _extremaOrder;
-        private StrategyParameterInt _minDivergenceStrength;
+        //private StrategyParameterInt _minDivergenceStrength;
         private List<LiquiditySweep> currentDivergencePriceBear = new List<LiquiditySweep>();
         private List<LiquiditySweep> currentDivergenceRsiBear = new List<LiquiditySweep>();
         private List<LiquiditySweep> currentDivergencePriceBull = new List<LiquiditySweep>();
@@ -45,11 +46,19 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// </summary>
         private int imbalanceMemoryCount = 6;
 
+        private StrategyParameterBool _TPSLSmartOn;
+        private StrategyParameterDecimal _smartStopLossOffset;
+        private StrategyParameterDecimal _smartTakeProfitMultiplier;
+
         private List<ImbalanceData> _imbalances = new List<ImbalanceData>();
         private StrategyParameterDecimal _imbalanceMin;
         private StrategyParameterInt _imbalanceLiveTimeHours;
         private StrategyParameterBool _imbalanceFilter;
+        private StrategyParameterBool _imbalanceDirectionFilterOn;
         private Aindicator _rsi;
+        private TakeProfitDecoration _tp;
+        private StopLossDecoration _sl;
+        private List<Candle> _candles;
 
         public DivergenceRsi(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -61,19 +70,26 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _maxDistance = CreateParameter("Max Distance", 40, 40, 200, 1, "Robot");
             _syncTolerance = CreateParameter("Sync Tolerance", 3, 2, 8, 1, "Robot");
             _extremaOrder = CreateParameter("Extrema Order", 5, 5, 30, 1, "Robot");
-            _minDivergenceStrength = CreateParameter("Min Divergence Strength", 50, 50, 90, 5, "Robot");
+            //_minDivergenceStrength = CreateParameter("Min Divergence Strength", 50, 50, 90, 5, "Robot");
             _imbalanceMin = CreateParameter("Imbalance Minimum", 100m, 1m, 1000m, 10, "Robot");
             _imbalanceLiveTimeHours = CreateParameter("Imbalance Live Time Hours", 24, 24, 120, 4, "Robot");
             _imbalanceFilter = CreateParameter("Imbalance Filter On", false, "Robot");
+            _imbalanceDirectionFilterOn = CreateParameter("Imbalance Direction Filter On", false, "Robot");
+
+            _TPSLSmartOn = CreateParameter("TPSL Smart On", false, "Smart TPSL");
+            _smartStopLossOffset = CreateParameter("Stop Loss Offset", 0m, 0, 100m, 10m, "Smart TPSL");
+            _smartTakeProfitMultiplier = CreateParameter("Take Profit Multiplier", 1m, 1m, 5m, 0.5m, "Smart TPSL");
+
             _rsi = IndicatorsFactory.CreateIndicatorByName("RSI", name + "RSI", false);
             _rsi = (Aindicator)_tab.CreateCandleIndicator(_rsi, "RSI");
-            new TakeProfitDecoration(this);
-            new StopLossDecoration(this);
+            _tp = new TakeProfitDecoration(this);
+            _sl = new StopLossDecoration(this);
             ParametersChangedByUser();
         }
 
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
+            _candles = candles;
             if (_imbalanceFilter.ValueBool)
             {
                 if (candles.Count < candlesCountMerge)
@@ -104,9 +120,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             List<Candle> last4Hour = candles4Hour.Skip(startImb).Take(imbalanceMemoryCount).ToList();
                             for (int i = 0; i < last4Hour.Count - 2; i++)
                             {
-                                if (ImbalanceDetector.GetImbalance(last4Hour.Skip(i).Take(3), out decimal low, out decimal high) && (high - low) > _imbalanceMin.ValueDecimal)
+                                ImbalanceType imbalanceType = ImbalanceDetector.GetImbalance(last4Hour.Skip(i).Take(3), out decimal low, out decimal high);
+                                if (imbalanceType != ImbalanceType.None && (high - low) > _imbalanceMin.ValueDecimal)
                                 {
-                                    _imbalances.Add(new ImbalanceData() { High = high, Low = low, IndexStart = (startImb + i) * candlesCountMerge });
+                                    _imbalances.Add(new ImbalanceData() { High = high, Low = low, IndexStart = (startImb + i) * candlesCountMerge, Type = imbalanceType });
                                 }
                             }
                         }
@@ -140,7 +157,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             
             if (DivergenceDetector.IsBullDivergence2(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out List<LiquiditySweep> priceDic, out List<LiquiditySweep> rsiDic))
             {
-                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High))))
+                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (i.Type == ImbalanceType.Long || (!_imbalanceDirectionFilterOn.ValueBool)) && ((price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High)))))
                 {
                     // Если какой то из экстремумов лежит в зоне актуального имбаланса
                     currentDivergencePriceBull.Clear();
@@ -249,7 +266,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             bool result = false;
             if (DivergenceDetector.IsBearDivergence2(price, rsi, _minDistance.ValueInt, _maxDistance.ValueInt, _syncTolerance.ValueInt, _extremaOrder.ValueInt, out List<LiquiditySweep> priceDic, out List<LiquiditySweep> rsiDic))
             {
-                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High))))
+                if ((!_imbalanceFilter.ValueBool) || priceDic.Any(price => _imbalances.Any(i => (i.Type == ImbalanceType.Short || !_imbalanceDirectionFilterOn.ValueBool) && ((price.Value1 > i.Low && price.Value1 < i.High) || (price.Value2 > i.Low && price.Value2 < i.High)))))
                 {
                     // Если какой то из экстремумов лежит в зоне актуального имбаланса
                     currentDivergencePriceBear.Clear();
@@ -359,12 +376,109 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             };
         }
 
+        private DateTime _lastMessageShow = DateTime.Now;
         protected override void ParametersChangedByUser()
         {
             if (_rsi != null)
             {
                 _rsi.ParametersDigit[0].Value = _rsiPeriod.ValueInt;
             }
+
+            if (_TPSLSmartOn != null && _TPSLSmartOn.ValueBool && _tp != null && _sl != null && (!_tp.On || !_sl.On))
+            {
+                if (!_tp.On || !_sl.On)
+                {
+                    if ((DateTime.Now - _lastMessageShow).TotalMilliseconds > 1000)
+                    {
+                        MessageBox.Show("Take Profit и Stop Loss включены принудительно, т. к. включён Smart TPSL", "Внимание.", MessageBoxButton.OK, MessageBoxImage.Information);
+                        _lastMessageShow = DateTime.Now;
+                    }
+                }
+                _tp.On = true;
+                _sl.On = true;
+            }
+
+            if (_TPSLSmartOn != null && _TPSLSmartOn.ValueBool)
+            {
+                if (_tp != null)
+                {
+                    _tp.ActivationPriceFunc = GetTakeProfitPrice; 
+                }
+                if (_sl != null)
+                {
+                    _sl.StopPriceFunc = GetStopLossPrice;
+                }
+            }
+            else
+            {
+                if (_tp != null)
+                {
+                    _tp.ActivationPriceFunc = null;
+                }
+                if (_sl != null)
+                {
+                    _sl.StopPriceFunc = null;
+                }
+            } 
+        }
+
+        private decimal GetStopLossPrice(Side side)
+        {
+            decimal result = 0;
+            LiquiditySweep sweep = null;
+            switch (side)
+            {
+                case Side.Buy:
+                    sweep = currentDivergencePriceBull.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        result = _candles[sweep.Index2].Low - _smartStopLossOffset.ValueDecimal;
+                    }
+                    break;
+                case Side.Sell:
+                    sweep = currentDivergencePriceBear.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        result = _candles[sweep.Index2].High + _smartStopLossOffset.ValueDecimal;
+                    }
+                    break;
+                default:
+                    result = _candles.Last().Center;
+                    break;
+            }
+            return result;
+        }
+
+        private decimal GetTakeProfitPrice(Side side)
+        {
+            decimal result = 0;
+            LiquiditySweep sweep = null;
+            Candle last = _candles.Last();
+            switch (side)
+            {
+                case Side.Buy:
+                    sweep = currentDivergencePriceBull.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        decimal sl = _candles[sweep.Index2].Low - _smartStopLossOffset.ValueDecimal;
+                        decimal slDelta = Math.Abs(last.Close - sl);
+                        result = last.Close + slDelta * _smartTakeProfitMultiplier.ValueDecimal;
+                    }
+                    break;
+                case Side.Sell:
+                    sweep = currentDivergencePriceBear.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        decimal sl = _candles[sweep.Index2].High + _smartStopLossOffset.ValueDecimal;
+                        decimal slDelta = Math.Abs(sl - last.Close);
+                        result = last.Close - slDelta * _smartTakeProfitMultiplier.ValueDecimal;
+                    }
+                    break;
+                default:
+                    result = _candles.Last().Center;
+                    break;
+            }
+            return result;
         }
 
         protected override void OnChartPostPaint(object sender, ChartPaintEventArgs e)
@@ -419,7 +533,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 area.AxisY.Minimum = area.AxisY2.Minimum;
                 area.AxisY.Maximum = area.AxisY2.Maximum;
                 using (Brush brush = new SolidBrush(color))
-                using (Brush fill = new SolidBrush(Color.FromArgb(5, Color.Blue)))
+                using (Brush fill = new SolidBrush(Color.FromArgb(5, imbalance.Type == ImbalanceType.Long ? Color.Blue : Color.Red)))
                 using (Pen pen = new Pen(brush) { DashPattern = new float[] { 5, 3 } })
                 {
                     float x1 = (float)xAxis.ValueToPixelPosition(imbalance.IndexStart);
@@ -443,6 +557,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     {
         public decimal High { get; set; }
         public decimal Low { get; set; }
+        public ImbalanceType Type { get; set; }
 
         public int IndexStart { get; set; }
     }

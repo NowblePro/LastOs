@@ -28,6 +28,17 @@ namespace OsEngine.Common
             bot.TabsSimple[0].PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
         }
 
+        public bool On
+        {
+            get => _fixStopOn.ValueBool;
+            set
+            {
+                _fixStopOn.ValueBool = value;
+            }
+        }
+
+        public Func<Side, decimal> StopPriceFunc { get; set; } = null;
+
         private void _tab_PositionOpeningSuccesEvent(Position position)
         {
             decimal _slippage = 0;
@@ -49,12 +60,26 @@ namespace OsEngine.Common
             {
                 if (position.Direction == Side.Buy)
                 {
-                    stopPrice = position.EntryPrice - position.EntryPrice * (_fixStop.ValueDecimal / 100);
+                    if (StopPriceFunc != null)
+                    {
+                        stopPrice = StopPriceFunc.Invoke(position.Direction);
+                    }
+                    else
+                    {
+                        stopPrice = position.EntryPrice - position.EntryPrice * (_fixStop.ValueDecimal / 100);
+                    }
                     stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage;
                 }
                 else if (position.Direction == Side.Sell)
                 {
-                    stopPrice = position.EntryPrice + position.EntryPrice * (_fixStop.ValueDecimal / 100);
+                    if (StopPriceFunc != null)
+                    {
+                        stopPrice = StopPriceFunc.Invoke(position.Direction);
+                    }
+                    else
+                    {
+                        stopPrice = position.EntryPrice + position.EntryPrice * (_fixStop.ValueDecimal / 100);
+                    }
                     stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage;
                 }
 
