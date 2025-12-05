@@ -497,6 +497,8 @@
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustom.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustomExtrems.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZScore.cs" />
+    <Compile Include="Indicators\TrigonumCustom\ZScoreHigh.cs" />
+    <Compile Include="Indicators\TrigonumCustom\ZScoreLow.cs" />
     <Compile Include="Logging\RequestCounterLogger.cs" />
     <Compile Include="Logging\ServerTelegram.cs" />
     <Compile Include="Logging\ServerTelegramUi.xaml.cs">
@@ -1415,6 +1417,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MeanReversionZScore.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\NextLevelBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\CoinGlass\BreakHighLowByAdxRsiCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\DivergenceRsi.cs" />
