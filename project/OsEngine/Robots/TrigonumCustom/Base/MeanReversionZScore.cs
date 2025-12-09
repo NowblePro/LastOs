@@ -17,6 +17,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private Aindicator _sma;
         private ZScoreLow _zScoreLow;
         private ZScoreHigh _zScoreHigh;
+        private ZScoreChannel _channel;
 
         private StrategyParameterInt _periodSma;
 
@@ -37,6 +38,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _zScoreHigh.DataSeries[0].Color = Color.Red;
             _zScoreHigh.Save();
             _zScoreHigh.SMA = _sma;
+
+            _channel = (ZScoreChannel)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreChannel", name: name + "ZScoreChannel", canDelete: false);
+            _channel = (ZScoreChannel)_tab.CreateCandleIndicator(_channel, nameArea: "Prime");
+            _channel.LowZScore = _zScoreLow;
+            _channel.HighZScore = _zScoreHigh;
+            _channel.DataSeries[0].Color = Color.Yellow;
+            _channel.Save();
 
             UpdateParameters();
         }

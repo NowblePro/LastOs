@@ -497,6 +497,7 @@
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustom.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZigZagChannelCustomExtrems.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZScore.cs" />
+    <Compile Include="Indicators\TrigonumCustom\ZScoreChannel.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZScoreHigh.cs" />
     <Compile Include="Indicators\TrigonumCustom\ZScoreLow.cs" />
     <Compile Include="Logging\RequestCounterLogger.cs" />

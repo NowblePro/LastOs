@@ -26,6 +26,12 @@ namespace OsEngine.Indicators.TrigonumCustom
             set { _sma = value; }
         }
 
+        public decimal LastDeviation => _deviation.LastOrDefault();
+
+        public decimal LastStandartDeviation { get; private set; }
+
+        public decimal Mean { get; private set; }
+
         public override void OnProcess(List<Candle> source, int index)
         {
             int i = source.Count - 1;
@@ -43,9 +49,11 @@ namespace OsEngine.Indicators.TrigonumCustom
             }
             int skip = _deviation.Count - _window_sigma.ValueInt;
             decimal avg = _deviation.Skip(skip).Average();
+            Mean = avg / sma;
             decimal sumOfSquares = (decimal)_deviation.Skip(skip).Sum(x => Math.Pow((double)(x - avg), 2));
             decimal variance = sumOfSquares / _window_sigma.ValueInt - 1;
             decimal standartDeviation = (decimal)Math.Sqrt((double)variance);
+            LastStandartDeviation = standartDeviation / sma;
             decimal result = (high - avg) / standartDeviation;
             _seriesZ.Values[i] = result;
         }
