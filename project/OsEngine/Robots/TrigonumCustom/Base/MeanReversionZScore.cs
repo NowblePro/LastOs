@@ -27,6 +27,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private StrategyParameterInt _periodSma;
 
+        private ZScoreGrid _highGrid = new ;
+        private ZScoreGrid _lowGrid = ;
+
         public MeanReversionZScore(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _sma = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma", false);
@@ -115,8 +118,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     class ZScoreGrid
     {
         private decimal _spread = 0.5m;
-        private Dictionary<int, decimal> _zScoreLevels = new Dictionary<int, decimal>();
-        private Dictionary<int, bool> _levelDeal = new Dictionary<int, bool>();
+        private List<ZScoreLevel> _levels = new List<ZScoreLevel>();
+
         public ZScoreGrid(decimal spread, int zScoreReference)
         {
             if (spread == 0) throw new ArgumentException("Шаг z score не может быть равен 0");
@@ -125,22 +128,59 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (levelCount == 0) throw new ArgumentException("Количество уровней z score равно 0");
             for (int i = 0; i < levelCount; i++)
             {
-                _zScoreLevels.Add(i, spread * (i + 1));
-                _levelDeal.Add(i, false);
+                _levels.Add(new ZScoreLevel(spread * (i + 1), i));
             }
         }
 
-        public bool IsLevelDeal(decimal currentZSore)
+        public bool CheckDeal(decimal currentZScore)
         {
             bool result = false;
+            IEnumerable<ZScoreLevel> levels = _levels.Where(l => !l.IsDealed && l.CheckDeal(currentZScore));
+            return result;
+        }
 
-            for (int i = 0; i < _levelDeal.Count; i++)
+        public void Deal(decimal currentZScore, Position position)
+        {
+            IEnumerable<ZScoreLevel> levels = _levels.Where(l => !l.IsDealed && l.CheckDeal(currentZScore));
+            int maxIndex = levels.Max(l => l.Index);
+            ZScoreLevel maxLevel = levels.Where(l => l.Index == maxIndex).Single();
+            maxLevel.Deal(position);
+            foreach (ZScoreLevel level in levels)
             {
-                if (_levelDeal[i]) continue;
-                decimal zScore = _zScoreLevels[i];
+                level.Deal();
+            }
+        }
+
+        class ZScoreLevel
+        {
+            private decimal _level = 0;
+            private bool _deal = false;
+            private int _index;
+            private Position _position = null;
+
+            public ZScoreLevel(decimal level, int index)
+            {
+                _level = level;
+                _index = index;
             }
 
-            return result;
+            public bool IsDealed => _deal;
+
+            public int Index => _index;
+
+            public Position Position => _position;
+
+            public bool CheckDeal(decimal currentZScore)
+            {
+                return currentZScore >= _level;
+            }
+
+            public void Deal(Position position = null)
+            {
+                if (_deal) throw new Exception("Повторная сделка");
+                _position = position;
+                _deal = true;
+            }
         }
     }
 }
