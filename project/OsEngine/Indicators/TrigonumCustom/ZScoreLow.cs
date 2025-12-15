@@ -31,6 +31,8 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public decimal Mean { get; private set; }
 
+        public bool Ready => _deviation.Count > _window_sigma.ValueInt;
+
         public override void OnProcess(List<Candle> source, int index)
         {
             int i = source.Count - 1;

@@ -8,12 +8,18 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Documents;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
     [Bot("MeanReversionZScore")]
     public class MeanReversionZScore : BotPanelSimple
     {
+        /// <summary>
+        /// Базовый уровень Z Score (который отрисовывается и который является последним уровнем)
+        /// </summary>
+        private int zScoreRef = 3;
+
         private Aindicator _sma;
         private ZScoreLow _zScoreLow;
         private ZScoreHigh _zScoreHigh;
@@ -41,6 +47,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _channel = (ZScoreChannel)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreChannel", name: name + "ZScoreChannel", canDelete: false);
             _channel = (ZScoreChannel)_tab.CreateCandleIndicator(_channel, nameArea: "Prime");
+            _channel.LevelReference = zScoreRef;
             _channel.LowZScore = _zScoreLow;
             _channel.HighZScore = _zScoreHigh;
             _channel.DataSeries[0].Color = Color.Yellow;
@@ -49,6 +56,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             UpdateParameters();
         }
 
+        private decimal SMA => _sma.DataSeries[0].Values.Last();
+
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
             return false;
@@ -56,11 +65,23 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
+            if (!_zScoreHigh.Ready) return false;
+            Candle last = candles.Last();
+            if (SMA > last.Close)
+            {
+
+            }
             return false;
         }
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
+            if (!_zScoreLow.Ready) return false;
+            Candle last = candles.Last();
+            if (SMA < last.Close)
+            {
+
+            }
             return false;
         }
 
@@ -68,7 +89,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             return new List<Func<List<Candle>, bool>>()
             {
-                candles => true
+                candles => _periodSma.ValueInt < candles.Count,
             };
         }
 
@@ -88,6 +109,38 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 parameter.ValueInt = _periodSma.ValueInt;
             }
+        }
+    }
+
+    class ZScoreGrid
+    {
+        private decimal _spread = 0.5m;
+        private Dictionary<int, decimal> _zScoreLevels = new Dictionary<int, decimal>();
+        private Dictionary<int, bool> _levelDeal = new Dictionary<int, bool>();
+        public ZScoreGrid(decimal spread, int zScoreReference)
+        {
+            if (spread == 0) throw new ArgumentException("Шаг z score не может быть равен 0");
+            _spread = spread;
+            int levelCount = (int)(zScoreReference / _spread);
+            if (levelCount == 0) throw new ArgumentException("Количество уровней z score равно 0");
+            for (int i = 0; i < levelCount; i++)
+            {
+                _zScoreLevels.Add(i, spread * (i + 1));
+                _levelDeal.Add(i, false);
+            }
+        }
+
+        public bool IsLevelDeal(decimal currentZSore)
+        {
+            bool result = false;
+
+            for (int i = 0; i < _levelDeal.Count; i++)
+            {
+                if (_levelDeal[i]) continue;
+                decimal zScore = _zScoreLevels[i];
+            }
+
+            return result;
         }
     }
 }

@@ -17,27 +17,29 @@ namespace OsEngine.Indicators.TrigonumCustom
         public ZScoreLow LowZScore { get; set; }
 
         public ZScoreHigh HighZScore { get; set; }
+        public int LevelReference { get; internal set; }
 
         public override void OnProcess(List<Candle> source, int index)
         {
             Candle last = source.Last();
-            decimal avg = LowZScore.SMA.DataSeries[0].Last;
-            decimal deviationLow = Math.Max(0, last.Low - avg);
-            decimal deviationPctLow = avg == 0 ? 0 : deviationLow / avg * 100;
+            decimal avgLow = LowZScore.SMA.DataSeries[0].Last;
+            decimal deviationLow = Math.Max(0, last.Low - avgLow);
+            decimal deviationPctLow = avgLow == 0 ? 0 : deviationLow / avgLow * 100;
             decimal meanLow = LowZScore.Mean;
             decimal standartDeviationLow = LowZScore.LastStandartDeviation;
 
-            decimal dev3PctLow = meanLow + 3 * standartDeviationLow;
-            decimal level3Low = avg * (1 - dev3PctLow);
+            decimal dev3PctLow = meanLow + LevelReference * standartDeviationLow;
+            decimal level3Low = avgLow * (1 - dev3PctLow);
             _channelDataLow.Values[index] = level3Low;
 
-            decimal deviationHigh = Math.Max(0, avg - last.High);
-            decimal deviationPctHigh = avg == 0 ? 0 : deviationHigh / avg * 100;
+            decimal avgHigh = HighZScore.SMA.DataSeries[0].Last;
+            decimal deviationHigh = Math.Max(0, last.High - avgHigh);
+            decimal deviationPctHigh = avgHigh == 0 ? 0 : deviationHigh / avgHigh * 100;
             decimal meanHigh = HighZScore.Mean;
             decimal standartDeviationHigh = HighZScore.LastStandartDeviation;
 
-            decimal dev3PctHigh = meanHigh - 3 * standartDeviationHigh;
-            decimal level3High = avg * (1 - dev3PctHigh);
+            decimal dev3PctHigh = meanHigh + LevelReference * standartDeviationHigh;
+            decimal level3High = avgHigh * (1 + dev3PctHigh);
             _channelDataHigh.Values[index] = level3High;
         }
 
