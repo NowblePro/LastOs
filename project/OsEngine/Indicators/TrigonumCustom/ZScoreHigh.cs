@@ -34,6 +34,8 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public bool Ready => _deviation.Count > _window_sigma.ValueInt;
 
+        public decimal LastValue => _seriesZ.Values.LastOrDefault();
+
         public override void OnProcess(List<Candle> source, int index)
         {
             int i = source.Count - 1;
@@ -77,6 +79,8 @@ namespace OsEngine.Indicators.TrigonumCustom
         }
 
         private void Reset(IIndicator indicator)
-        { }
+        {
+            _deviation.Clear();
+        }
     }
 }

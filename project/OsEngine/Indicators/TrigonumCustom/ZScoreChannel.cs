@@ -17,7 +17,7 @@ namespace OsEngine.Indicators.TrigonumCustom
         public ZScoreLow LowZScore { get; set; }
 
         public ZScoreHigh HighZScore { get; set; }
-        public int LevelReference { get; internal set; }
+        public decimal ZScoreReference { get; internal set; }
 
         public override void OnProcess(List<Candle> source, int index)
         {
@@ -28,7 +28,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             decimal meanLow = LowZScore.Mean;
             decimal standartDeviationLow = LowZScore.LastStandartDeviation;
 
-            decimal dev3PctLow = meanLow + LevelReference * standartDeviationLow;
+            decimal dev3PctLow = meanLow + ZScoreReference * standartDeviationLow;
             decimal level3Low = avgLow * (1 - dev3PctLow);
             _channelDataLow.Values[index] = level3Low;
 
@@ -38,7 +38,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             decimal meanHigh = HighZScore.Mean;
             decimal standartDeviationHigh = HighZScore.LastStandartDeviation;
 
-            decimal dev3PctHigh = meanHigh + LevelReference * standartDeviationHigh;
+            decimal dev3PctHigh = meanHigh + ZScoreReference * standartDeviationHigh;
             decimal level3High = avgHigh * (1 + dev3PctHigh);
             _channelDataHigh.Values[index] = level3High;
         }
