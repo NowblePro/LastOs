@@ -22,6 +22,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterBool _reverseLogic;
         private bool _atrSignal = true;
         private AtrRegime _atrRegime = AtrRegime.Off;
+        AtrDecoration _atrStop;
 
         public NextLevelBot(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -38,10 +39,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             new TakeProfitDecoration(this);
             new StopLossDecoration(this);
             new TrailingStopDecoration(this);
-            AtrDecoration atrStop = new AtrDecoration(this);
-            atrStop.SignalCalculated += AtrStop_AtrStop;
-            atrStop.AtrFilterIsOnChanged += AtrStop_AtrFilterIsOnChanged;
-            _atrRegime = atrStop.AtrRegime;
+            _atrStop = new AtrDecoration(this);
+            _atrStop.SignalCalculated += AtrStop_AtrStop;
+            _atrStop.AtrFilterIsOnChanged += AtrStop_AtrFilterIsOnChanged;
             ParametersChangedByUser();
         }
 
@@ -59,7 +59,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (_atrRegime == AtrRegime.On || _atrRegime == AtrRegime.ExitOnly)
             {
-                if (!_atrSignal)
+                if (_atrSignal)
                 {
                     return true;
                 }
@@ -141,6 +141,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_sma == null) return;
             _sma.ParametersDigit[0].Value = _smaPeriod.ValueInt;
             _sma.Save();
+
+            if (_atrStop != null)
+            {
+                _atrRegime = _atrStop.AtrRegime;
+            }
         }
     }
 }

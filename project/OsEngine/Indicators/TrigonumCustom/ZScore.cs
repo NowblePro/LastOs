@@ -90,6 +90,9 @@ namespace OsEngine.Indicators.TrigonumCustom
         }
 
         private void Reset(IIndicator indicator)
-        { }
+        {
+            _seriesZ.Clear();
+            _seriesSigma.Clear();
+        }
     }
 }
