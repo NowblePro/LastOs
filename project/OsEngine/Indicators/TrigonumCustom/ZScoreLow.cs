@@ -79,7 +79,8 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         private void Reset(IIndicator indicator)
         {
-            _deviation.Clear(); 
+            _deviation.Clear();
+            _seriesZ.Clear();
         }
     }
 }

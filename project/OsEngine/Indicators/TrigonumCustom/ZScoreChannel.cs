@@ -22,25 +22,31 @@ namespace OsEngine.Indicators.TrigonumCustom
         public override void OnProcess(List<Candle> source, int index)
         {
             Candle last = source.Last();
-            decimal avgLow = LowZScore.SMA.DataSeries[0].Last;
-            decimal deviationLow = Math.Max(0, last.Low - avgLow);
-            decimal deviationPctLow = avgLow == 0 ? 0 : deviationLow / avgLow * 100;
-            decimal meanLow = LowZScore.Mean;
-            decimal standartDeviationLow = LowZScore.LastStandartDeviation;
+            if (LowZScore.Ready)
+            {
+                decimal avgLow = LowZScore.SMA.DataSeries[0].Last;
+                decimal deviationLow = Math.Max(0, last.Low - avgLow);
+                decimal deviationPctLow = avgLow == 0 ? 0 : deviationLow / avgLow * 100;
+                decimal meanLow = LowZScore.Mean;
+                decimal standartDeviationLow = LowZScore.LastStandartDeviation;
 
-            decimal dev3PctLow = meanLow + ZScoreReference * standartDeviationLow;
-            decimal level3Low = avgLow * (1 - dev3PctLow);
-            _channelDataLow.Values[index] = level3Low;
+                decimal dev3PctLow = meanLow + ZScoreReference * standartDeviationLow;
+                decimal level3Low = avgLow * (1 - dev3PctLow);
+                _channelDataLow.Values[index] = level3Low;
+            }
+            
+            if (HighZScore.Ready)
+            {
+                decimal avgHigh = HighZScore.SMA.DataSeries[0].Last;
+                decimal deviationHigh = Math.Max(0, last.High - avgHigh);
+                decimal deviationPctHigh = avgHigh == 0 ? 0 : deviationHigh / avgHigh * 100;
+                decimal meanHigh = HighZScore.Mean;
+                decimal standartDeviationHigh = HighZScore.LastStandartDeviation;
 
-            decimal avgHigh = HighZScore.SMA.DataSeries[0].Last;
-            decimal deviationHigh = Math.Max(0, last.High - avgHigh);
-            decimal deviationPctHigh = avgHigh == 0 ? 0 : deviationHigh / avgHigh * 100;
-            decimal meanHigh = HighZScore.Mean;
-            decimal standartDeviationHigh = HighZScore.LastStandartDeviation;
-
-            decimal dev3PctHigh = meanHigh + ZScoreReference * standartDeviationHigh;
-            decimal level3High = avgHigh * (1 + dev3PctHigh);
-            _channelDataHigh.Values[index] = level3High;
+                decimal dev3PctHigh = meanHigh + ZScoreReference * standartDeviationHigh;
+                decimal level3High = avgHigh * (1 + dev3PctHigh);
+                _channelDataHigh.Values[index] = level3High;
+            }
         }
 
         public override void OnStateChange(IndicatorState state)
@@ -62,6 +68,9 @@ namespace OsEngine.Indicators.TrigonumCustom
         }
 
         private void Reset(IIndicator indicator)
-        { }
+        {
+            _channelDataLow.Clear();
+            _channelDataHigh.Clear();
+        }
     }
 }
