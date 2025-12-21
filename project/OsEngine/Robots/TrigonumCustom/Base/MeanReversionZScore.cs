@@ -32,9 +32,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private ZScoreGrid _highGrid;
         private ZScoreGrid _lowGrid;
 
-        AtrDecoration _atrStop;
-        private AtrRegime _atrRegime = AtrRegime.Off;
-        private bool _atrSignal = true;
+        private AtrDecoration _atrStop;
+        private TakeProfitDecoration _takeProfit;
+        private StopLossDecoration _stopLoss;
 
         public MeanReversionZScore(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -66,27 +66,77 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _channel.DataSeries[0].Color = Color.Yellow;
             _channel.Save();
 
-            new TakeProfitDecoration(this);
-            new StopLossDecoration(this);
+            _takeProfit = new TakeProfitDecoration(this, false, "ATR TP Enable");
+            _takeProfit.ActivationPriceFunc = GetTakeProfit;
+
+            _stopLoss = new StopLossDecoration(this, false, "ATR SL Enable");
+            _stopLoss.StopPriceFunc = GetStopLoss;
 
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
             _tab.PositionClosingSuccesEvent += _tab_PositionClosingSuccesEvent;
 
             _atrStop = new AtrDecoration(this);
-            _atrStop.SignalCalculated += AtrStop_SignalCalculated; ;
-            _atrStop.AtrFilterIsOnChanged += AtrStop_AtrFilterIsOnChanged; ;
 
             UpdateParameters();
         }
 
-        private void AtrStop_AtrFilterIsOnChanged(object sender, AtrRegime e)
+        private decimal GetTakeProfit(Position position)
         {
-            _atrRegime = e;
+            decimal result = 0;
+            LiquiditySweep sweep = null;
+            Candle last = _candles.Last();
+            switch (position.Direction)
+            {
+                case Side.Buy:
+                    sweep = currentDivergencePriceBull.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        decimal sl = _candles[sweep.Index2].Low - _smartStopLossOffset.ValueDecimal;
+                        decimal slDelta = Math.Abs(last.Close - sl);
+                        result = last.Close + slDelta * _smartTakeProfitMultiplier.ValueDecimal;
+                    }
+                    break;
+                case Side.Sell:
+                    sweep = currentDivergencePriceBear.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        decimal sl = _candles[sweep.Index2].High + _smartStopLossOffset.ValueDecimal;
+                        decimal slDelta = Math.Abs(sl - last.Close);
+                        result = last.Close - slDelta * _smartTakeProfitMultiplier.ValueDecimal;
+                    }
+                    break;
+                default:
+                    result = _candles.Last().Center;
+                    break;
+            }
+            return result;
         }
 
-        private void AtrStop_SignalCalculated(object sender, bool e)
+        private decimal GetStopLoss(Position position)
         {
-            _atrSignal = e;
+            decimal result = 0;
+            LiquiditySweep sweep = null;
+            switch (position.Direction)
+            {
+                case Side.Buy:
+                    sweep = currentDivergencePriceBull.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        result = _candles[sweep.Index2].Low - _smartStopLossOffset.ValueDecimal;
+                    }
+                    break;
+                case Side.Sell:
+                    sweep = currentDivergencePriceBear.LastOrDefault();
+                    if (sweep != null)
+                    {
+                        result = _candles[sweep.Index2].High + _smartStopLossOffset.ValueDecimal;
+                    }
+                    break;
+                default:
+                    result = _candles.Last().Center;
+                    break;
+            }
+            return result;
         }
 
         private void _tab_PositionClosingSuccesEvent(Position obj)
@@ -130,13 +180,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
         {
-            if (_atrRegime == AtrRegime.On || _atrRegime == AtrRegime.ExitOnly)
-            {
-                if (_atrSignal)
-                {
-                    return true;
-                }
-            }
             return false;
         }
 
@@ -146,10 +189,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 _highGrid.Clear();
             }
-            if ((_atrRegime == AtrRegime.On || _atrRegime == AtrRegime.EntryOnly) && _atrSignal)
-            {
-                return false;
-            }
+
             if (!_zScoreHigh.Ready || _gridPositionType == GridTypePosition.High) return false;
             Candle last = candles.Last();
             if (SMA > last.Close)
@@ -169,10 +209,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 _lowGrid.Clear();
             }
-            if ((_atrRegime == AtrRegime.On || _atrRegime == AtrRegime.EntryOnly) && _atrSignal)
-            {
-                return false;
-            }
+
             if (!_zScoreLow.Ready || _gridPositionType == GridTypePosition.Low) return false;
             Candle last = candles.Last();
             if (SMA < last.Close)
@@ -204,7 +241,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             SetZScoreChannelReference();
             SetSmaPeriod();
             SetGrids();
-            SetAtrRegime();
         }
 
         private void SetGrids()
@@ -235,14 +271,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_sma?.Parameters[0] is IndicatorParameterInt parameter)
             {
                 parameter.ValueInt = _periodSma.ValueInt;
-            }
-        }
-
-        private void SetAtrRegime()
-        {
-            if (_atrStop != null)
-            {
-                _atrRegime = _atrStop.AtrRegime;
             }
         }
     }
