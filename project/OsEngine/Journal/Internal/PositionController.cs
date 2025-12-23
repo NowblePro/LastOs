@@ -1584,6 +1584,7 @@ namespace OsEngine.Journal.Internal
                             return;
                         }
                     }
+                    // hack тут очень редко происходит InvalidOperationException из-за обращение к элементу не из того потока в котором он был создан. Исправить
                     _gridCloseDeal.Rows.Insert(0, GetRow(position));
                 }
                 else

@@ -18,19 +18,24 @@ namespace OsEngine.Common
         private BotTabSimple _tab;
         private BotPanel _bot;
 
-        public TakeProfitDecoration(BotPanel bot, bool fixTake = true, string paramEnableName = "")
+        public TakeProfitDecoration(BotPanel bot, bool fixTake = true, string paramEnableName = "", string tabControlName = "")
         {
             _bot = bot;
             _tab = bot.TabsSimple[0];
             string nameEnable = paramEnableName;
+            string tabName = tabControlName;
             if (string.IsNullOrEmpty(nameEnable))
             {
                 nameEnable = "FixTakeOn";
             }
-            _fixTakeOn = bot.CreateParameter(nameEnable, false, "Base");
+            if (string.IsNullOrEmpty(tabControlName))
+            {
+                tabName = "Base";
+            }
+            _fixTakeOn = bot.CreateParameter(nameEnable, false, tabName);
             if (fixTake)
             {
-                _fixTake = bot.CreateParameter("FixTake", 5m, 1, 30, 1, "Base");
+                _fixTake = bot.CreateParameter("FixTake", 5m, 1, 30, 1, tabName);
             }
             _slippageParam = _bot.Parameters.OfType<StrategyParameterDecimal>().Where(p => p.Name.ToLower() == "slippage").FirstOrDefault();
             _orderTypeParam = _bot.Parameters.OfType<StrategyParameterString>().Where(p => p.Name.ToLower() == "ordertype").FirstOrDefault();

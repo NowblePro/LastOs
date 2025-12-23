@@ -455,6 +455,7 @@
     <Compile Include="Common\UI\SessionEditor.xaml.cs">
       <DependentUpon>SessionEditor.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Common\VolatileStopDecoration.cs" />
     <Compile Include="Entity\AcceptDialogUi.xaml.cs">
       <DependentUpon>AcceptDialogUi.xaml</DependentUpon>
     </Compile>

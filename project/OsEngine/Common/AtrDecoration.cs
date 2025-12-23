@@ -50,9 +50,14 @@ namespace OsEngine.Common
 
         public AtrRegime AtrRegime => (AtrRegime)Enum.Parse(typeof(AtrRegime), _atrRegime.ValueString);
 
+        public decimal CurrentAtr => _ATR.DataSeries[0].Last;
+
+        public bool CancelTPSL { get; set; } = true;
+
         private void _tab_CandleFinishedEvent(List<Candle> candles)
         {
             List<Position> positions = _tab.PositionsOpenAll;
+            if (candles.Count == 0) return;
             decimal lastCandle = candles.Last().Close;
             if ((AtrRegime)Enum.Parse(typeof(AtrRegime), _atrRegime.ValueString) != AtrRegime.Off)
             {
@@ -88,9 +93,11 @@ namespace OsEngine.Common
                         for (int i = 0; i < positions.Count; i++)
                         {
                             Position pos = positions[i];
-
-                            pos.StopOrderIsActiv = false;
-                            pos.ProfitOrderIsActiv = false;
+                            if (CancelTPSL)
+                            {
+                                pos.StopOrderIsActiv = false;
+                                pos.ProfitOrderIsActiv = false;
+                            }
                         }
 
                         _tab.BuyAtStopCancel();
