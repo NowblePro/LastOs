@@ -17,12 +17,25 @@ namespace OsEngine.Common
         private StrategyParameterString _orderTypeParam;
         private BotTabSimple _tab;
         private BotPanel _bot;
-        public StopLossDecoration(BotPanel bot)
+        public StopLossDecoration(BotPanel bot, bool fixStop = true, string paramEnableName = "", string tabControlName = "")
         {
             _bot = bot;
             _tab = bot.TabsSimple[0];
-            _fixStopOn = bot.CreateParameter("FixStopOn", false, "Base");
-            _fixStop = bot.CreateParameter("FixStop", 5m, 1, 30, 1, "Base");
+            string nameEnable = paramEnableName;
+            string tabName = tabControlName;
+            if (string.IsNullOrEmpty(nameEnable))
+            {
+                nameEnable = "FixStopOn";
+            }
+            if (string.IsNullOrEmpty(tabControlName))
+            {
+                tabName = "Base";
+            }
+            _fixStopOn = bot.CreateParameter(nameEnable, false, tabName);
+            if (fixStop)
+            {
+                _fixStop = bot.CreateParameter("FixStop", 5m, 1, 30, 1, tabName);
+            }
             _slippageParam = _bot.Parameters.OfType<StrategyParameterDecimal>().Where(p => p.Name.ToLower() == "slippage").FirstOrDefault();
             _orderTypeParam = _bot.Parameters.OfType<StrategyParameterString>().Where(p => p.Name.ToLower() == "ordertype").FirstOrDefault();
             bot.TabsSimple[0].PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
@@ -37,7 +50,7 @@ namespace OsEngine.Common
             }
         }
 
-        public Func<Side, decimal> StopPriceFunc { get; set; } = null;
+        public Func<Position, decimal> StopPriceFunc { get; set; } = null;
 
         private void _tab_PositionOpeningSuccesEvent(Position position)
         {
@@ -62,7 +75,7 @@ namespace OsEngine.Common
                 {
                     if (StopPriceFunc != null)
                     {
-                        stopPrice = StopPriceFunc.Invoke(position.Direction);
+                        stopPrice = StopPriceFunc.Invoke(position);
                     }
                     else
                     {
@@ -74,7 +87,7 @@ namespace OsEngine.Common
                 {
                     if (StopPriceFunc != null)
                     {
-                        stopPrice = StopPriceFunc.Invoke(position.Direction);
+                        stopPrice = StopPriceFunc.Invoke(position);
                     }
                     else
                     {

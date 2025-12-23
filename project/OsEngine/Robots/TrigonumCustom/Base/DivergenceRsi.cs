@@ -422,11 +422,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             } 
         }
 
-        private decimal GetStopLossPrice(Side side)
+        private decimal GetStopLossPrice(Position position)
         {
             decimal result = 0;
             LiquiditySweep sweep = null;
-            switch (side)
+            switch (position.Direction)
             {
                 case Side.Buy:
                     sweep = currentDivergencePriceBull.LastOrDefault();
@@ -449,12 +449,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             return result;
         }
 
-        private decimal GetTakeProfitPrice(Side side)
+        private decimal GetTakeProfitPrice(Position position)
         {
             decimal result = 0;
             LiquiditySweep sweep = null;
             Candle last = _candles.Last();
-            switch (side)
+            switch (position.Direction)
             {
                 case Side.Buy:
                     sweep = currentDivergencePriceBull.LastOrDefault();
