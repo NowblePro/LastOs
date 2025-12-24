@@ -37,8 +37,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _atrTpMultiplier;
         private StopLossDecoration _stopLoss;
         private StrategyParameterDecimal _atrSlMultiplier;
-
-        private int _positionCountMax = 7;
+        private StrategyParameterDecimal _stopLossLimitPercent;
 
         private GridTypePosition _volatileStopType = GridTypePosition.None;
 
@@ -76,17 +75,38 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _atrTpMultiplier = CreateParameter("ATR TP Multiplier", 1m, 1m, 5m, 0.5m, "ATR");
             _takeProfit.ActivationPriceFunc = GetTakeProfit;
 
+            _stopLossLimitPercent = CreateParameter("Stop Loss Limit Percent", 1m, 1m, 5m, 0.5m, "ATR");
             _stopLoss = new StopLossDecoration(this, false, "ATR SL Enable", "ATR");
             _atrSlMultiplier = CreateParameter("ATR SL Multiplier", 1m, 1m, 5m, 0.5m, "ATR");
             _stopLoss.StopPriceFunc = GetStopLoss;
 
-            _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
+
+            _tab.PositionStartOpeningSuccessEvent += _tab_PositionStartOpeningSuccessEvent;
+            _tab.PositionOpeningFailEvent += _tab_PositionOpeningFailEvent;
 
             _atrStop = new AtrDecoration(this);
             _atrStop.CancelTPSL = false;
 
             VolatileStopDecoration vs = new VolatileStopDecoration(this, VolatileStopHandler);
             UpdateParameters();
+        }
+
+        private void _tab_PositionOpeningFailEvent(Position position)
+        {
+            //_lowGrid.ClearPosition(position);
+            //_highGrid.ClearPosition(position);
+        }
+
+        private void _tab_PositionStartOpeningSuccessEvent(Position obj)
+        {
+            if (_gridPositionType == GridTypePosition.Low)
+            {
+                _lowGrid.Deal(_zScoreLow.LastValue, obj);
+            }
+            else if (_gridPositionType == GridTypePosition.High)
+            {
+                _highGrid.Deal(_zScoreHigh.LastValue, obj);
+            }
         }
 
         private void VolatileStopHandler()
@@ -149,18 +169,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private decimal GetStopLoss(Position position)
         {
+            decimal limit = _stopLossLimitPercent.ValueDecimal / 100m * position.EntryPrice;
             decimal result = 0;
             decimal price = position.EntryPrice;
+            decimal stopLoss = Math.Min(limit, _atrStop.CurrentAtr * _atrSlMultiplier.ValueDecimal);
             switch (position.Direction)
             {
                 case Side.Buy:
-                    result = price - _atrStop.CurrentAtr * _atrSlMultiplier.ValueDecimal;
+                    result = price - stopLoss;
                     break;
                 case Side.Sell:
-                    result = price + _atrStop.CurrentAtr * _atrSlMultiplier.ValueDecimal;
+                    result = price + stopLoss;
                     break;
                 default:
-                    result = price - _atrStop.CurrentAtr * _atrTpMultiplier.ValueDecimal;
+                    result = price - stopLoss;
                     break;
             }
             return result;
@@ -169,17 +191,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         enum GridTypePosition { None, Low, High }
 
         private GridTypePosition _gridPositionType = GridTypePosition.None;
-        private void _tab_PositionOpeningSuccesEvent(Position obj)
-        {
-            if (_gridPositionType == GridTypePosition.Low)
-            {
-                _lowGrid.Deal(_zScoreLow.LastValue, obj);
-            }
-            else if (_gridPositionType == GridTypePosition.High)
-            {
-                _highGrid.Deal(_zScoreHigh.LastValue, obj);
-            }
-        }
 
         private decimal SMA => _sma.DataSeries[0].Values.Last();
 
@@ -193,11 +204,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (!_zScoreHigh.Ready)
             {
                 _highGrid.Clear();
-            }
-
-            if (PositionsCount >= _positionCountMax)
-            {
-                return false;
             }
 
             Candle last = candles.Last();
@@ -227,7 +233,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             
             if (SMA > last.Close)
             {
-                if (_lowGrid.AllPositions.Any(p => p.EntryPrice > last.Close))
+                if (_lowGrid.AllPositions.Any(p => p.EntryPrice < last.Close))
                 {
                     return false;
                 }
@@ -246,11 +252,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (!_zScoreLow.Ready)
             {
                 _lowGrid.Clear();
-            }
-
-            if (PositionsCount >= _positionCountMax)
-            {
-                return false;
             }
 
             Candle last = candles.Last();
@@ -280,7 +281,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (SMA < last.Close)
             {
-                if (_highGrid.AllPositions.Any(p => p.EntryPrice < last.Close))
+                if (_highGrid.AllPositions.Any(p => p.EntryPrice > last.Close))
                 {
                     return false;
                 }
@@ -405,6 +406,16 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
         }
 
+
+        internal void ClearPosition(Position position)
+        {
+            ZScoreLevel level = _levels.Where(l => l.Position == position).FirstOrDefault();
+            if (level != null)
+            {
+                level.Clear();
+            }
+        }
+
         class ZScoreLevel
         {
             BotTabSimple _tab;
@@ -417,6 +428,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 _level = level;
                 _index = index;
+                _tab = tab;
             }
 
             public bool IsActivePosition
@@ -465,7 +477,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 if (position.State == PositionStateType.Open)
                 {
-                    _tab?.CloseAtMarket(position, position.OpenVolume);
+                    _tab.CloseAtMarket(position, position.OpenVolume);
                 }
                 else
                 {
@@ -473,7 +485,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     {
                         if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
                         {
-                            _tab?.Connector.OrderCancel(order);
+                            _tab.Connector.OrderCancel(order);
                         }
                     }
                 }
@@ -484,6 +496,17 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 if (!_deal)
                 {
                     Deal(null);
+                }
+
+                if (Position != null)
+                {
+                    foreach (Order order in Position.OpenOrders)
+                    {
+                        if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
+                        {
+                            _tab.Connector.OrderCancel(order);
+                        }
+                    }
                 }
             }
         }
