@@ -1863,15 +1863,18 @@ namespace OsEngine.OsTrader.Panels.Tab
                 OrderPriceType type = OrderPriceType.Market;
 
                 TimeSpan timeLife = ManualPositionSupport.SecondToOpen;
+                Position result = null;
 
                 if (_connector.MarketOrdersIsSupport)
                 {
-                    return LongCreate(price, volume, type, timeLife, false, TPSLMode);
+                    result = LongCreate(price, volume, type, timeLife, false, TPSLMode);
                 }
                 else
                 {
-                    return BuyAtLimit(volume, price);
+                    result = BuyAtLimit(volume, price);
                 }
+                PositionStartOpeningSuccessEvent?.Invoke(result);
+                return result;
             }
             catch (Exception error)
             {
@@ -1914,8 +1917,9 @@ namespace OsEngine.OsTrader.Panels.Tab
                     SetNewLogMessage(OsLocalization.Trader.Label191, LogMessageType.Error);
                     return null;
                 }
-
-                return LongCreate(priceLimit, volume, OrderPriceType.Limit, ManualPositionSupport.SecondToOpen, false, TPSLMode);
+                Position result = LongCreate(priceLimit, volume, OrderPriceType.Limit, ManualPositionSupport.SecondToOpen, false, TPSLMode);
+                PositionStartOpeningSuccessEvent?.Invoke(result);
+                return result;
             }
             catch (Exception error)
             {
@@ -2750,15 +2754,17 @@ namespace OsEngine.OsTrader.Panels.Tab
                 OrderPriceType type = OrderPriceType.Market;
 
                 TimeSpan timeLife = ManualPositionSupport.SecondToOpen;
-
+                Position result;
                 if (_connector.MarketOrdersIsSupport)
                 {
-                    return ShortCreate(price, volume, type, timeLife, false, TPSLMode);
+                    result = ShortCreate(price, volume, type, timeLife, false, TPSLMode);
                 }
                 else
                 {
-                    return SellAtLimit(volume, price);
+                    result = SellAtLimit(volume, price);
                 }
+                PositionStartOpeningSuccessEvent?.Invoke(result);
+                return result;
             }
             catch (Exception error)
             {
@@ -2799,8 +2805,9 @@ namespace OsEngine.OsTrader.Panels.Tab
                     SetNewLogMessage(OsLocalization.Trader.Label191, LogMessageType.Error);
                     return null;
                 }
-
-                return ShortCreate(priceLimit, volume, OrderPriceType.Limit, ManualPositionSupport.SecondToOpen, false, TPSLMode);
+                Position result = ShortCreate(priceLimit, volume, OrderPriceType.Limit, ManualPositionSupport.SecondToOpen, false, TPSLMode);
+                PositionStartOpeningSuccessEvent?.Invoke(result);
+                return result;
             }
             catch (Exception error)
             {
@@ -6769,6 +6776,8 @@ namespace OsEngine.OsTrader.Panels.Tab
         /// Position successfully closed
         /// </summary>
         public event Action<Position> PositionClosingSuccesEvent;
+
+        public event Action<Position> PositionStartOpeningSuccessEvent;
 
         /// <summary>
         /// Position successfully opened
