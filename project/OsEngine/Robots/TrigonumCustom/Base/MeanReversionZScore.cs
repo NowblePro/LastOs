@@ -41,6 +41,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private GridTypePosition _volatileStopType = GridTypePosition.None;
 
+        private StrategyParameterDecimal _r;
+        private MeanReverseVolumeManager _volumeManager;
+
         public MeanReversionZScore(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
@@ -80,6 +83,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _atrSlMultiplier = CreateParameter("ATR SL Multiplier", 1m, 1m, 5m, 0.5m, "ATR");
             _stopLoss.StopPriceFunc = GetStopLoss;
 
+            _r = CreateParameter("R, %", 1m, 1m, 15m, 1m, "Volume Manager");
+            _volumeManager = new MeanReverseVolumeManager();
+            _volumeManager.GetVolumeFunc = base.GetVolume;
+            _volumeManager.Rounding = GetRounded;
 
             _tab.PositionStartOpeningSuccessEvent += _tab_PositionStartOpeningSuccessEvent;
             _tab.PositionOpeningFailEvent += _tab_PositionOpeningFailEvent;
@@ -89,6 +96,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             VolatileStopDecoration vs = new VolatileStopDecoration(this, VolatileStopHandler);
             UpdateParameters();
+        }
+
+        private decimal GetRounded(decimal volume)
+        {
+            return GetRoundedVolume(_tab, volume);
         }
 
         private void _tab_PositionOpeningFailEvent(Position position)
@@ -214,6 +226,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     _lowGrid.Clear();
                     _gridPositionType = GridTypePosition.None;
+                    _volumeManager.Clear();
                 }
             }
 
@@ -262,6 +275,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     _highGrid.Clear();
                     _gridPositionType = GridTypePosition.None;
+                    _volumeManager.Clear();
                 }
             }
 
@@ -303,6 +317,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             };
         }
 
+        protected override decimal GetVolume(bool getRounded = true)
+        {
+            return _volumeManager.GetNextVolume(getRounded);
+        }
+
         protected override void ParametersChangedByUser()
         {
             UpdateParameters();
@@ -313,6 +332,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             SetZScoreChannelReference();
             SetSmaPeriod();
             SetGrids();
+            SetVolumeManager();
+        }
+
+        private void SetVolumeManager()
+        {
+            if (_volumeManager == null || _r == null) return;
+            _volumeManager.R = _r.ValueDecimal;
         }
 
         private void SetGrids()
@@ -508,6 +534,40 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                     }
                 }
+            }
+        }
+    }
+
+    class MeanReverseVolumeManager
+    {
+        private decimal _r = 0.01m;
+        private decimal _currentVolume;
+
+        public decimal R
+        {
+            get { return _r; }
+            set { _r = value; }
+        }
+
+        public Func<bool, decimal> GetVolumeFunc { get; set; }
+        public Func<decimal, decimal> Rounding { get; set; }
+
+        public void Clear()
+        {
+            _currentVolume = 0;
+        }
+
+        public decimal GetNextVolume(bool getRounded = true)
+        {
+            if (_currentVolume == 0)
+            {
+                _currentVolume = GetVolumeFunc(getRounded);
+                return _currentVolume;
+            }
+            else
+            {
+                _currentVolume = Rounding(_currentVolume * (1 + R / 100m));
+                return _currentVolume;
             }
         }
     }
