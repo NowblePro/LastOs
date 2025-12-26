@@ -377,7 +377,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     {
         private decimal _spread = 0.5m;
         private List<ZScoreLevel> _levels = new List<ZScoreLevel>();
-
+        private BotTabSimple _tab;
         public ZScoreGrid(decimal spread, decimal zScoreReference, BotTabSimple tab)
         {
             if (spread == 0) throw new ArgumentException("Шаг z score не может быть равен 0");
@@ -388,6 +388,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 _levels.Add(new ZScoreLevel(spread * (i + 1), i, tab));
             }
+            _tab = tab;
         }
 
         public bool HasPositions => _levels.Any(l => l.IsActivePosition);
@@ -403,6 +404,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         public void Deal(decimal currentZScore, Position position)
         {
             IEnumerable<ZScoreLevel> levels = _levels.Where(l => !l.IsDealed && l.CheckDeal(currentZScore));
+            if (!levels.Any())
+            {
+                ZScoreLevel.ClosePosition(position, _tab);
+                return;
+            }
             int maxIndex = levels.Max(l => l.Index);
             ZScoreLevel maxLevel = levels.Where(l => l.Index == maxIndex).Single();
             maxLevel.Deal(position);
@@ -495,15 +501,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 _deal = false;
                 if (Position == null) return;
-                ClosePosition(Position);
+                ClosePosition(Position, _tab);
                 _position = null;
             }
 
-            private void ClosePosition(Position position)
+            public static void ClosePosition(Position position, BotTabSimple tab)
             {
                 if (position.State == PositionStateType.Open)
                 {
-                    _tab.CloseAtMarket(position, position.OpenVolume);
+                    tab.CloseAtMarket(position, position.OpenVolume);
                 }
                 else
                 {
@@ -511,7 +517,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     {
                         if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
                         {
-                            _tab.Connector.OrderCancel(order);
+                            tab.Connector.OrderCancel(order);
                         }
                     }
                 }
