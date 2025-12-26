@@ -215,7 +215,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (!_zScoreHigh.Ready)
             {
-                _highGrid.Clear();
+                _highGrid.Reset();
             }
 
             Candle last = candles.Last();
@@ -264,7 +264,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (!_zScoreLow.Ready)
             {
-                _lowGrid.Clear();
+                _lowGrid.Reset();
             }
 
             Candle last = candles.Last();
@@ -430,6 +430,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
         }
 
+        public void Reset()
+        {
+            foreach (ZScoreLevel level in _levels)
+            {
+                level.Reset();
+            }
+        }
+
         public void CancelAll()
         {
             foreach(ZScoreLevel level in _levels)
@@ -502,6 +510,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 _deal = false;
                 if (Position == null) return;
                 ClosePosition(Position, _tab);
+                _position = null;
+            }
+
+            public void Reset()
+            {
+                _deal = false;
                 _position = null;
             }
 
