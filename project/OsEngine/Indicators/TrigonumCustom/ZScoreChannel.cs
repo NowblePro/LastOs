@@ -25,6 +25,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             if (LowZScore.Ready)
             {
                 decimal avgLow = LowZScore.SMA.DataSeries[0].Last;
+                if (avgLow == 0) return;
                 decimal deviationLow = Math.Max(0, last.Low - avgLow);
                 decimal deviationPctLow = avgLow == 0 ? 0 : deviationLow / avgLow * 100;
                 decimal meanLow = LowZScore.Mean;
@@ -38,6 +39,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             if (HighZScore.Ready)
             {
                 decimal avgHigh = HighZScore.SMA.DataSeries[0].Last;
+                if (avgHigh == 0) return;
                 decimal deviationHigh = Math.Max(0, last.High - avgHigh);
                 decimal deviationPctHigh = avgHigh == 0 ? 0 : deviationHigh / avgHigh * 100;
                 decimal meanHigh = HighZScore.Mean;
