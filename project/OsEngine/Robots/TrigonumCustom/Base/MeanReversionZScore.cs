@@ -383,7 +383,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (spread == 0) throw new ArgumentException("Шаг z score не может быть равен 0");
             _spread = spread;
             int levelCount = (int)(zScoreReference / _spread);
-            if (levelCount == 0) throw new ArgumentException("Количество уровней z score равно 0");
+            if (levelCount == 0) levelCount = 1;
             for (int i = 0; i < levelCount; i++)
             {
                 _levels.Add(new ZScoreLevel(spread * (i + 1), i, tab));
