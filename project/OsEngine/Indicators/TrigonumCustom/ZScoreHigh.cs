@@ -47,7 +47,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             {
                 _deviation.Add(high);
             }
-            if (_sma == null || _deviation.Count < _window_sigma.ValueInt)
+            if (_sma == null || _deviation.Count < _window_sigma.ValueInt || (_window_sigma.ValueInt - 1) == 0)
             {
                 return;
             }
@@ -58,6 +58,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             decimal variance = sumOfSquares / _window_sigma.ValueInt - 1;
             decimal standartDeviation = (decimal)Math.Sqrt((double)variance);
             LastStandartDeviation = standartDeviation / sma;
+            if (standartDeviation == 0) return;
             decimal result = (high - avg) / standartDeviation;
             _seriesZ.Values[i] = result;
         }
