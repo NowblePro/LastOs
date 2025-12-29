@@ -1868,12 +1868,12 @@ namespace OsEngine.OsTrader.Panels.Tab
                 if (_connector.MarketOrdersIsSupport)
                 {
                     result = LongCreate(price, volume, type, timeLife, false, TPSLMode);
+                    PositionStartOpeningSuccessEvent?.Invoke(result);
                 }
                 else
                 {
                     result = BuyAtLimit(volume, price);
                 }
-                PositionStartOpeningSuccessEvent?.Invoke(result);
                 return result;
             }
             catch (Exception error)
@@ -2758,12 +2758,13 @@ namespace OsEngine.OsTrader.Panels.Tab
                 if (_connector.MarketOrdersIsSupport)
                 {
                     result = ShortCreate(price, volume, type, timeLife, false, TPSLMode);
+                    PositionStartOpeningSuccessEvent?.Invoke(result);
                 }
                 else
                 {
                     result = SellAtLimit(volume, price);
                 }
-                PositionStartOpeningSuccessEvent?.Invoke(result);
+                
                 return result;
             }
             catch (Exception error)
