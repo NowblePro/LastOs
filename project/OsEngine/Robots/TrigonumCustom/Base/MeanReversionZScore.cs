@@ -404,11 +404,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         public void Deal(decimal currentZScore, Position position)
         {
             IEnumerable<ZScoreLevel> levels = _levels.Where(l => !l.IsDealed && l.CheckDeal(currentZScore));
-            if (!levels.Any())
-            {
-                ZScoreLevel.ClosePosition(position, _tab);
-                return;
-            }
             int maxIndex = levels.Max(l => l.Index);
             ZScoreLevel maxLevel = levels.Where(l => l.Index == maxIndex).Single();
             maxLevel.Deal(position);
