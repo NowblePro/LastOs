@@ -1,4 +1,5 @@
-﻿using OsEngine.Entity;
+﻿using OsEngine.Common;
+using OsEngine.Entity;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -13,9 +14,23 @@ namespace OsEngine.Indicators.TrigonumCustom
     {
         private IndicatorDataSeries _series;
 
+        public Aindicator Sma { get; set; }
+
+        public AtrDecoration Atr { get; set; }
+
+        public decimal AtrMultDev { get; set; }
+
+        private decimal SmaLast => Sma.DataSeries[0].Values.Last();
+
         public override void OnProcess(List<Candle> source, int index)
         {
-
+            decimal price = source.Last().Close;
+            decimal sma = SmaLast;
+            if (sma == 0) return;
+            decimal atr = Atr.CurrentAtr / price;
+            decimal atrMult = AtrMultDev;
+            decimal z = ((Math.Abs(price - sma))/sma) + atr * atrMult;
+            _series.Values[index] = z;
         }
 
         public override void OnStateChange(IndicatorState state)
@@ -29,14 +44,12 @@ namespace OsEngine.Indicators.TrigonumCustom
                 _series = CreateSeries("_series", Color.GreenYellow, IndicatorChartPaintType.Line, true);
                 _series.CanReBuildHistoricalValues = false;
                 _series.ChartPaintType = IndicatorChartPaintType.Line;
-
-                _window_sigma = CreateParameterInt("Window Sigma", 500);
             }
         }
 
         private void Reset(IIndicator indicator)
         {
-            throw new NotImplementedException();
+
         }
     }
 }
