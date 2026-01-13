@@ -15,21 +15,47 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     public class MeanReversion1Fix : BotPanelSimple
     {
         private Aindicator _sma;
+        private Aindicator _ema;
         private AtrDev _atrDev;
 
         private AtrDecoration _atr;
         private StrategyParameterDecimal _atrMultDev;
         private StrategyParameterInt _smaLength;
 
+        private StrategyParameterDecimal _zEnterBaseLong;
+        private StrategyParameterDecimal _zEnterBaseShort;
+        private StrategyParameterInt _periodEma;
+        private StrategyParameterDecimal _spread;
+
+        private StrategyParameterDecimal _atrMult1;
+        private StrategyParameterDecimal _atrMult2;
+
+        private MeanReverseGrid _currentGrid = null;
+
+        private int _gridSize = 7;
+
+        // Ключ уровня, который мы собираемся заполнить при следующем успешном открытии позиции.
+        // -1 означает "не задан".
+        private int _nextGridKeyToFill = -1;
 
         public MeanReversion1Fix(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
             _tab.TPSLMode = TPSLMode.Partial;
+            _periodEma = CreateParameter("EMA period", 200, 100, 300, 1, "Robot");
             _sma = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma", false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, "Prime");
 
+            _ema = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Ema", name: name + "Ema", canDelete: false);
+            _ema = (Aindicator)_tab.CreateCandleIndicator(_ema, nameArea: "Prime");
+            _ema.Save();
+
             _smaLength = CreateParameter("Sma Length", 14, 14, 500, 50, "Robot");
+
+            _zEnterBaseLong = CreateParameter("Z Enter Base Long", -2m, -3m, -1m, 0.1m, "Robot");
+            _zEnterBaseShort = CreateParameter("Z Enter Base Short", 2m, 1m, 3m, 0.1m, "Robot");
+
+            _spread = CreateParameter("Spread", 1m, 0.1m, 1m, 0.1m, "Robot");
 
             _atr = new AtrDecoration(this);
             _atr.CancelTPSL = false;
@@ -40,15 +66,149 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _atrDev.Atr = _atr;
 
             _atrMultDev = CreateParameter("Atr Mult Dev", 1m, 1m, 5m, 0.5m, "Robot");
+            _atrMult1 = CreateParameter("Atr Mult1", 1m, 1m, 5m, 0.5m, "Robot");
+            _atrMult2 = CreateParameter("Atr Mult2", 1m, 1m, 5m, 0.5m, "Robot");
 
             new VolatileStopDecoration(this, VolatileStopHandler);
-
+            _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
             ParametersChangedByUser();
+        }
+
+        private void _tab_PositionOpeningSuccesEvent(Position obj)
+        {
+            if (_currentGrid == null)
+            {
+                decimal atr = _atr.CurrentAtr;
+                _currentGrid = new MeanReverseGrid(obj.EntryPrice, atr * _atrMult2.ValueDecimal, _gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                _nextGridKeyToFill = -1;
+            }
+            else
+            {
+                try
+                {
+                    // Игнорируем позиции противоположного направления
+                    if (obj.Direction != _currentGrid.Direction)
+                    {
+                        return;
+                    }
+
+                    Dictionary<int, decimal> grid = _currentGrid.GetGrid();
+                    Dictionary<int, Position> positions = _currentGrid.GetPositions();
+
+                    // Если в CheckOpen... мы заранее определили ключ уровня для заполнения,
+                    // пытаемся присвоить позицию именно ему.
+                    if (_nextGridKeyToFill != -1 && grid.ContainsKey(_nextGridKeyToFill) && !positions.ContainsKey(_nextGridKeyToFill))
+                    {
+                        _currentGrid.SetPosition(_nextGridKeyToFill, obj);
+
+                        // Удалим (или пометим) прочие уровни, которые удовлетворяли условию открытия
+                        // и находятся "выше" заполненного уровня, чтобы в дальнейшем
+                        // сравнения проходили только для уровней более экстремальных.
+                        List<int> keysToDelete = new List<int>();
+                        decimal selectedValue = grid[_nextGridKeyToFill];
+
+                        if (_currentGrid.Direction == Side.Buy)
+                        {
+                            // Для лонга оставляем только уровни ниже выбранного (меньше по цене).
+                            foreach (var pair in grid)
+                            {
+                                if (pair.Key == _nextGridKeyToFill) continue;
+                                if (pair.Value >= selectedValue && !positions.ContainsKey(pair.Key))
+                                {
+                                    keysToDelete.Add(pair.Key);
+                                }
+                            }
+                        }
+                        else if (_currentGrid.Direction == Side.Sell)
+                        {
+                            // Для шорта оставляем только уровни выше выбранного (больше по цене).
+                            foreach (var pair in grid)
+                            {
+                                if (pair.Key == _nextGridKeyToFill) continue;
+                                if (pair.Value <= selectedValue && !positions.ContainsKey(pair.Key))
+                                {
+                                    keysToDelete.Add(pair.Key);
+                                }
+                            }
+                        }
+
+                        foreach (int key in keysToDelete)
+                        {
+                            _currentGrid.DeleteByKey(key);
+                        }
+
+                        // Сбросим ожидание
+                        _nextGridKeyToFill = -1;
+                        return;
+                    }
+
+                    // fallback: попытаться сопоставить по цене (как раньше), если ключ не задан
+                    const decimal eps = 0.0000001m;
+                    int matchedKey = -1;
+                    decimal bestDiff = decimal.MaxValue;
+
+                    foreach (KeyValuePair<int, decimal> pair in grid)
+                    {
+                        if (positions.ContainsKey(pair.Key))
+                        {
+                            continue;
+                        }
+
+                        decimal diff = Math.Abs(pair.Value - obj.EntryPrice);
+                        if (diff < bestDiff)
+                        {
+                            bestDiff = diff;
+                            matchedKey = pair.Key;
+                        }
+                    }
+
+                    if (matchedKey != -1)
+                    {
+                        _currentGrid.SetPosition(matchedKey, obj);
+
+                        // при необходимости удалить близкие уровни, которые уже "сработали" (по логике выше)
+                        List<int> keysToDelete = new List<int>();
+                        decimal sel = grid[matchedKey];
+
+                        if (_currentGrid.Direction == Side.Buy)
+                        {
+                            foreach (var pair in grid)
+                            {
+                                if (pair.Key == matchedKey) continue;
+                                if (pair.Value >= sel && !positions.ContainsKey(pair.Key))
+                                {
+                                    keysToDelete.Add(pair.Key);
+                                }
+                            }
+                        }
+                        else if (_currentGrid.Direction == Side.Sell)
+                        {
+                            foreach (var pair in grid)
+                            {
+                                if (pair.Key == matchedKey) continue;
+                                if (pair.Value <= sel && !positions.ContainsKey(pair.Key))
+                                {
+                                    keysToDelete.Add(pair.Key);
+                                }
+                            }
+                        }
+
+                        foreach (int key in keysToDelete)
+                        {
+                            _currentGrid.DeleteByKey(key);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                }
+            }
         }
 
         private void VolatileStopHandler()
         {
-            
+
         }
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
@@ -58,11 +218,102 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
+            if (_currentGrid != null && _currentGrid.Direction == Side.Sell) return false;
+
+            if (_currentGrid == null)
+            {
+                decimal z = _atrDev.LastValue;
+                decimal ema = _ema.DataSeries[0].Last;
+                decimal price = candles.Last().Close;
+                decimal atr = _atr.CurrentAtr;
+                if (z < _zEnterBaseLong.ValueDecimal - atr * _atrMult1.ValueDecimal && price > ema)
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                try
+                {
+                    // Логика: ищем незаполненные уровни грида, среди них те, у которых цена свечи ниже значения уровня.
+                    // Если таких уровней несколько — выбираем самый "нижний" (самый маленький price для Buy).
+                    Dictionary<int, decimal> grid = _currentGrid.GetGrid();
+                    Dictionary<int, Position> positions = _currentGrid.GetPositions();
+
+                    decimal price = candles.Last().Close;
+
+                    var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
+                    var candidates = emptyLevels.Where(p => price < p.Value).ToList();
+
+                    if (!candidates.Any())
+                    {
+                        return false;
+                    }
+
+                    // Для Buy выбираем самый нижний уровень (минимальное значение цены)
+                    var target = candidates.OrderBy(p => p.Value).First();
+                    _nextGridKeyToFill = target.Key;
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                    return false;
+                }
+            }
+
             return false;
         }
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
+            if (_currentGrid != null && _currentGrid.Direction == Side.Buy) return false;
+
+            if (_currentGrid == null)
+            {
+                decimal z = _atrDev.LastValue;
+                decimal ema = _ema.DataSeries[0].Last;
+                decimal price = candles.Last().Close;
+                decimal atr = _atr.CurrentAtr;
+                if (z > _zEnterBaseShort.ValueDecimal + atr * _atrMult1.ValueDecimal && price < ema)
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                try
+                {
+                    // Зеркальная логика для шорта:
+                    // ищем незаполненные уровни грида, среди них те, у которых цена свечи выше значения уровня.
+                    // Если таких уровней несколько — выбираем самый "верхний" (максимальное значение цены для Sell).
+                    Dictionary<int, decimal> grid = _currentGrid.GetGrid();
+                    Dictionary<int, Position> positions = _currentGrid.GetPositions();
+
+                    decimal price = candles.Last().Close;
+
+                    var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
+                    var candidates = emptyLevels.Where(p => price > p.Value).ToList();
+
+                    if (!candidates.Any())
+                    {
+                        return false;
+                    }
+
+                    // Для Sell выбираем самый верхний уровень (максимальное значение цены)
+                    var target = candidates.OrderByDescending(p => p.Value).First();
+                    _nextGridKeyToFill = target.Key;
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                    return false;
+                }
+            }
+
             return false;
         }
 

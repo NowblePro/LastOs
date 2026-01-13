@@ -444,6 +444,7 @@
     <Compile Include="Common\CandleMerger.cs" />
     <Compile Include="Common\DivergenceDetector.cs" />
     <Compile Include="Common\ImbalanceDetector.cs" />
+    <Compile Include="Common\MeanReverseGrid.cs" />
     <Compile Include="Common\OrderType.cs" />
     <Compile Include="Common\AtrDecoration.cs" />
     <Compile Include="Common\StopLossDecoration.cs" />

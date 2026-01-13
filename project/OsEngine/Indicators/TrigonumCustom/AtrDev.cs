@@ -22,6 +22,8 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         private decimal SmaLast => Sma.DataSeries[0].Values.Last();
 
+        public decimal LastValue => _series.Values.Last();
+
         public override void OnProcess(List<Candle> source, int index)
         {
             decimal price = source.Last().Close;
