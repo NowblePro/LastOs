@@ -24,11 +24,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private StrategyParameterDecimal _zEnterBaseLong;
         private StrategyParameterDecimal _zEnterBaseShort;
-        private StrategyParameterInt _periodEma;
+        private StrategyParameterInt _emaLength;
         private StrategyParameterDecimal _spread;
 
-        private StrategyParameterDecimal _atrMult1;
-        private StrategyParameterDecimal _atrMult2;
+        private StrategyParameterDecimal _atrMultSpread;
 
         private MeanReverseGrid _currentGrid = null;
 
@@ -42,7 +41,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             _multiplePosition = true;
             _tab.TPSLMode = TPSLMode.Partial;
-            _periodEma = CreateParameter("EMA period", 200, 100, 300, 1, "Robot");
+            _emaLength = CreateParameter("EMA period", 200, 100, 300, 1, "Robot");
             _sma = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma", false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, "Prime");
 
@@ -66,9 +65,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _atrDev.Atr = _atr;
 
             _atrMultDev = CreateParameter("Atr Mult Dev", 1m, 1m, 5m, 0.5m, "Robot");
-            _atrMult1 = CreateParameter("Atr Mult1", 1m, 1m, 5m, 0.5m, "Robot");
-            _atrMult2 = CreateParameter("Atr Mult2", 1m, 1m, 5m, 0.5m, "Robot");
+            _atrMultSpread = CreateParameter("Atr Mult Spread", 1m, 1m, 5m, 0.5m, "Robot");
 
+            new StopLossDecoration(this);
+            new TakeProfitDecoration(this);
             new VolatileStopDecoration(this, VolatileStopHandler);
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
             ParametersChangedByUser();
@@ -79,7 +79,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_currentGrid == null)
             {
                 decimal atr = _atr.CurrentAtr;
-                _currentGrid = new MeanReverseGrid(obj.EntryPrice, atr * _atrMult2.ValueDecimal, _gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                _currentGrid = new MeanReverseGrid(obj.EntryPrice, _spread.ValueDecimal + atr * _atrMultSpread.ValueDecimal, _gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
                 _nextGridKeyToFill = -1;
             }
             else
@@ -141,69 +141,22 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         _nextGridKeyToFill = -1;
                         return;
                     }
-
-                    // fallback: попытаться сопоставить по цене (как раньше), если ключ не задан
-                    const decimal eps = 0.0000001m;
-                    int matchedKey = -1;
-                    decimal bestDiff = decimal.MaxValue;
-
-                    foreach (KeyValuePair<int, decimal> pair in grid)
-                    {
-                        if (positions.ContainsKey(pair.Key))
-                        {
-                            continue;
-                        }
-
-                        decimal diff = Math.Abs(pair.Value - obj.EntryPrice);
-                        if (diff < bestDiff)
-                        {
-                            bestDiff = diff;
-                            matchedKey = pair.Key;
-                        }
-                    }
-
-                    if (matchedKey != -1)
-                    {
-                        _currentGrid.SetPosition(matchedKey, obj);
-
-                        // при необходимости удалить близкие уровни, которые уже "сработали" (по логике выше)
-                        List<int> keysToDelete = new List<int>();
-                        decimal sel = grid[matchedKey];
-
-                        if (_currentGrid.Direction == Side.Buy)
-                        {
-                            foreach (var pair in grid)
-                            {
-                                if (pair.Key == matchedKey) continue;
-                                if (pair.Value >= sel && !positions.ContainsKey(pair.Key))
-                                {
-                                    keysToDelete.Add(pair.Key);
-                                }
-                            }
-                        }
-                        else if (_currentGrid.Direction == Side.Sell)
-                        {
-                            foreach (var pair in grid)
-                            {
-                                if (pair.Key == matchedKey) continue;
-                                if (pair.Value <= sel && !positions.ContainsKey(pair.Key))
-                                {
-                                    keysToDelete.Add(pair.Key);
-                                }
-                            }
-                        }
-
-                        foreach (int key in keysToDelete)
-                        {
-                            _currentGrid.DeleteByKey(key);
-                        }
-                    }
                 }
                 catch (Exception ex)
                 {
                     SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
                 }
             }
+        }
+
+        protected override void CandleFinishedEvent(List<Candle> candles)
+        {
+            if (_currentGrid != null)
+            {
+
+            }
+
+            base.CandleFinishedEvent(candles);
         }
 
         private void VolatileStopHandler()
@@ -226,7 +179,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 decimal ema = _ema.DataSeries[0].Last;
                 decimal price = candles.Last().Close;
                 decimal atr = _atr.CurrentAtr;
-                if (z < _zEnterBaseLong.ValueDecimal - atr * _atrMult1.ValueDecimal && price > ema)
+                if (z < _zEnterBaseLong.ValueDecimal && price > ema)
                 {
                     return true;
                 }
@@ -276,7 +229,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 decimal ema = _ema.DataSeries[0].Last;
                 decimal price = candles.Last().Close;
                 decimal atr = _atr.CurrentAtr;
-                if (z > _zEnterBaseShort.ValueDecimal + atr * _atrMult1.ValueDecimal && price < ema)
+                if (z > _zEnterBaseShort.ValueDecimal && price < ema)
                 {
                     return true;
                 }
@@ -337,10 +290,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
         }
 
+        private void SetEmaParameters()
+        {
+            if (_emaLength == null || _ema == null) return;
+            if (_ema?.Parameters[0] is IndicatorParameterInt parameter)
+            {
+                parameter.ValueInt = _emaLength.ValueInt;
+            }
+        }
+
         protected override void ParametersChangedByUser()
         {
             SetAtrDevParameters();
             SetSmaParameters();
+            SetEmaParameters();
         }
     }
 }
