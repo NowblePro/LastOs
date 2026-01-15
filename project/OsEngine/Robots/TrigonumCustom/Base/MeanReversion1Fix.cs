@@ -26,6 +26,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _zEnterBaseShort;
         private StrategyParameterInt _emaLength;
         private StrategyParameterDecimal _spread;
+        private StrategyParameterBool _emaReverseLogic;
 
         private StrategyParameterDecimal _atrMultSpread;
 
@@ -36,6 +37,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // Ключ уровня, который мы собираемся заполнить при следующем успешном открытии позиции.
         // -1 означает "не задан".
         private int _nextGridKeyToFill = -1;
+
+        // Волатильный стоп
+        private bool _volatileStopActive = false;
+        private Side _volatileStopDirection = Side.Buy;
 
         public MeanReversion1Fix(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -66,6 +71,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _atrMultDev = CreateParameter("Atr Mult Dev", 1m, 1m, 5m, 0.5m, "Robot");
             _atrMultSpread = CreateParameter("Atr Mult Spread", 1m, 1m, 5m, 0.5m, "Robot");
+
+            _emaReverseLogic = CreateParameter("Ema Reverse Logic", false, "Robot");
 
             new StopLossDecoration(this);
             new TakeProfitDecoration(this);
@@ -151,17 +158,135 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
+            // Вызов базовой обработки
+            base.CandleFinishedEvent(candles);
+
             if (_currentGrid != null)
             {
+                try
+                {
+                    if (_tab.PositionsOpenAll.Count == 0)
+                    {
+                        foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
+                        {
+                            Position pos = pair.Value;
+                            if (pos != null)
+                            {
+                                ClosePosition(pos);
+                            }
+                        }
+                        _currentGrid = null;
+                        _nextGridKeyToFill = -1;
+                    }
+                    else
+                    {
+                        // Для открывающихся позиций: если по уровню больше нельзя входить по EMA — отменяем ордер и удаляем уровень
+                        List<int> keysToDelete = new List<int>();
+                        foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
+                        {
+                            int key = pair.Key;
+                            Position pos = pair.Value;
+                            if (pos == null) continue;
 
+                            if (!CanEnterPositionByEma(pos.EntryPrice, pos.Direction))
+                            {
+                                if (pos.State == PositionStateType.Opening)
+                                {
+                                    // отменяем ордера открытия
+                                    foreach (Order order in pos.OpenOrders)
+                                    {
+                                        if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
+                                        {
+                                            try
+                                            {
+                                                _tab.Connector.OrderCancel(order);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                                            }
+                                        }
+                                    }
+
+                                    keysToDelete.Add(key);
+                                }
+                            }
+                        }
+
+                        foreach (int key in keysToDelete)
+                        {
+                            try
+                            {
+                                _currentGrid.DeleteByKey(key);
+                            }
+                            catch (Exception ex)
+                            {
+                                SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                            }
+                        }
+
+                        // Если после удаления уровней не осталось ни одного уровня — сбрасываем грид
+                        if (_currentGrid.GetGrid().Count == 0 || !_currentGrid.GetPositions().Any())
+                        {
+                            // Если нет позиций/уровней - освобождаем грид
+                            bool hasOpenOrOpening = _currentGrid.GetPositions().Any(p => p.Value != null && (p.Value.State == PositionStateType.Open || p.Value.State == PositionStateType.Opening));
+                            if (!hasOpenOrOpening)
+                            {
+                                _currentGrid = null;
+                                _nextGridKeyToFill = -1;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                }
             }
-
-            base.CandleFinishedEvent(candles);
         }
 
         private void VolatileStopHandler()
         {
+            try
+            {
+                if (_currentGrid != null)
+                {
+                    Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
+                    // Закрываем открытые позиции и отменяем ордера открытия
+                    foreach (var pair in positions)
+                    {
+                        Position pos = pair.Value;
+                        if (pos == null) continue;
+
+                        if (pos.State == PositionStateType.Opening)
+                        {
+                            foreach (Order order in pos.OpenOrders)
+                            {
+                                if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
+                                {
+                                    try
+                                    {
+                                        SendNewLogMessage($"Стоп по волатильности отменил ордер от {order.TimeCreate}", Logging.LogMessageType.Trade);
+                                        _tab.Connector.OrderCancel(order);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    _volatileStopActive = true;
+                    _volatileStopDirection = _currentGrid.Direction;
+                }
+            }
+            catch (Exception ex)
+            {
+                SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+            }
         }
 
         protected override bool CheckClosePosition(List<Candle> candles, Position position)
@@ -171,6 +296,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
+            // Если сработал волатильный стоп для Buy - блокируем входы пока условие не снимет стоп
+            if (_volatileStopActive && _volatileStopDirection == Side.Buy)
+            {
+                Candle last = candles.Last();
+                decimal sma = _sma.DataSeries[0].Last;
+                if (sma <= last.High)
+                {
+                    _volatileStopActive = false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
             if (_currentGrid != null && _currentGrid.Direction == Side.Sell) return false;
 
             if (_currentGrid == null)
@@ -179,7 +319,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 decimal ema = _ema.DataSeries[0].Last;
                 decimal price = candles.Last().Close;
                 decimal atr = _atr.CurrentAtr;
-                if (z < _zEnterBaseLong.ValueDecimal && price > ema)
+
+                //SendNewLogMessage($"Debug LongCheck: z={z:F3} price={price:F2} ema={ema:F2}", Logging.LogMessageType.System);
+
+                if (z < _zEnterBaseLong.ValueDecimal && (_emaReverseLogic.ValueBool ? (price < ema) : (price > ema)))
                 {
                     return true;
                 }
@@ -188,8 +331,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 try
                 {
-                    // Логика: ищем незаполненные уровни грида, среди них те, у которых цена свечи ниже значения уровня.
-                    // Если таких уровней несколько — выбираем самый "нижний" (самый маленький price для Buy).
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
@@ -203,7 +344,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         return false;
                     }
 
-                    // Для Buy выбираем самый нижний уровень (минимальное значение цены)
                     var target = candidates.OrderBy(p => p.Value).First();
                     _nextGridKeyToFill = target.Key;
 
@@ -221,6 +361,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
+            // Если сработал волатильный стоп для Sell - блокируем входы пока условие не снимет стоп
+            if (_volatileStopActive && _volatileStopDirection == Side.Sell)
+            {
+                Candle last = candles.Last();
+                decimal sma = _sma.DataSeries[0].Last;
+                if (sma >= last.Low)
+                {
+                    _volatileStopActive = false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
             if (_currentGrid != null && _currentGrid.Direction == Side.Buy) return false;
 
             if (_currentGrid == null)
@@ -229,7 +384,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 decimal ema = _ema.DataSeries[0].Last;
                 decimal price = candles.Last().Close;
                 decimal atr = _atr.CurrentAtr;
-                if (z > _zEnterBaseShort.ValueDecimal && price < ema)
+
+                //SendNewLogMessage($"Debug ShortCheck: z={z:F3} price={price:F2} ema={ema:F2}", Logging.LogMessageType.System);
+
+                if (z > _zEnterBaseShort.ValueDecimal && (_emaReverseLogic.ValueBool ? (price > ema) : (price < ema)))
                 {
                     return true;
                 }
@@ -238,9 +396,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 try
                 {
-                    // Зеркальная логика для шорта:
-                    // ищем незаполненные уровни грида, среди них те, у которых цена свечи выше значения уровня.
-                    // Если таких уровней несколько — выбираем самый "верхний" (максимальное значение цены для Sell).
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
@@ -254,7 +409,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         return false;
                     }
 
-                    // Для Sell выбираем самый верхний уровень (максимальное значение цены)
                     var target = candidates.OrderByDescending(p => p.Value).First();
                     _nextGridKeyToFill = target.Key;
 
@@ -304,6 +458,54 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             SetAtrDevParameters();
             SetSmaParameters();
             SetEmaParameters();
+        }
+
+        private void ClosePosition(Position position)
+        {
+            if (position == null) return;
+
+            if (position.State == PositionStateType.Open)
+            {
+                try
+                {
+                    _tab.CloseAtMarket(position, position.OpenVolume);
+                }
+                catch (Exception ex)
+                {
+                    SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                }
+            }
+            else
+            {
+                foreach (Order order in position.OpenOrders)
+                {
+                    if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
+                    {
+                        try
+                        {
+                            _tab.Connector.OrderCancel(order);
+                        }
+                        catch (Exception ex)
+                        {
+                            SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
+                        }
+                    }
+                }
+            }
+        }
+
+        private bool CanEnterPositionByEma(decimal price, Side side)
+        {
+            if (_ema == null || _ema.DataSeries == null || _ema.DataSeries[0].Values == null || _ema.DataSeries[0].Values.Count == 0) return true;
+            decimal ema = _ema.DataSeries[0].Last;
+            if (side == Side.Buy)
+            {
+                return price > ema;
+            }
+            else
+            {
+                return price < ema;
+            }
         }
     }
 }
