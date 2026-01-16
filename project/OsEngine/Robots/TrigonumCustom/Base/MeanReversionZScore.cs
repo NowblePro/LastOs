@@ -215,7 +215,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (!_zScoreHigh.Ready)
             {
-                _highGrid.Clear();
+                _highGrid.Reset();
             }
 
             Candle last = candles.Last();
@@ -264,7 +264,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (!_zScoreLow.Ready)
             {
-                _lowGrid.Clear();
+                _lowGrid.Reset();
             }
 
             Candle last = candles.Last();
@@ -377,17 +377,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     {
         private decimal _spread = 0.5m;
         private List<ZScoreLevel> _levels = new List<ZScoreLevel>();
-
+        private BotTabSimple _tab;
         public ZScoreGrid(decimal spread, decimal zScoreReference, BotTabSimple tab)
         {
             if (spread == 0) throw new ArgumentException("Шаг z score не может быть равен 0");
             _spread = spread;
             int levelCount = (int)(zScoreReference / _spread);
-            if (levelCount == 0) throw new ArgumentException("Количество уровней z score равно 0");
+            if (levelCount == 0) levelCount = 1;
             for (int i = 0; i < levelCount; i++)
             {
                 _levels.Add(new ZScoreLevel(spread * (i + 1), i, tab));
             }
+            _tab = tab;
         }
 
         public bool HasPositions => _levels.Any(l => l.IsActivePosition);
@@ -421,6 +422,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             foreach (ZScoreLevel level in _levels)
             {
                 level.Clear();
+            }
+        }
+
+        public void Reset()
+        {
+            foreach (ZScoreLevel level in _levels)
+            {
+                level.Reset();
             }
         }
 
@@ -495,15 +504,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 _deal = false;
                 if (Position == null) return;
-                ClosePosition(Position);
+                ClosePosition(Position, _tab);
                 _position = null;
             }
 
-            private void ClosePosition(Position position)
+            public void Reset()
+            {
+                _deal = false;
+                _position = null;
+            }
+
+            public static void ClosePosition(Position position, BotTabSimple tab)
             {
                 if (position.State == PositionStateType.Open)
                 {
-                    _tab.CloseAtMarket(position, position.OpenVolume);
+                    tab.CloseAtMarket(position, position.OpenVolume);
                 }
                 else
                 {
@@ -511,7 +526,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     {
                         if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
                         {
-                            _tab.Connector.OrderCancel(order);
+                            tab.Connector.OrderCancel(order);
                         }
                     }
                 }
