@@ -316,13 +316,37 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_currentGrid != null && _currentGrid.Direction == Side.Sell) return false;
 
+            Candle lastCandle = candles.Last();
+            decimal currentPrice = lastCandle.Close;
+
+            // --- Проверка фильтра по предыдущей цене входа ---
+            if (_currentGrid != null && _currentGrid.GetPositions().Count > 0)
+            {
+                // Получаем последнюю (наиболее экстремальную) позицию по цене
+                var positions = _currentGrid.GetPositions()
+                    .Where(p => p.Value != null && p.Value.State == PositionStateType.Open)
+                    .Select(p => p.Value)
+                    .OrderBy(p => p.EntryPrice) // от меньшей к большей
+                    .ToList();
+
+                if (positions.Count > 0)
+                {
+                    decimal lastEntryPrice = positions.Last().EntryPrice; // самая высокая цена среди открытых — последняя точка входа
+
+                    // Фильтр: следующий вход должен быть ДЕШЕВЛЕ последнего
+                    if (currentPrice >= lastEntryPrice)
+                    {
+                        return false;
+                    }
+                }
+            }
+
             if (_currentGrid == null)
             {
                 decimal z = _atrDev.LastValue;
                 decimal ema = _ema.DataSeries[0].Last;
-                decimal price = candles.Last().Close;
 
-                if (z < _zEnterBaseLong.ValueDecimal && (_emaReverseLogic.ValueBool ? (price < ema) : (price > ema)))
+                if (z < _zEnterBaseLong.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice < ema) : (currentPrice > ema)))
                 {
                     _volumeManager.Clear();
                     return true;
@@ -334,10 +358,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
-                    decimal price = candles.Last().Close;
 
                     var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
-                    var candidates = emptyLevels.Where(p => price < p.Value).ToList();
+                    var candidates = emptyLevels.Where(p => currentPrice < p.Value).ToList();
 
                     if (!candidates.Any())
                     {
@@ -377,15 +400,38 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_currentGrid != null && _currentGrid.Direction == Side.Buy) return false;
 
+            Candle lastCandle = candles.Last();
+            decimal currentPrice = lastCandle.Close;
+
+            // --- Проверка фильтра по предыдущей цене входа ---
+            if (_currentGrid != null && _currentGrid.GetPositions().Count > 0)
+            {
+                var positions = _currentGrid.GetPositions()
+                    .Where(p => p.Value != null && p.Value.State == PositionStateType.Open)
+                    .Select(p => p.Value)
+                    .OrderByDescending(p => p.EntryPrice) // от большей к меньшей
+                    .ToList();
+
+                if (positions.Count > 0)
+                {
+                    decimal lastEntryPrice = positions.Last().EntryPrice; // самая низкая цена — последняя точка входа
+
+                    // Фильтр: следующий вход должен быть ДОРОЖЕ последнего
+                    if (currentPrice <= lastEntryPrice)
+                    {
+                        return false;
+                    }
+                }
+            }
+
             if (_currentGrid == null)
             {
                 decimal z = _atrDev.LastValue;
                 decimal ema = _ema.DataSeries[0].Last;
-                decimal price = candles.Last().Close;
 
-                if (z > _zEnterBaseShort.ValueDecimal && (_emaReverseLogic.ValueBool ? (price > ema) : (price < ema)))
+                if (z > _zEnterBaseShort.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice > ema) : (currentPrice < ema)))
                 {
-                    _volumeManager.Clear(); // ✅ Начинаем с базового объёма
+                    _volumeManager.Clear();
                     return true;
                 }
             }
@@ -395,10 +441,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
-                    decimal price = candles.Last().Close;
 
                     var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
-                    var candidates = emptyLevels.Where(p => price > p.Value).ToList();
+                    var candidates = emptyLevels.Where(p => currentPrice > p.Value).ToList();
 
                     if (!candidates.Any())
                     {
