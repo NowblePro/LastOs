@@ -1594,6 +1594,11 @@ namespace OsEngine.Market.Servers.AstsBridge
             throw new NotImplementedException();
         }
 
+        public IServerParameter GetParameter(string name)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// log manager
         /// менеджер лога

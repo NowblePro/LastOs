@@ -12,6 +12,7 @@ using OsEngine.Language;
 using OsEngine.Logging;
 using OsEngine.Market.Servers.Tester;
 using System.Threading.Tasks;
+using OsEngine.Market.Servers.Entity;
 
 namespace OsEngine.Market.Servers.Optimizer
 {
@@ -22,7 +23,7 @@ namespace OsEngine.Market.Servers.Optimizer
     /// Во время оптимизации для каждого робота разворачивается отдельный экземпляр
     /// со своим потоком
     /// </summary>
-    public class OptimizerServer:IServer
+    public class OptimizerServer : IServer
     {
        /// <summary>
 	   /// constructor
@@ -2240,6 +2241,11 @@ namespace OsEngine.Market.Servers.Optimizer
         }
 
         public List<Candle> GetLastCandleHistory(Security security, TimeFrameBuilder timeFrameBuilder, int candleCount)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IServerParameter GetParameter(string name)
         {
             throw new NotImplementedException();
         }

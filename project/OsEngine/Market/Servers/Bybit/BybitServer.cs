@@ -839,29 +839,60 @@ namespace OsEngine.Market.Servers.Bybit
                     return null;
                 }
 
-                Dictionary<string, object> parametrs = new Dictionary<string, object>();
-                parametrs["category"] = category;
-                parametrs["symbol"] = nameSec.Replace(".P", "");
-                parametrs["interval"] = supported_intervals[Convert.ToInt32(tf.TotalMinutes)];
-                parametrs["start"] = ((DateTimeOffset)timeEnd.AddMinutes(tf.TotalMinutes * -1 * CountToLoad).ToUniversalTime()).ToUnixTimeMilliseconds();
-                parametrs["end"] = ((DateTimeOffset)timeEnd.ToUniversalTime()).ToUnixTimeMilliseconds();
-                parametrs["limit"] = 1000;
+                List<Candle> allCandles = new List<Candle>();
+                DateTime requestEnd = timeEnd;
 
-                JToken JCandles = CreatePublicQuery(parametrs, HttpMethod.Get, "/v5/market/kline");
+                // Максимум за один запрос
+                int batchSize = 500;
 
-                if (JCandles == null)
+                while (allCandles.Count < CountToLoad && requestEnd > DateTime.UtcNow.AddYears(-2))
                 {
-                    return new List<Candle>();
+                    DateTime requestStart = requestEnd.AddMinutes(-tf.TotalMinutes * batchSize);
+
+                    Dictionary<string, object> parametrs = new Dictionary<string, object>();
+                    parametrs["category"] = category;
+                    parametrs["symbol"] = nameSec.Replace(".P", "");
+                    parametrs["interval"] = supported_intervals[Convert.ToInt32(tf.TotalMinutes)];
+                    parametrs["start"] = ((DateTimeOffset)requestStart).ToUnixTimeMilliseconds();
+                    parametrs["end"] = ((DateTimeOffset)requestEnd).ToUnixTimeMilliseconds();
+                    parametrs["limit"] = batchSize;
+
+                    JToken jCandles = CreatePublicQuery(parametrs, HttpMethod.Get, "/v5/market/kline");
+
+                    if (jCandles == null)
+                    {
+                        break;
+                    }
+
+                    List<Candle> newCandles = GetListCandles(jCandles);
+
+                    if (newCandles == null || newCandles.Count == 0)
+                    {
+                        break;
+                    }
+
+                    // Bybit возвращает от новых к старым → добавляем в начало
+                    allCandles.InsertRange(0, newCandles);
+
+                    // Сдвигаем конец на самую старую свечу
+                    requestEnd = newCandles[0].TimeStart.AddMinutes(-tf.TotalMinutes);
+
+                    if (newCandles.Count < batchSize)
+                    {
+                        break;
+                    }
+
+                    // Rate limit
+                    Thread.Sleep(100);
                 }
 
-                List<Candle> candles = GetListCandles(JCandles);
-
-                if (candles == null || candles.Count == 0)
+                // Обрезаем до нужного количества
+                if (allCandles.Count > CountToLoad)
                 {
-                    return null;
+                    allCandles.RemoveRange(0, allCandles.Count - CountToLoad);
                 }
 
-                return GetListCandles(JCandles);
+                return allCandles.Count > 0 ? allCandles : null;
             }
             catch (Exception ex)
             {
