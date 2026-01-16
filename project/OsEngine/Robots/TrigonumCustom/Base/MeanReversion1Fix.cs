@@ -86,7 +86,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_currentGrid == null)
             {
                 decimal atr = _atr.CurrentAtr;
-                _currentGrid = new MeanReverseGrid(obj.EntryPrice, _spread.ValueDecimal + atr * _atrMultSpread.ValueDecimal, _gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                decimal centerPrice = obj.EntryPrice;
+                decimal step = _spread.ValueDecimal + atr * _atrMultSpread.ValueDecimal;
+
+                _currentGrid = new MeanReverseGrid(centerPrice, step, _gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                _currentGrid.SetPosition(0, obj);
                 _nextGridKeyToFill = -1;
             }
             else
