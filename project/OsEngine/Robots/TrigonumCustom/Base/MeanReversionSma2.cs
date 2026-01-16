@@ -210,7 +210,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (_currentGrid == null)
             {
-                _currentGrid = new MeanReverseGrid(obj.EntryPrice, _spread.ValueDecimal, _zScore.CurrentSigma, 7, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                _currentGrid = new MeanReverseGrid(obj.EntryPrice, _spread.ValueDecimal * _zScore.CurrentSigma, 7, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
                 Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                 List<int> keysToDelete = new List<int>();
                 foreach (KeyValuePair<int, decimal> pair in grid)
@@ -380,62 +380,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         protected override void ParametersChangedByUser()
         {
             UpdateParameters();
-        }
-    }
-
-    class MeanReverseGrid
-    {
-        private Side _side;
-        private Dictionary<int, decimal> _grid = new Dictionary<int, decimal>();
-        private Dictionary<int, Position> _positions = new Dictionary<int, Position>();
-        private int _index;
-
-        public MeanReverseGrid(decimal price, decimal spread, decimal sigma, int levelsCount, Side side, int index)
-        {
-            if (levelsCount < 2) throw new Exception("Уровней должно быть хотя бы 2");
-            _side = side;
-            _index = index;
-            decimal delta = spread * sigma;
-            if (side == Side.Buy)
-            {
-                for (int i = 1; i < levelsCount + 1; i++)
-                {
-                    _grid.Add(i, price - delta * i);
-                }
-            }
-            else
-            {
-                for (int i = 1 ; i < levelsCount + 1; i++)
-                {
-                    _grid.Add(i, price + delta * i);
-                }
-            }
-        }
-
-        public Side Direction => _side;
-
-        public int Index => _index;
-
-        public Dictionary<int, decimal> GetGrid()
-        {
-            return _grid;
-        }
-
-        internal void SetPosition(int key, Position position)
-        {
-            _positions.Add(key, position);
-        }
-
-        public Dictionary<int, Position> GetPositions()
-        {
-            return _positions;
-        }
-
-        internal void DeleteByKey(int key)
-        {
-            _grid.Remove(key);
-            // Позиция к этому моменту должна быть закрыта
-            _positions.Remove(key);
         }
     }
 }
