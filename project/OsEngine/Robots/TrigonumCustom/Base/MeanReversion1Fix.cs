@@ -166,6 +166,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
+            ApplySmaFilter(candles);
+
             base.CandleFinishedEvent(candles);
 
             if (_currentGrid != null)
@@ -463,6 +465,38 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
 
             return false;
+        }
+
+        private void ApplySmaFilter(List<Candle> candles)
+        {
+            if (_currentGrid == null) return;
+
+            Candle last = candles.Last();
+            decimal smaValue = _sma.DataSeries[0].Last;
+
+            bool allowNewEntries = false;
+
+            if (_currentGrid.Direction == Side.Buy && last.Close < smaValue)
+            {
+                allowNewEntries = true; // лонг: цена ниже SMA — можно добавлять
+            }
+            else if (_currentGrid.Direction == Side.Sell && last.Close > smaValue)
+            {
+                allowNewEntries = true; // шорт: цена выше SMA — можно добавлять
+            }
+
+            if (!allowNewEntries)
+            {
+                Dictionary<int, decimal> grid = _currentGrid.GetGrid();
+                Dictionary<int, Position> positions = _currentGrid.GetPositions();
+
+                List<int> emptyKeys = grid.Keys.Where(k => !positions.ContainsKey(k)).ToList();
+
+                foreach (int key in emptyKeys)
+                {
+                    _currentGrid.DeleteByKey(key);
+                }
+            }
         }
 
         protected override List<Func<List<Candle>, bool>> GetCheckers()
