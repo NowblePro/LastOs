@@ -21,6 +21,8 @@ using OsEngine.Market.Servers.ZB;
 using OsEngine.Market.Servers.Hitbtc;
 using OsEngine.Market.Servers.InteractiveBrokers;
 using OsEngine.Market.Servers.BitMaxFutures;
+using OsEngine.Language;
+using OsEngine.Market.Servers.Entity;
 
 namespace OsEngine.Entity
 {
@@ -208,6 +210,13 @@ namespace OsEngine.Entity
                         {
                             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                             // NEW STANDART CANDLE SERIES START 2024
+
+                            int candlesToLoad = 500;
+                            if (_server.GetParameter(OsLocalization.Market.ServerParam6) is ServerParameterInt candlesCount)
+                            {
+                                candlesToLoad = candlesCount.Value;
+                            }    
+
                             if (series.CandleCreateMethodType != "Simple" ||
                                 series.TimeFrameSpan.TotalMinutes < 1)
                             {
@@ -216,7 +225,7 @@ namespace OsEngine.Entity
                             }
                             else
                             {
-                                List<Candle> candles = _server.GetLastCandleHistory(series.Security, series.TimeFrameBuilder, 500);
+                                List<Candle> candles = _server.GetLastCandleHistory(series.Security, series.TimeFrameBuilder, candlesToLoad);
 
                                 if (candles != null)
                                 {
