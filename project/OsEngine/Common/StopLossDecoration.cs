@@ -17,6 +17,14 @@ namespace OsEngine.Common
         private StrategyParameterString _orderTypeParam;
         private BotTabSimple _tab;
         private BotPanel _bot;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="bot"></param>
+        /// <param name="fixStop">Если false, тогда стандартная логика фиксированного стопа не будет работать, нужно присвоить <see cref="StopPriceFunc"/> значение.</param>
+        /// <param name="paramEnableName"></param>
+        /// <param name="tabControlName"></param>
         public StopLossDecoration(BotPanel bot, bool fixStop = true, string paramEnableName = "", string tabControlName = "")
         {
             _bot = bot;

@@ -41,6 +41,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private MeanReverseVolumeManager _volumeManager;
 
+        private TakeProfitDecoration _takeProfit;
+        private StrategyParameterDecimal _atrTpMultiplier;
+
+        private StopLossDecoration _stopLoss;
+        private StrategyParameterDecimal _atrSlMultiplier;
+        private StrategyParameterDecimal _stopLossLimitPercent;
+
         public MeanReversion1Fix(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
@@ -82,8 +89,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _volumeManager.Rounding = GetRounded;
 
             // Декорации
-            new StopLossDecoration(this);
-            new TakeProfitDecoration(this);
+            _takeProfit = new TakeProfitDecoration(this, false, "ATR TP Enable", "ATR");
+            _atrTpMultiplier = CreateParameter("ATR TP Multiplier", 1m, 1m, 5m, 0.5m, "ATR");
+            _takeProfit.ActivationPriceFunc = GetTakeProfit;
+
+            _stopLossLimitPercent = CreateParameter("Stop Loss Limit Percent", 1m, 1m, 5m, 0.5m, "ATR");
+            _stopLoss = new StopLossDecoration(this, false, "ATR SL Enable", "ATR");
+            _atrSlMultiplier = CreateParameter("ATR SL Multiplier", 1m, 1m, 5m, 0.5m, "ATR");
+            _stopLoss.StopPriceFunc = GetStopLoss;
+
             new VolatileStopDecoration(this, VolatileStopHandler);
 
             // События
@@ -249,6 +263,46 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
                 }
             }
+        }
+
+        private decimal GetTakeProfit(Position position)
+        {
+            decimal result = 0;
+            decimal price = position.EntryPrice;
+            switch (position.Direction)
+            {
+                case Side.Buy:
+                    result = price + _atr.CurrentAtr * _atrTpMultiplier.ValueDecimal;
+                    break;
+                case Side.Sell:
+                    result = price - _atr.CurrentAtr * _atrTpMultiplier.ValueDecimal;
+                    break;
+                default:
+                    result = price + _atr.CurrentAtr * _atrTpMultiplier.ValueDecimal;
+                    break;
+            }
+            return result;
+        }
+
+        private decimal GetStopLoss(Position position)
+        {
+            decimal limit = _stopLossLimitPercent.ValueDecimal / 100m * position.EntryPrice;
+            decimal result = 0;
+            decimal price = position.EntryPrice;
+            decimal stopLoss = Math.Min(limit, _atr.CurrentAtr * _atrSlMultiplier.ValueDecimal);
+            switch (position.Direction)
+            {
+                case Side.Buy:
+                    result = price - stopLoss;
+                    break;
+                case Side.Sell:
+                    result = price + stopLoss;
+                    break;
+                default:
+                    result = price - stopLoss;
+                    break;
+            }
+            return result;
         }
 
         private void VolatileStopHandler()

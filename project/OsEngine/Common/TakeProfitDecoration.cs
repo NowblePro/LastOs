@@ -18,6 +18,13 @@ namespace OsEngine.Common
         private BotTabSimple _tab;
         private BotPanel _bot;
 
+        /// <summary>
+        /// По умолчанию fix take
+        /// </summary>
+        /// <param name="bot"></param>
+        /// <param name="fixTake">Если false, тогда стандартная логика фиксированного тейка не будет работать, нужно присвоить <see cref="ActivationPriceFunc"/> значение.</param>
+        /// <param name="paramEnableName"></param>
+        /// <param name="tabControlName"></param>
         public TakeProfitDecoration(BotPanel bot, bool fixTake = true, string paramEnableName = "", string tabControlName = "")
         {
             _bot = bot;
