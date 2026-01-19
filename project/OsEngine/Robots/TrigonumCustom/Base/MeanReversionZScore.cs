@@ -28,6 +28,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// Базовый уровень Z Score (который отрисовывается и который является последним уровнем)
         /// </summary>
         private StrategyParameterDecimal _zScoreRef;
+        private decimal _spreadPrev = 0;
+        private decimal _zScoreRefPrev = 0;
 
         private ZScoreGrid _highGrid;
         private ZScoreGrid _lowGrid;
@@ -354,6 +356,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 _lowGrid.Clear();
             }
 
+            if (_spread.ValueDecimal == _spreadPrev && _zScoreRef.ValueDecimal == _zScoreRefPrev)
+            {
+                return;
+            }
+
+            _spreadPrev = _spread.ValueDecimal;
+            _zScoreRefPrev = _zScoreRef.ValueDecimal;
             _highGrid = new ZScoreGrid(_spread.ValueDecimal, _zScoreRef.ValueDecimal, _tab);
             _lowGrid = new ZScoreGrid(_spread.ValueDecimal, _zScoreRef.ValueDecimal, _tab);
         }
