@@ -29,6 +29,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _spread; // шаг по AtrDev для определения уровней
         private StrategyParameterDecimal _atrMultDev;
         private StrategyParameterDecimal _atrMultSpread;
+        private StrategyParameterBool _debugLogging;
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
@@ -64,6 +65,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _spread = CreateParameter("AtrDev Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
             _atrMultDev = CreateParameter("Atr Mult Dev", 1m, 0.1m, 5m, 0.1m, "AtrDev");
             _atrMultSpread = CreateParameter("Atr Mult Spread", 1m, 0.1m, 5m, 0.1m, "Robot");
+            _debugLogging = CreateParameter("Debug Logging", false, "Debug");
 
             // SMA
             _sma = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
@@ -133,6 +135,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             return GetRoundedVolume(_tab, volume);
         }
 
+        private void LogDebug(string message)
+        {
+            if (_debugLogging != null && _debugLogging.ValueBool)
+            {
+                SendNewLogMessage(message, Logging.LogMessageType.System);
+            }
+        }
+
         private void _tab_PositionOpeningSuccesEvent(Position obj)
         {
             if (_currentGrid == null)
@@ -148,6 +158,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 _nextGridKeyToFill = -1;
                 _gridPositionType = obj.Direction == Side.Buy ? GridTypePosition.Low : GridTypePosition.High;
                 _volumeManager.Clear();
+
+                LogDebug($"Grid created dir={obj.Direction} center={centerPrice:F8} step={step:F8} atrDevAtEntry={_lastAtrDevAtEntry:F8}");
             }
             else
             {
@@ -161,6 +173,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     if (_nextGridKeyToFill != -1 && grid.ContainsKey(_nextGridKeyToFill) && !positions.ContainsKey(_nextGridKeyToFill))
                     {
                         _currentGrid.SetPosition(_nextGridKeyToFill, obj);
+
+                        LogDebug($"Position set to grid key {_nextGridKeyToFill} price={grid[_nextGridKeyToFill]:F8} dir={obj.Direction}");
 
                         // Удаляем "пропущенные" менее экстремальные уровни
                         List<int> keysToDelete = new List<int>();
@@ -187,6 +201,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                                     keysToDelete.Add(pair.Key);
                                 }
                             }
+                        }
+
+                        if (keysToDelete.Count > 0)
+                        {
+                            LogDebug($"Deleting non-extreme keys after fill: {string.Join(",", keysToDelete)}");
                         }
 
                         foreach (int key in keysToDelete)
@@ -224,6 +243,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                                 ClosePosition(pos);
                             }
                         }
+                        LogDebug("All positions closed - resetting grid");
                         _currentGrid = null;
                         _nextGridKeyToFill = -1;
                         _gridPositionType = GridTypePosition.None;
@@ -263,6 +283,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             }
                         }
 
+                        if (keysToDelete.Count > 0)
+                        {
+                            LogDebug($"CandleFinished: cancelling opening orders and deleting keys: {string.Join(",", keysToDelete)}");
+                        }
+
                         foreach (int key in keysToDelete)
                         {
                             try
@@ -280,6 +305,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             bool hasOpenOrOpening = _currentGrid.GetPositions().Any(p => p.Value != null && (p.Value.State == PositionStateType.Open || p.Value.State == PositionStateType.Opening));
                             if (!hasOpenOrOpening)
                             {
+                                LogDebug("No open or opening positions left - clearing grid");
                                 _currentGrid = null;
                                 _nextGridKeyToFill = -1;
                                 _gridPositionType = GridTypePosition.None;
@@ -362,6 +388,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _volatileStopActive = true;
                     _volatileStopDirection = _currentGrid.Direction;
                     _volumeManager.Clear();
+
+                    LogDebug($"VolatileStopHandler fired for direction {_volatileStopDirection}");
                 }
             }
             catch (Exception ex)
@@ -387,6 +415,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 if (sma <= last.High)
                 {
                     _volatileStopActive = false;
+                    LogDebug("Volatile stop cleared for Buy");
                 }
                 else
                 {
@@ -419,6 +448,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     if (z >= _zEnterBase.ValueDecimal)
                     {
                         _volumeManager.Clear();
+                        LogDebug($"Long first-entry check: price={price:F8} sma={smaValue:F8} zLow={z:F8} threshold={_zEnterBase.ValueDecimal:F8}");
+                        LogDebug("Long first-entry condition satisfied -> returning true");
                         return true;
                     }
                 }
@@ -450,6 +481,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                     }
 
+                    LogDebug($"Long grid: priceCandidates={priceCandidates.Count} atrCandidates={atrCandidates.Count} currAtrDev={currAtrDev:F8} lastAtrDevAtEntry={_lastAtrDevAtEntry:F8}");
+
                     if (!atrCandidates.Any())
                     {
                         // доп. правило: если price опустилась ниже предыдущего входа — разрешаем вход
@@ -461,6 +494,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             {
                                 var target = priceCandidates.OrderBy(p => p.Value).First();
                                 _nextGridKeyToFill = target.Key;
+                                LogDebug($"Long fallback by price below last entry: _nextGridKeyToFill={_nextGridKeyToFill}");
                                 return true;
                             }
                         }
@@ -473,12 +507,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     {
                         int maxIdx = atrCandidates.Max(a => a.Key);
                         _nextGridKeyToFill = maxIdx;
+                        LogDebug($"Long large-delta pick maxIdx={maxIdx} delta={delta:F8}");
                         return true;
                     }
                     else
                     {
                         int idx = atrCandidates.Min(a => a.Key);
                         _nextGridKeyToFill = idx;
+                        LogDebug($"Long normal pick idx={idx} delta={delta:F8}");
                         return true;
                     }
                 }
@@ -501,6 +537,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 if (sma >= last.Low)
                 {
                     _volatileStopActive = false;
+                    LogDebug("Volatile stop cleared for Sell");
                 }
                 else
                 {
@@ -531,6 +568,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     if (z >= _zEnterBase.ValueDecimal)
                     {
                         _volumeManager.Clear();
+                        LogDebug($"Short first-entry check: price={price:F8} sma={smaValue:F8} zHigh={z:F8} threshold={_zEnterBase.ValueDecimal:F8}");
+                        LogDebug("Short first-entry condition satisfied -> returning true");
                         return true;
                     }
                 }
@@ -561,6 +600,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                     }
 
+                    LogDebug($"Short grid: priceCandidates={priceCandidates.Count} atrCandidates={atrCandidates.Count} currAtrDev={currAtrDev:F8} lastAtrDevAtEntry={_lastAtrDevAtEntry:F8}");
+
                     if (!atrCandidates.Any())
                     {
                         // доп. правило: если price выше предыдущего входа => вход
@@ -572,6 +613,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             {
                                 var target = priceCandidates.OrderByDescending(p => p.Value).First();
                                 _nextGridKeyToFill = target.Key;
+                                LogDebug($"Short fallback by price above last entry: _nextGridKeyToFill={_nextGridKeyToFill}");
                                 return true;
                             }
                         }
@@ -584,12 +626,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     {
                         int maxIdx = atrCandidates.Max(a => a.Key);
                         _nextGridKeyToFill = maxIdx;
+                        LogDebug($"Short large-delta pick maxIdx={maxIdx} delta={delta:F8}");
                         return true;
                     }
                     else
                     {
                         int idx = atrCandidates.Max(a => a.Key);
                         _nextGridKeyToFill = idx;
+                        LogDebug($"Short normal pick idx={idx} delta={delta:F8}");
                         return true;
                     }
                 }
@@ -696,6 +740,5 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
         }
     }
-
-    enum GridTypePosition { None, Low, High }
 }
+enum GridTypePosition { None, Low, High }
