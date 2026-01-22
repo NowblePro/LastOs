@@ -38,7 +38,8 @@ namespace OsEngine.Indicators.TrigonumCustom
             decimal atr = Atr.CurrentAtr / price;
             decimal atrMult = AtrMultDev;
             int sign = Math.Sign(price - sma);
-            decimal z = ((price - sma)/sma) * (OnlyPositive ? sign : 1) + (atr * atrMult) * sign;
+            decimal z = ((price - sma)/sma) *   (OnlyPositive ? sign : 1)
+                            + (atr * atrMult) * (OnlyPositive ? 1 : sign);
             _series.Values[index] = z;
         }
 
