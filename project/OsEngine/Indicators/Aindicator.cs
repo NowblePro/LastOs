@@ -1,13 +1,14 @@
 ﻿/*
  * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
- *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
-*/
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+ */
 
+using OsEngine.Entity;
+using OsEngine.Logging;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using OsEngine.Entity;
 
 namespace OsEngine.Indicators
 {
@@ -530,42 +531,42 @@ namespace OsEngine.Indicators
         {
             //lock (_indicatorUpdateLocker)
             //{
-                if (candles.Count == 0)
-                {
-                    return;
-                }
+            if (candles.Count == 0)
+            {
+                return;
+            }
 
-                if (DataSeries == null || DataSeries.Count == 0)
-                {
-                    return;
-                }
+            if (DataSeries == null || DataSeries.Count == 0)
+            {
+                return;
+            }
 
-                if (_myCandles == null ||
+            if (_myCandles == null ||
                 candles.Count < _myCandles.Count ||
                 candles.Count > _myCandles.Count + 1 ||
                 (_lastFirstCandle != null && _lastFirstCandle.TimeStart != candles[0].TimeStart))
+            {
+                ProcessAll(candles);
+            }
+            else if (candles.Count < DataSeries[0].Values.Count)
+            {
+                foreach (var ds in DataSeries)
                 {
-                    ProcessAll(candles);
+                    ds.Values.Clear();
                 }
-                else if (candles.Count < DataSeries[0].Values.Count)
-                {
-                    foreach (var ds in DataSeries)
-                    {
-                        ds.Values.Clear();
-                    }
-                    ProcessAll(candles);
-                }
-                else if (_myCandles.Count == candles.Count)
-                {
-                    ProcessLast(candles);
-                }
-                else if (_myCandles.Count + 1 == candles.Count)
-                {
-                    ProcessNew(candles, candles.Count - 1);
-                }
+                ProcessAll(candles);
+            }
+            else if (_myCandles.Count == candles.Count)
+            {
+                ProcessLast(candles);
+            }
+            else if (_myCandles.Count + 1 == candles.Count)
+            {
+                ProcessNew(candles, candles.Count - 1);
+            }
 
-                _myCandles = candles;
-                _lastFirstCandle = candles[0];
+            _myCandles = candles;
+            _lastFirstCandle = candles[0];
             //}
         }
 
@@ -693,22 +694,22 @@ namespace OsEngine.Indicators
         {
             //lock (_indicatorUpdateLocker)
             //{
-                if (_myCandles == null)
-                {
-                    return;
-                }
+            if (_myCandles == null)
+            {
+                return;
+            }
 
-                if (NeedToResetDataEvent != null)
-                {
-                    NeedToResetDataEvent(this);
-                }
+            if (NeedToResetDataEvent != null)
+            {
+                NeedToResetDataEvent(this);
+            }
 
-                ProcessAll(_myCandles);
+            ProcessAll(_myCandles);
 
-                if (NeedToReloadEvent != null)
-                {
-                    NeedToReloadEvent(this);
-                }
+            if (NeedToReloadEvent != null)
+            {
+                NeedToReloadEvent(this);
+            }
             //}
         }
 
@@ -725,24 +726,24 @@ namespace OsEngine.Indicators
             // Lock for optimization
             //lock (_indicatorUpdateLocker)
             //{
-                if (values.Count == 0)
-                {
-                    return;
-                }
-                if (_myCandles == null ||
-                    values.Count < _myCandles.Count ||
-                    values.Count > _myCandles.Count + 1)
-                {
-                    ProcessAll(values);
-                }
-                else if (_myCandles.Count == values.Count)
-                {
-                    ProcessLast(values);
-                }
-                else if (_myCandles.Count + 1 == values.Count)
-                {
-                    ProcessNew(values, values.Count);
-                }
+            if (values.Count == 0)
+            {
+                return;
+            }
+            if (_myCandles == null ||
+                values.Count < _myCandles.Count ||
+                values.Count > _myCandles.Count + 1)
+            {
+                ProcessAll(values);
+            }
+            else if (_myCandles.Count == values.Count)
+            {
+                ProcessLast(values);
+            }
+            else if (_myCandles.Count + 1 == values.Count)
+            {
+                ProcessNew(values, values.Count);
+            }
             //}
         }
 
@@ -871,6 +872,35 @@ namespace OsEngine.Indicators
         }
 
         #endregion
+
+        // ***********************************************************************
+        // ДОБАВЛЕНО: Поддержка логирования в индикаторах
+        // ***********************************************************************
+
+        /// <summary>
+        /// Event for sending log messages from the indicator
+        /// </summary>
+        public event Action<string, LogMessageType> LogMessageEvent;
+
+        /// <summary>
+        /// Send a log message if the event is connected
+        /// </summary>
+        /// <param name="message">Message text</param>
+        /// <param name="type">Message type</param>
+        protected void SendNewLogMessage(string message, LogMessageType type)
+        {
+            if (LogMessageEvent != null)
+            {
+                try
+                {
+                    LogMessageEvent(message, type);
+                }
+                catch
+                {
+                    // Ignore exceptions in logging
+                }
+            }
+        }
     }
 
     public enum IndicatorState
