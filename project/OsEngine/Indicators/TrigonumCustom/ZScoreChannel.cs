@@ -1,10 +1,12 @@
 ﻿using OsEngine.Entity;
+using OsEngine.Logging;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Tinkoff.InvestApi.V1.GetTechAnalysisRequest.Types;
 
 namespace OsEngine.Indicators.TrigonumCustom
 {
@@ -18,57 +20,54 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public ZScoreHigh HighZScore { get; set; }
         public decimal ZScoreReference { get; internal set; }
-
+        int lastCount = -1;
+        private DateTime _firstCandleTime = DateTime.MinValue;
         public override void OnProcess(List<Candle> source, int index)
         {
+            if (_firstCandleTime == DateTime.MinValue)
+            {
+                _firstCandleTime = source[0].TimeStart;
+            }
+            else if (source[0].TimeStart != _firstCandleTime)
+            {
+                lastIndex = -1;
+                _firstCandleTime = source[0].TimeStart;
+            }
+
             for (int i = lastIndex + 1; i < source.Count; i++)
             {
-                Candle last = source[i];
+                Candle candle = source[i];
+                DateTime time = candle.TimeStart;
+
                 if (LowZScore.Ready)
                 {
                     decimal avgLow = LowZScore.SMA.DataSeries[0].Values[i];
                     if (avgLow == 0) continue;
-                    decimal deviationLow = Math.Max(0, last.Low - avgLow);
-                    decimal deviationPctLow = avgLow == 0 ? 0 : deviationLow / avgLow * 100;
-                    decimal meanLow;
-                    if (LowZScore.Means.ContainsKey(i))
-                    {
-                        meanLow = LowZScore.Means[i];
-                    }
+                    decimal deviationLow = Math.Max(0, candle.Low - avgLow);
+                    decimal deviationPctLow = avgLow == 0 ? 0 : deviationLow / avgLow;
+
+                    decimal meanLow = 0;
+                    decimal stdLow = 0;
+
+                    if (LowZScore.Means.TryGetValue(time, out decimal mLow))
+                        meanLow = mLow;
                     else
                     {
-                        var lower = LowZScore.Means.Keys.Where(k => k < i);
-                        if (lower.Any())
-                        {
-                            int maxIndexMean = lower.Max();
-                            meanLow = LowZScore.Means[maxIndexMean];
-                        }
-                        else
-                        {
-                            meanLow = 0;
-                        }
+                        var earlier = LowZScore.Means.Keys.Where(t => t < time).OrderByDescending(t => t).FirstOrDefault();
+                        if (earlier != default)
+                            meanLow = LowZScore.Means[earlier];
                     }
-                    //decimal standartDeviationLow = LowZScore.LastStandartDeviation;
-                    decimal standartDeviationLow;
-                    if (LowZScore.AllDeviations.ContainsKey(i))
-                    {
-                        standartDeviationLow = LowZScore.AllDeviations[i];
-                    }
+
+                    if (LowZScore.AllDeviations.TryGetValue(time, out decimal sLow))
+                        stdLow = sLow;
                     else
                     {
-                        var lower = LowZScore.AllDeviations.Keys.Where(k => k < i);
-                        if (lower.Any())
-                        {
-                            int stdIndex = lower.Max();
-                            standartDeviationLow = LowZScore.AllDeviations[stdIndex];
-                        }
-                        else
-                        {
-                            standartDeviationLow = 0;
-                        }
-                            
+                        var earlier = LowZScore.AllDeviations.Keys.Where(t => t < time).OrderByDescending(t => t).FirstOrDefault();
+                        if (earlier != default)
+                            stdLow = LowZScore.AllDeviations[earlier];
                     }
-                    decimal dev3PctLow = meanLow + ZScoreReference * standartDeviationLow;
+
+                    decimal dev3PctLow = meanLow + ZScoreReference * stdLow;
                     decimal level3Low = avgLow * (1 - dev3PctLow);
                     _channelDataLow.Values[i] = level3Low;
                 }
@@ -77,53 +76,39 @@ namespace OsEngine.Indicators.TrigonumCustom
                 {
                     decimal avgHigh = HighZScore.SMA.DataSeries[0].Values[i];
                     if (avgHigh == 0) continue;
-                    decimal deviationHigh = Math.Max(0, last.High - avgHigh);
-                    decimal deviationPctHigh = avgHigh == 0 ? 0 : deviationHigh / avgHigh * 100;
-                    decimal meanHigh;
-                    if (HighZScore.Means.ContainsKey(i))
-                    {
-                        meanHigh = HighZScore.Means[i];
-                    }
+                    decimal deviationHigh = Math.Max(0, candle.High - avgHigh);
+                    decimal deviationPctHigh = avgHigh == 0 ? 0 : deviationHigh / avgHigh;
+
+                    decimal meanHigh = 0;
+                    decimal stdHigh = 0;
+
+                    if (HighZScore.Means.TryGetValue(time, out decimal mHigh))
+                        meanHigh = mHigh;
                     else
                     {
-                        var lower = HighZScore.Means.Keys.Where(k => k < i);
-                        if (lower.Any())
-                        {
-                            int maxIndexMean = lower.Max();
-                            meanHigh = HighZScore.Means[maxIndexMean];
-                        }
-                        else
-                        {
-                            meanHigh = 0;
-                        }
-                            
-                    }
-                    //decimal standartDeviationHigh = HighZScore.LastStandartDeviation;
-                    decimal standartDeviationHigh;
-                    if (HighZScore.AllDeviations.ContainsKey(i))
-                    {
-                        standartDeviationHigh = HighZScore.AllDeviations[i];
-                    }
-                    else
-                    {
-                        var lower = HighZScore.AllDeviations.Keys.Where(k => k < i);
-                        if (lower.Any())
-                        {
-                            int stdIndex = lower.Max();
-                            standartDeviationHigh = HighZScore.AllDeviations[stdIndex];
-                        }
-                        else
-                        {
-                            standartDeviationHigh = 0;
-                        }
+                        var earlier = HighZScore.Means.Keys.Where(t => t < time).OrderByDescending(t => t).FirstOrDefault();
+                        if (earlier != default)
+                            meanHigh = HighZScore.Means[earlier];
                     }
 
-                    decimal dev3PctHigh = meanHigh + ZScoreReference * standartDeviationHigh;
+                    if (HighZScore.AllDeviations.TryGetValue(time, out decimal sHigh))
+                        stdHigh = sHigh;
+                    else
+                    {
+                        var earlier = HighZScore.AllDeviations.Keys.Where(t => t < time).OrderByDescending(t => t).FirstOrDefault();
+                        if (earlier != default)
+                            stdHigh = HighZScore.AllDeviations[earlier];
+                    }
+
+                    decimal dev3PctHigh = meanHigh + ZScoreReference * stdHigh;
                     decimal level3High = avgHigh * (1 + dev3PctHigh);
                     _channelDataHigh.Values[i] = level3High;
                 }
+
                 lastIndex = i;
             }
+
+            lastCount = source.Count;
         }
 
         public override void OnStateChange(IndicatorState state)
@@ -149,6 +134,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             _channelDataLow.Clear();
             _channelDataHigh.Clear();
             lastIndex = -1;
+            SendNewLogMessage("ZScoreChannel: сброс состояния", LogMessageType.System);
         }
     }
 }
