@@ -443,6 +443,7 @@
     <Compile Include="Charts\Extensions.cs" />
     <Compile Include="Common\CandleMerger.cs" />
     <Compile Include="Common\DivergenceDetector.cs" />
+    <Compile Include="Common\FairPriceDecoration.cs" />
     <Compile Include="Common\ImbalanceDetector.cs" />
     <Compile Include="Common\MeanReverseGrid.cs" />
     <Compile Include="Common\MeanReverseVolumeManager.cs" />
@@ -1424,6 +1425,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversion1Fix.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversionZScore.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MRZScoreAtrRR.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\NextLevelBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\CoinGlass\BreakHighLowByAdxRsiCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\DivergenceRsi.cs" />
