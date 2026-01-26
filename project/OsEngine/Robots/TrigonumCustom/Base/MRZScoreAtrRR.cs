@@ -45,12 +45,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         // TP/SL и volume manager
         private TakeProfitDecoration _takeProfit;
-        private StrategyParameterDecimal _atrTpMultiplier;
         private StopLossDecoration _stopLoss;
         private StrategyParameterDecimal _atrSlMultiplier;
         private StrategyParameterDecimal _stopLossLimitPercent;
 
         private StrategyParameterDecimal _r;
+        private StrategyParameterDecimal _rr;
         private MeanReverseVolumeManager _volumeManager;
 
         // FairPrice Stop
@@ -69,7 +69,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _gridSize = CreateParameter("Grid Size", 7, 3, 20, 1, "Robot");
             _spread = CreateParameter("AtrDev Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
             _atrMultDev = CreateParameter("Atr Mult Dev", 1m, 0.1m, 5m, 0.1m, "AtrDev");
-            _atrMultSpread = CreateParameter("Atr Mult Spread", 1m, 0.1m, 5m, 0.1m, "Robot");
+            _atrMultSpread = CreateParameter("Atr Mult Spread", 1m, 0.1m, 5m, 0.1m, "ATR");
             _debugLogging = CreateParameter("Debug Logging", false, "Debug");
 
             // SMA
@@ -108,8 +108,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             // TP/SL
             _takeProfit = new TakeProfitDecoration(this, false, "ATR TP Enable", "ATR");
-            _atrTpMultiplier = CreateParameter("ATR TP Multiplier", 1m, 0.5m, 5m, 0.5m, "ATR");
             _takeProfit.ActivationPriceFunc = GetTakeProfit;
+            _rr = CreateParameter("Take RR", 3m, 0.5m, 10m, 0.5m, "ATR");
 
             _stopLossLimitPercent = CreateParameter("Stop Loss Limit Percent", 1m, 1m, 10m, 1m, "ATR");
             _stopLoss = new StopLossDecoration(this, false, "ATR SL Enable", "ATR");
@@ -328,16 +328,25 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private decimal GetTakeProfit(Position position)
         {
-            decimal price = position.EntryPrice;
-            if (_atr == null) return price;
+            // Получаем стоп-лосс (в цене)
+            decimal stopLossPrice = GetStopLoss(position);
+            decimal entry = position.EntryPrice;
+
+            // Вычисляем расстояние стопа в пунктах
+            decimal stopDistance = Math.Abs(entry - stopLossPrice);
+
+            // Умножаем на RR
+            decimal takeDistance = stopDistance * _rr.ValueDecimal;
+
+            // Применяем в зависимости от направления
             switch (position.Direction)
             {
                 case Side.Buy:
-                    return price + _atr.CurrentAtr * _atrTpMultiplier.ValueDecimal;
+                    return entry + takeDistance;
                 case Side.Sell:
-                    return price - _atr.CurrentAtr * _atrTpMultiplier.ValueDecimal;
+                    return entry - takeDistance;
                 default:
-                    return price;
+                    return entry;
             }
         }
 
