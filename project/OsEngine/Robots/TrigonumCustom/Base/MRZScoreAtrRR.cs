@@ -53,6 +53,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _r;
         private MeanReverseVolumeManager _volumeManager;
 
+        // FairPrice Stop
+        private FairPriceDecoration _fairPrice;
+        private StrategyParameterBool _fairPriceEnabled;
+        private StrategyParameterInt _fairPriceCandlesToWait;
+
         public MRZScoreAtrRR(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
@@ -60,7 +65,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             // Параметры
             _periodSma = CreateParameter("Sma Period", 50, 10, 500, 10, "Robot");
-            _zEnterBase = CreateParameter("Z Enter Base", 0.2m, 0.01m, 5m, 0.01m, "Robot");
+            _zEnterBase = CreateParameter("Z Enter Base", 3m, 1m, 5m, 0.5m, "Robot");
             _gridSize = CreateParameter("Grid Size", 7, 3, 20, 1, "Robot");
             _spread = CreateParameter("AtrDev Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
             _atrMultDev = CreateParameter("Atr Mult Dev", 1m, 0.1m, 5m, 0.1m, "AtrDev");
@@ -85,6 +90,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _channel = (ZScoreChannel)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreChannel", name: name + "ZScoreChannel", canDelete: false);
             _channel = (ZScoreChannel)_tab.CreateCandleIndicator(_channel, nameArea: "Prime");
+            _channel.ZScoreReference = _zEnterBase.ValueDecimal;
             _channel.LowZScore = _zScoreLow;
             _channel.HighZScore = _zScoreHigh;
             _channel.Save();
@@ -98,12 +104,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _atrDev = (AtrDev)_tab.CreateCandleIndicator(_atrDev, "AtrDev");
             _atrDev.Sma = _sma;
             _atrDev.Atr = _atr;
-            // Попытка установить OnlyPositive (если свойство есть)
-            try
-            {
-                _atrDev.OnlyPositive = true;
-            }
-            catch { }
+            _atrDev.OnlyPositive = true;
 
             // TP/SL
             _takeProfit = new TakeProfitDecoration(this, false, "ATR TP Enable", "ATR");
@@ -120,6 +121,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _volumeManager = new MeanReverseVolumeManager();
             _volumeManager.GetVolumeFunc = base.GetVolume;
             _volumeManager.Rounding = GetRounded;
+
+            // FairPrice Decoration
+            _fairPrice = new FairPriceDecoration(this, "FairPrice");
+            _fairPrice.SetSma(_sma);
 
             // События
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
@@ -664,6 +669,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             SetAtrDevParameters();
             SetChannelParameters();
             SetVolumeManager();
+            SetZScoreChannelReference();
+        }
+
+        private void SetZScoreChannelReference()
+        {
+            if (_channel == null || _zEnterBase == null) return;
+            _channel.ZScoreReference = _zEnterBase.ValueDecimal;
         }
 
         private void SetAtrDevParameters()
