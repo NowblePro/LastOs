@@ -100,6 +100,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _atrDev.Sma = _sma;
             _atrDev.Atr = _atr;
             _atrDev.OnlyPositive = true;
+            _atrDev.PercentView = true;
 
             // TP/SL
             _takeProfit = new TakeProfitDecoration(this, false, "ATR TP Enable", "ATR");
@@ -407,7 +408,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
-                    decimal currAtrDev = _atrDev.LastValue;
+                    //decimal currAtrDev = _atrDev.LastValue;
 
                     var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
                     if (!atrCandidates.Any()) return false;
