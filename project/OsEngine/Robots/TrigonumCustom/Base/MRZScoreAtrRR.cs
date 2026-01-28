@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Drawing;
+using System.Text;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
@@ -28,20 +29,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterInt _gridSize;
         private StrategyParameterDecimal _spread; // шаг по AtrDev для определения уровней
         private StrategyParameterDecimal _atrMultDev;
-        private StrategyParameterDecimal _atrMultSpread;
         private StrategyParameterBool _debugLogging;
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
-        private int _nextGridKeyToFill = -1;
-
-        // Значение AtrDev при первой входной позиции
-        private decimal _lastAtrDevAtEntry = 0m;
 
         // Volatile stop
         private bool _volatileStopActive = false;
         private Side _volatileStopDirection = Side.Buy;
-        private GridTypePosition _gridPositionType = GridTypePosition.None;
+        private Side _gridDirection = Side.None;
 
         // TP/SL и volume manager
         private TakeProfitDecoration _takeProfit;
@@ -55,8 +51,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         // FairPrice Stop
         private FairPriceDecoration _fairPrice;
-        private StrategyParameterBool _fairPriceEnabled;
-        private StrategyParameterInt _fairPriceCandlesToWait;
 
         public MRZScoreAtrRR(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -67,9 +61,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _periodSma = CreateParameter("Sma Period", 50, 10, 500, 10, "Robot");
             _zEnterBase = CreateParameter("Z Enter Base", 3m, 1m, 5m, 0.5m, "Robot");
             _gridSize = CreateParameter("Grid Size", 7, 3, 20, 1, "Robot");
-            _spread = CreateParameter("AtrDev Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
-            _atrMultDev = CreateParameter("Atr Mult Dev", 1m, 0.1m, 5m, 0.1m, "AtrDev");
-            _atrMultSpread = CreateParameter("Atr Mult Spread", 1m, 0.1m, 5m, 0.1m, "ATR");
+            _spread = CreateParameter("Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
+            _atrMultDev = CreateParameter("Atr Mult Setka", 1m, 0.1m, 5m, 0.1m, "ATR");
             _debugLogging = CreateParameter("Debug Logging", false, "Debug");
 
             // SMA
@@ -128,11 +121,17 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             // События
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
+            _tab.PositionClosingSuccesEvent += _tab_PositionClosingSuccesEvent;
 
             // Volatile stop
             new VolatileStopDecoration(this, VolatileStopHandler);
 
             ParametersChangedByUser();
+        }
+
+        private void _tab_PositionClosingSuccesEvent(Position obj)
+        {
+
         }
 
         private decimal GetRounded(decimal volume)
@@ -150,76 +149,46 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void _tab_PositionOpeningSuccesEvent(Position obj)
         {
+            decimal atrDev = _atrDev.LastValue;
             if (_currentGrid == null)
             {
-                decimal atr = _atr.CurrentAtr;
-                decimal centerPrice = obj.EntryPrice;
-                decimal step = _spread.ValueDecimal + atr * _atrMultSpread.ValueDecimal;
-                _currentGrid = new MeanReverseGrid(centerPrice, step, _gridSize.ValueInt, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                decimal step = _spread.ValueDecimal;
+                _currentGrid = new MeanReverseGrid(atrDev, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
-
-                // Запоминаем значение AtrDev при первой позиции
-                _lastAtrDevAtEntry = _atrDev.LastValue;
-                _nextGridKeyToFill = -1;
-                _gridPositionType = obj.Direction == Side.Buy ? GridTypePosition.Low : GridTypePosition.High;
                 _volumeManager.Clear();
 
-                LogDebug($"Grid created dir={obj.Direction} center={centerPrice:F8} step={step:F8} atrDevAtEntry={_lastAtrDevAtEntry:F8}");
+                if (_debugLogging != null && _debugLogging.ValueBool)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    foreach (var level in _currentGrid.GetGrid())
+                    {
+                        sb.Append($"[{level.Key};{level.Value}] ");
+                    }
+                    LogDebug($"Grid created dir={obj.Direction} center={atrDev:F8} step={step:F8} levels={sb}");
+                }
             }
             else
             {
                 try
                 {
-                    if (obj.Direction != _currentGrid.Direction) return;
-
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
-                    if (_nextGridKeyToFill != -1 && grid.ContainsKey(_nextGridKeyToFill) && !positions.ContainsKey(_nextGridKeyToFill))
+                    // Уровни которые меньше текущего atrDev и не занятые позициями
+                    var goodLevels = grid.Where(l => l.Value <= atrDev).Where(l => !positions.Keys.Contains(l.Key));
+
+                    if (!goodLevels.Any())
                     {
-                        _currentGrid.SetPosition(_nextGridKeyToFill, obj);
-
-                        LogDebug($"Position set to grid key {_nextGridKeyToFill} price={grid[_nextGridKeyToFill]:F8} dir={obj.Direction}");
-
-                        // Удаляем "пропущенные" менее экстремальные уровни
-                        List<int> keysToDelete = new List<int>();
-                        decimal selectedValue = grid[_nextGridKeyToFill];
-
-                        if (_currentGrid.Direction == Side.Buy)
-                        {
-                            foreach (var pair in grid)
-                            {
-                                if (pair.Key == _nextGridKeyToFill) continue;
-                                if (pair.Value >= selectedValue && !positions.ContainsKey(pair.Key))
-                                {
-                                    keysToDelete.Add(pair.Key);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            foreach (var pair in grid)
-                            {
-                                if (pair.Key == _nextGridKeyToFill) continue;
-                                if (pair.Value <= selectedValue && !positions.ContainsKey(pair.Key))
-                                {
-                                    keysToDelete.Add(pair.Key);
-                                }
-                            }
-                        }
-
-                        if (keysToDelete.Count > 0)
-                        {
-                            LogDebug($"Deleting non-extreme keys after fill: {string.Join(",", keysToDelete)}");
-                        }
-
-                        foreach (int key in keysToDelete)
-                        {
-                            _currentGrid.DeleteByKey(key);
-                        }
-
-                        _nextGridKeyToFill = -1;
                         return;
+                    }
+
+                    var maxValue = goodLevels.Max(l => l.Value);
+                    var maxLevel = goodLevels.Where(l => l.Value == maxValue).FirstOrDefault();
+                    _currentGrid.SetPosition(maxLevel.Key, obj);
+                    var otherLevels = goodLevels.Except(new List<KeyValuePair<int, decimal>>() { maxLevel }).ToList();
+                    foreach (var level in otherLevels)
+                    {
+                        _currentGrid.DeleteByKey(level.Key);
                     }
                 }
                 catch (Exception ex)
@@ -231,6 +200,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
+            if (candles.Count < 10 && _currentGrid != null && StartProgram == StartProgram.IsTester)
+            {
+                _currentGrid = null;
+            }
+
             // Вызов базовой обработки
             base.CandleFinishedEvent(candles);
 
@@ -238,7 +212,23 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 try
                 {
-                    if (_tab.PositionsOpenAll.Count == 0)
+                    Candle last = candles.Last();
+                    Dictionary<int, Position> positions = _currentGrid.GetPositions();
+                    Dictionary<int, decimal> grid = _currentGrid.GetGrid();
+                    var emptyLevels = grid.Where(l => !positions.ContainsKey(l.Key));
+                    decimal sma = _sma.DataSeries[0].Last;
+                    bool canEnterPositionBySma = true;
+                    if (_gridDirection == Side.Buy)
+                    {
+                        decimal price = last.High;
+                        canEnterPositionBySma = CanEnterPositionBySma(price, _gridDirection);
+                    }
+                    else if (_gridDirection == Side.Sell)
+                    {
+                        decimal price = last.Low;
+                        canEnterPositionBySma = CanEnterPositionBySma(price, _gridDirection);
+                    }
+                    if ((_tab.PositionsOpenAll.Count == 0 && !emptyLevels.Any()) || (!canEnterPositionBySma && !positions.Where(p => p.Value.State == PositionStateType.Open || p.Value.State == PositionStateType.Opening).Any()))
                     {
                         foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
                         {
@@ -250,73 +240,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                         LogDebug("All positions closed - resetting grid");
                         _currentGrid = null;
-                        _nextGridKeyToFill = -1;
-                        _gridPositionType = GridTypePosition.None;
                         _volumeManager.Clear();
-                    }
-                    else
-                    {
-                        // Проверяем открытия: отменяем ордера открытия, если текущая цена не проходит SMA-фильтр
-                        List<int> keysToDelete = new List<int>();
-                        foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
-                        {
-                            int key = pair.Key;
-                            Position pos = pair.Value;
-                            if (pos == null) continue;
-
-                            decimal currentPrice = candles.Last().Close;
-                            if (!CanEnterPositionBySma(currentPrice, pos.Direction))
-                            {
-                                if (pos.State == PositionStateType.Opening)
-                                {
-                                    foreach (Order order in pos.OpenOrders)
-                                    {
-                                        if (order.State != OrderStateType.Cancel && order.State != OrderStateType.Done)
-                                        {
-                                            try
-                                            {
-                                                _tab.Connector.OrderCancel(order);
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
-                                            }
-                                        }
-                                    }
-                                    keysToDelete.Add(key);
-                                }
-                            }
-                        }
-
-                        if (keysToDelete.Count > 0)
-                        {
-                            LogDebug($"CandleFinished: cancelling opening orders and deleting keys: {string.Join(",", keysToDelete)}");
-                        }
-
-                        foreach (int key in keysToDelete)
-                        {
-                            try
-                            {
-                                _currentGrid.DeleteByKey(key);
-                            }
-                            catch (Exception ex)
-                            {
-                                SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
-                            }
-                        }
-
-                        if (_currentGrid.GetGrid().Count == 0 || !_currentGrid.GetPositions().Any())
-                        {
-                            bool hasOpenOrOpening = _currentGrid.GetPositions().Any(p => p.Value != null && (p.Value.State == PositionStateType.Open || p.Value.State == PositionStateType.Opening));
-                            if (!hasOpenOrOpening)
-                            {
-                                LogDebug("No open or opening positions left - clearing grid");
-                                _currentGrid = null;
-                                _nextGridKeyToFill = -1;
-                                _gridPositionType = GridTypePosition.None;
-                                _volumeManager.Clear();
-                            }
-                        }
                     }
                 }
                 catch (Exception ex)
@@ -400,7 +324,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     }
 
                     _volatileStopActive = true;
-                    _volatileStopDirection = _currentGrid.Direction;
+                    _volatileStopDirection = _gridDirection;
                     _volumeManager.Clear();
 
                     LogDebug($"VolatileStopHandler fired for direction {_volatileStopDirection}");
@@ -438,7 +362,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
 
             // Если грид противоположного направления — не входим
-            if (_currentGrid != null && _currentGrid.Direction == Side.Sell) return false;
+            if (_currentGrid != null && _gridDirection == Side.Sell) return false;
 
             decimal smaValue = _sma.DataSeries[0].Last;
             decimal currentPrice = last.Close;
@@ -462,6 +386,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     if (z >= _zEnterBase.ValueDecimal)
                     {
                         _volumeManager.Clear();
+                        _gridDirection = Side.Buy;
                         LogDebug($"Long first-entry check: price={price:F8} sma={smaValue:F8} zLow={z:F8} threshold={_zEnterBase.ValueDecimal:F8}");
                         LogDebug("Long first-entry condition satisfied -> returning true");
                         return true;
@@ -472,65 +397,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
             else
             {
-                // Добавления по гриду: требуются условие по цене (price < level) и по AtrDev
+                if (_gridDirection == Side.Sell) return false;
                 try
                 {
+                    decimal atrDev = _atrDev.LastValue;
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
                     decimal currAtrDev = _atrDev.LastValue;
 
-                    var priceCandidates = emptyLevels.Where(p => currentPrice < p.Value).ToList();
-                    if (!priceCandidates.Any()) return false;
-
-                    // формируем кандидатов по AtrDev (требуем currAtrDev >= _lastAtrDevAtEntry + spread * levelIndex)
-                    var atrCandidates = new List<KeyValuePair<int, decimal>>();
-                    foreach (var lvl in priceCandidates)
-                    {
-                        decimal required = _lastAtrDevAtEntry + _spread.ValueDecimal * lvl.Key;
-                        if (currAtrDev >= required)
-                        {
-                            atrCandidates.Add(new KeyValuePair<int, decimal>(lvl.Key, required));
-                        }
-                    }
-
-                    LogDebug($"Long grid: priceCandidates={priceCandidates.Count} atrCandidates={atrCandidates.Count} currAtrDev={currAtrDev:F8} lastAtrDevAtEntry={_lastAtrDevAtEntry:F8}");
-
-                    if (!atrCandidates.Any())
-                    {
-                        // доп. правило: если price опустилась ниже предыдущего входа — разрешаем вход
-                        var openPositions = _currentGrid.GetPositions().Where(p => p.Value != null && p.Value.State == PositionStateType.Open).Select(p => p.Value).ToList();
-                        if (openPositions.Any())
-                        {
-                            decimal lastEntryPrice = openPositions.OrderBy(p => p.EntryPrice).Last().EntryPrice;
-                            if (currentPrice < lastEntryPrice)
-                            {
-                                var target = priceCandidates.OrderBy(p => p.Value).First();
-                                _nextGridKeyToFill = target.Key;
-                                LogDebug($"Long fallback by price below last entry: _nextGridKeyToFill={_nextGridKeyToFill}");
-                                return true;
-                            }
-                        }
-
-                        return false;
-                    }
-
-                    decimal delta = currAtrDev - _lastAtrDevAtEntry;
-                    if (delta >= _spread.ValueDecimal * 2m)
-                    {
-                        int maxIdx = atrCandidates.Max(a => a.Key);
-                        _nextGridKeyToFill = maxIdx;
-                        LogDebug($"Long large-delta pick maxIdx={maxIdx} delta={delta:F8}");
-                        return true;
-                    }
-                    else
-                    {
-                        int idx = atrCandidates.Min(a => a.Key);
-                        _nextGridKeyToFill = idx;
-                        LogDebug($"Long normal pick idx={idx} delta={delta:F8}");
-                        return true;
-                    }
+                    var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
+                    if (!atrCandidates.Any()) return false;
+                    if (positions.Where(p => p.Value.EntryPrice < currentPrice).Any()) return false;
+                    return true;
                 }
                 catch (Exception ex)
                 {
@@ -559,7 +439,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 }
             }
 
-            if (_currentGrid != null && _currentGrid.Direction == Side.Buy) return false;
+            if (_currentGrid != null && _gridDirection == Side.Buy) return false;
 
             decimal smaValue = _sma.DataSeries[0].Last;
             decimal currentPrice = last.Close;
@@ -582,6 +462,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     if (z >= _zEnterBase.ValueDecimal)
                     {
                         _volumeManager.Clear();
+                        _gridDirection = Side.Sell;
                         LogDebug($"Short first-entry check: price={price:F8} sma={smaValue:F8} zHigh={z:F8} threshold={_zEnterBase.ValueDecimal:F8}");
                         LogDebug("Short first-entry condition satisfied -> returning true");
                         return true;
@@ -592,64 +473,19 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
             else
             {
-                // Добавления по гриду: цена > level и atrDev пороги
+                if (_gridDirection == Side.Buy) return false;
                 try
                 {
+                    decimal atrDev = _atrDev.LastValue;
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
-                    decimal currAtrDev = _atrDev.LastValue;
 
-                    var priceCandidates = emptyLevels.Where(p => currentPrice > p.Value).ToList();
-                    if (!priceCandidates.Any()) return false;
-
-                    var atrCandidates = new List<KeyValuePair<int, decimal>>();
-                    foreach (var lvl in priceCandidates)
-                    {
-                        decimal required = _lastAtrDevAtEntry + _spread.ValueDecimal * lvl.Key;
-                        if (currAtrDev >= required)
-                        {
-                            atrCandidates.Add(new KeyValuePair<int, decimal>(lvl.Key, required));
-                        }
-                    }
-
-                    LogDebug($"Short grid: priceCandidates={priceCandidates.Count} atrCandidates={atrCandidates.Count} currAtrDev={currAtrDev:F8} lastAtrDevAtEntry={_lastAtrDevAtEntry:F8}");
-
-                    if (!atrCandidates.Any())
-                    {
-                        // доп. правило: если price выше предыдущего входа => вход
-                        var openPositions = _currentGrid.GetPositions().Where(p => p.Value != null && p.Value.State == PositionStateType.Open).Select(p => p.Value).ToList();
-                        if (openPositions.Any())
-                        {
-                            decimal lastEntryPrice = openPositions.OrderByDescending(p => p.EntryPrice).Last().EntryPrice;
-                            if (currentPrice > lastEntryPrice)
-                            {
-                                var target = priceCandidates.OrderByDescending(p => p.Value).First();
-                                _nextGridKeyToFill = target.Key;
-                                LogDebug($"Short fallback by price above last entry: _nextGridKeyToFill={_nextGridKeyToFill}");
-                                return true;
-                            }
-                        }
-
-                        return false;
-                    }
-
-                    decimal delta = currAtrDev - _lastAtrDevAtEntry;
-                    if (delta >= _spread.ValueDecimal * 2m)
-                    {
-                        int maxIdx = atrCandidates.Max(a => a.Key);
-                        _nextGridKeyToFill = maxIdx;
-                        LogDebug($"Short large-delta pick maxIdx={maxIdx} delta={delta:F8}");
-                        return true;
-                    }
-                    else
-                    {
-                        int idx = atrCandidates.Max(a => a.Key);
-                        _nextGridKeyToFill = idx;
-                        LogDebug($"Short normal pick idx={idx} delta={delta:F8}");
-                        return true;
-                    }
+                    var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
+                    if (!atrCandidates.Any()) return false;
+                    if (positions.Where(p => p.Value.EntryPrice > currentPrice).Any()) return false;
+                    return true;
                 }
                 catch (Exception ex)
                 {
@@ -663,7 +499,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             return new List<Func<List<Candle>, bool>>()
             {
-                candles => _periodSma.ValueInt < candles.Count
+                candles => _periodSma.ValueInt < candles.Count,
+                candles => _atr.CurrentAtr != 0
             };
         }
 

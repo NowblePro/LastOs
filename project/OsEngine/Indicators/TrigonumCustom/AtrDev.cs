@@ -35,7 +35,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             decimal sma = SmaLast;
             decimal price = GetMaxDeviationPrice(new List<decimal>() { last.Close, last.Low, last.High }, sma);
             if (sma == 0) return;
-            decimal atr = Atr.CurrentAtr / price;
+            decimal atr = Atr.CurrentAtr / sma;
             decimal atrMult = AtrMultDev;
             int sign = Math.Sign(price - sma);
             decimal z = ((price - sma)/sma) *   (OnlyPositive ? sign : 1)
