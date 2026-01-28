@@ -27,6 +27,18 @@ namespace OsEngine.Indicators.TrigonumCustom
             set { _sma = value; }
         }
 
+        public bool PaintSeries
+        {
+            get
+            {
+                return _seriesZ.IsPaint;
+            }
+            set
+            {
+                _seriesZ.IsPaint = value;
+            }
+        }
+
         public decimal LastDeviation => _deviation.LastOrDefault();
 
         public bool Ready => _deviation.Count > _window_sigma.ValueInt;

@@ -31,7 +31,7 @@ namespace OsEngine.Common
         private bool _needUpdateIterator;
         private int _iterator = 1;
 
-        public AtrDecoration(BotPanel bot)
+        public AtrDecoration(BotPanel bot, bool showStandartAtr = true)
         {
             _bot = bot;
             _tab = bot.TabsSimple[0];
@@ -41,6 +41,7 @@ namespace OsEngine.Common
             
             _ATR = IndicatorsFactory.CreateIndicatorByName("ATR", (string.IsNullOrEmpty(bot.PublicName) ?  bot.NameStrategyUniq : bot.PublicName) + "Atr", false);
             _ATR = (Aindicator)_tab.CreateCandleIndicator(_ATR, "NewArea");
+            _ATR.DataSeries[0].IsPaint = showStandartAtr;
             bot.ParametrsChangeByUser += Bot_ParametrsChangeByUser;
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
         }

@@ -72,11 +72,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             // ZScoreLow / ZScoreHigh / Channel
             _zScoreLow = (ZScoreLow)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreLow", name: name + "ZScoreLow", canDelete: false);
+            _zScoreLow.PaintSeries = false;
             _zScoreLow = (ZScoreLow)_tab.CreateCandleIndicator(_zScoreLow, nameArea: "ZScoreLow");
             _zScoreLow.Save();
             _zScoreLow.SMA = _sma;
 
             _zScoreHigh = (ZScoreHigh)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreHigh", name: name + "ZScoreHigh", canDelete: false);
+            _zScoreHigh.PaintSeries = false;
             _zScoreHigh = (ZScoreHigh)_tab.CreateCandleIndicator(_zScoreHigh, nameArea: "ZScoreHigh");
             _zScoreHigh.Save();
             _zScoreHigh.SMA = _sma;
@@ -89,7 +91,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _channel.Save();
 
             // ATR decoration
-            _atr = new AtrDecoration(this);
+            _atr = new AtrDecoration(this, true);
             _atr.CancelTPSL = false;
 
             // AtrDev
