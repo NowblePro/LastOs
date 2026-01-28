@@ -21,7 +21,7 @@ namespace OsEngine.Indicators.TrigonumCustom
         public decimal AtrMultDev { get; set; }
 
         private decimal SmaLast => Sma.DataSeries[0].Values.Last();
-
+        public bool PercentView { get; set; } = false;
         public decimal LastValue => _series.Values.Last();
 
         /// <summary>
@@ -40,6 +40,10 @@ namespace OsEngine.Indicators.TrigonumCustom
             int sign = Math.Sign(price - sma);
             decimal z = ((price - sma)/sma) *   (OnlyPositive ? sign : 1)
                             + (atr * atrMult) * (OnlyPositive ? 1 : sign);
+            if (PercentView)
+            {
+                z *= 100;
+            }
             _series.Values[index] = z;
         }
 
