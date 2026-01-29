@@ -19,6 +19,8 @@ namespace OsEngine.Indicators.TrigonumCustom
         /// Ширина окна для расчёта отклонения
         /// </summary>
         private IndicatorParameterInt _window_sigma;
+        private int lastIndex = -1;
+        private DateTime _firstCandleTime = DateTime.MinValue;
         public override void OnProcess(List<Candle> source, int index)
         {
             if (_window_sigma.ValueInt > index || _sma == null)
@@ -26,9 +28,17 @@ namespace OsEngine.Indicators.TrigonumCustom
                 return;
             }
 
-            int i = source.Count - 1;
+            if (_firstCandleTime == DateTime.MinValue)
+            {
+                _firstCandleTime = source[0].TimeStart;
+            }
+            else if (source[0].TimeStart != _firstCandleTime)
+            {
+                lastIndex = -1;
+                _firstCandleTime = source[0].TimeStart;
+            }
 
-            for (; i < source.Count; i++)
+            for (int i = lastIndex + 1; i < source.Count; i++)
             {
                 if (i >= _window_sigma.ValueInt)
                 {
@@ -39,6 +49,7 @@ namespace OsEngine.Indicators.TrigonumCustom
                     decimal value = (price - sma) / sigma;
                     _seriesZ.Values[i] = value;
                     _seriesSigma.Values[i] = sigma;
+                    lastIndex = i;
                 }
             }
         }
@@ -91,6 +102,7 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         private void Reset(IIndicator indicator)
         {
+            lastIndex = -1;
             _seriesZ.Clear();
             _seriesSigma.Clear();
         }
