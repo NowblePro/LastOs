@@ -219,7 +219,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     var emptyLevels = grid.Where(l => !positions.ContainsKey(l.Key));
-                    decimal sma = _sma.DataSeries[0].Last;
+
                     bool canEnterPositionBySma = true;
                     if (_gridDirection == Side.Buy)
                     {
@@ -231,7 +231,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         decimal price = last.Low;
                         canEnterPositionBySma = CanEnterPositionBySma(price, _gridDirection);
                     }
-                    if ((_tab.PositionsOpenAll.Count == 0 && !emptyLevels.Any()) || (!canEnterPositionBySma && !positions.Where(p => p.Value.State == PositionStateType.Open || p.Value.State == PositionStateType.Opening).Any()))
+                    if (_tab.PositionsOpenAll.Count == 0 && (!canEnterPositionBySma && !positions.Where(p => p.Value.State == PositionStateType.Open || p.Value.State == PositionStateType.Opening).Any()))
                     {
                         foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
                         {
