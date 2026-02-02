@@ -451,6 +451,7 @@
     <Compile Include="Common\AtrDecoration.cs" />
     <Compile Include="Common\StopLossDecoration.cs" />
     <Compile Include="Common\TakeProfitDecoration.cs" />
+    <Compile Include="Common\TakeSmaDecoration.cs" />
     <Compile Include="Common\TrailingStopDecoration.cs" />
     <Compile Include="Common\UI\PhaseDirectories.xaml.cs">
       <DependentUpon>PhaseDirectories.xaml</DependentUpon>

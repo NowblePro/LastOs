@@ -47,10 +47,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _r;
         private MeanReverseVolumeManager _volumeManager;
 
-        private StrategyParameterDecimal _takeSmaPercent;
-
         // FairPrice Stop
         private FairPriceDecoration _fairPrice;
+
+        // TakeSma
+        private TakeSmaDecoration _takeSma;
 
         public MRZScoreAtrTakeSma(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -103,8 +104,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _atrDev.PercentView = true;
 
             // TP/SL
-            _takeSmaPercent = CreateParameter("Take Sma Percent", 20m, 10m, 30m, 5m, "Take Sma");
-
             _stopLossLimitPercent = CreateParameter("Stop Loss Limit Percent", 1m, 1m, 10m, 1m, "ATR");
             _stopLoss = new StopLossDecoration(this, false, "ATR SL Enable", "ATR");
             _atrSlMultiplier = CreateParameter("ATR SL Multiplier", 1m, 0.5m, 5m, 0.5m, "ATR");
@@ -119,6 +118,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // FairPrice Decoration
             _fairPrice = new FairPriceDecoration(this, "FairPrice");
             _fairPrice.SetSma(_sma);
+
+            // TakeSma Decoration
+            _takeSma = new TakeSmaDecoration(this, "TakeSma");
+            _takeSma.SetSma(_sma);
 
             // События
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
@@ -249,11 +252,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
                 }
             }
-        }
-
-        private decimal GetTakeProfit(Position position)
-        {
-            return 0;
         }
 
         private decimal GetStopLoss(Position position)
@@ -387,7 +385,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
-                    //decimal currAtrDev = _atrDev.LastValue;
 
                     var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
                     if (!atrCandidates.Any()) return false;
