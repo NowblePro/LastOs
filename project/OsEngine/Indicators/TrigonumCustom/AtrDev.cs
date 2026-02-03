@@ -31,11 +31,11 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public override void OnProcess(List<Candle> source, int index)
         {
-            Candle last = source.Last();
-            decimal sma = SmaLast;
+            Candle last = source[index];
+            decimal sma = Sma.DataSeries[0].Values[index];
             decimal price = GetMaxDeviationPrice(new List<decimal>() { last.Close, last.Low, last.High }, sma);
             if (sma == 0) return;
-            decimal atr = Atr.CurrentAtr / sma;
+            decimal atr = Atr.AtrValues[index] / sma;
             decimal atrMult = AtrMultDev;
             int sign = Math.Sign(price - sma);
             decimal z = ((price - sma)/sma) *   (OnlyPositive ? sign : 1)

@@ -64,6 +64,8 @@ namespace OsEngine.Common
 
         public decimal CurrentAtr => _ATR.DataSeries[0].Last;
 
+        public List<decimal> AtrValues => _ATR.DataSeries[0].Values;
+
         public bool CancelTPSL { get; set; } = true;
 
         private void _tab_CandleFinishedEvent(List<Candle> candles)
