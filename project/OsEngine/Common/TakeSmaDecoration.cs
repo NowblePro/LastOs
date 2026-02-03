@@ -61,6 +61,8 @@ namespace OsEngine.Common
             if (smaIndex >= _sma.DataSeries[0].Values.Count || smaIndex < 0)
                 return;
 
+            List<Position> openPositions = _tab.PositionsOpenAll;
+
             decimal _slippage = 0;
             if (_slippageParam != null)
             {
@@ -74,14 +76,14 @@ namespace OsEngine.Common
             }
 
             decimal sma = _sma.DataSeries[0].Values[smaIndex];
-            List<Position> openPositions = _tab.PositionsOpenAll;
+            if (openPositions.Count() == 0) return;
+            decimal entryPrice = openPositions.Sum(p => p.EntryPrice) / openPositions.Count();
 
             foreach (var position in openPositions)
             {
                 if (position.State != PositionStateType.Open)
                     continue;
 
-                decimal entryPrice = position.EntryPrice;
                 decimal deviation = Math.Abs(entryPrice - sma) / sma;
                 decimal takeOffset = deviation * _takePercent.ValueDecimal / 100m;
 
