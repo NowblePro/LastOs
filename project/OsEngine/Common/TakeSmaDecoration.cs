@@ -24,6 +24,8 @@ namespace OsEngine.Common
         private StrategyParameterDecimal _slippageParam;
 
         private Aindicator _sma;
+        private decimal _takeOffset;
+        private int _positionCount = 0;
 
         public TakeSmaDecoration(BotPanel bot, string paramTabName = "TakeSma")
         {
@@ -76,29 +78,39 @@ namespace OsEngine.Common
             }
 
             decimal sma = _sma.DataSeries[0].Values[smaIndex];
-            if (openPositions.Count() == 0) return;
-            decimal entryPrice = openPositions.Sum(p => p.EntryPrice) / openPositions.Count();
-
+            int positionCount = openPositions.Count();
+            if (positionCount == 0)
+            {
+                _positionCount = positionCount;
+                return; 
+            }
+            
+            if (positionCount != _positionCount)
+            {
+                decimal entryPrice = openPositions.Sum(p => p.EntryPrice) / openPositions.Count();
+                decimal deviation = Math.Abs(entryPrice - sma) / sma;
+                _takeOffset = deviation * _takePercent.ValueDecimal / 100m;
+                _positionCount = positionCount;
+            }
+            
+            Side side = openPositions.First().Direction;
             foreach (var position in openPositions)
             {
                 if (position.State != PositionStateType.Open)
                     continue;
 
-                decimal deviation = Math.Abs(entryPrice - sma) / sma;
-                decimal takeOffset = deviation * _takePercent.ValueDecimal / 100m;
-
                 decimal stopPrice = 0;
                 decimal stopOrderPrice = 0;
-                if (entryPrice < sma)
+                if (side == Side.Buy)
                 {
                     // Лонг: тейк ниже SMA
-                    stopPrice = sma - takeOffset * sma;
+                    stopPrice = sma - _takeOffset * sma;
                     stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage;
                 }
                 else
                 {
                     // Шорт: тейк выше SMA
-                    stopPrice = sma + takeOffset * sma;
+                    stopPrice = sma + _takeOffset * sma;
                     stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage;
                 }
 
