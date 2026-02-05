@@ -14,6 +14,7 @@ namespace OsEngine.Indicators.TrigonumCustom
     {
         private IndicatorDataSeries _rt;
         private IndicatorDataSeries _series;
+        private IndicatorDataSeries _seriesNotSmoothed;
 
         public override void OnProcess(List<Candle> source, int index)
         {
@@ -26,14 +27,14 @@ namespace OsEngine.Indicators.TrigonumCustom
 
             if (index < N - 1) return;
             decimal r = 0;
-            for (int i = index - (N - 1); i < index; i++)
+            for (int i = index - (N - 1); i <= index; i++)
             {
                 r += _rt.Values[i];
             }
             r /= N;
 
             decimal s = 0;
-            for (int i = index - (N - 1); i < index; i++)
+            for (int i = index - (N - 1); i <= index; i++)
             {
                 s += (decimal)Math.Pow((double)(_rt.Values[i] - r), 2);
             }
@@ -44,13 +45,27 @@ namespace OsEngine.Indicators.TrigonumCustom
             decimal drift = r * N;
             decimal diffusion = s * (decimal)Math.Sqrt(N);
             decimal ddr = Math.Abs(drift) / diffusion;
-            _series.Values[index] = ddr;
+            _seriesNotSmoothed.Values[index] = ddr;
+
+            int skip = index - NSmooth + 1;
+            decimal smoothed = 0;
+            foreach (var item in _seriesNotSmoothed.Values.Skip(skip))
+            {
+                smoothed += item;
+            }
+            smoothed /= NSmooth;
+            _series.Values[index] = smoothed;
         }
 
         /// <summary>
         /// Размер окна на котором считается r
         /// </summary>
-        public int N { get; set; } = 5;
+        public int N { get; set; } = 50;
+
+        /// <summary>
+        /// Сглаживание основного графика
+        /// </summary>
+        public int NSmooth { get; set; } = 2;
 
         public override void OnStateChange(IndicatorState state)
         {
@@ -64,6 +79,10 @@ namespace OsEngine.Indicators.TrigonumCustom
                 _rt.CanReBuildHistoricalValues = false;
                 _rt.ChartPaintType = IndicatorChartPaintType.Line;
 
+                _seriesNotSmoothed = CreateSeries("seriesN", Color.GreenYellow, IndicatorChartPaintType.Line, false);
+                _seriesNotSmoothed.CanReBuildHistoricalValues = false;
+                _seriesNotSmoothed.ChartPaintType = IndicatorChartPaintType.Line;
+
                 _series = CreateSeries("series", Color.GreenYellow, IndicatorChartPaintType.Line, true);
                 _series.CanReBuildHistoricalValues = false;
                 _series.ChartPaintType = IndicatorChartPaintType.Line;
@@ -72,7 +91,7 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         private void Reset(IIndicator indicator)
         {
-
+            _seriesNotSmoothed.Clear();
         }
     }
 }
