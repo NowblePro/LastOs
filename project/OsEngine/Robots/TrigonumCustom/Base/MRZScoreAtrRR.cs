@@ -165,7 +165,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     StringBuilder sb = new StringBuilder();
                     foreach (var level in _currentGrid.GetGrid())
                     {
-                        sb.Append($"[{level.Key};{level.Value}] ");
+                        sb.Append($"[{level.Key};{level.Value:F6}] ");
                     }
                     LogDebug($"Grid created dir={obj.Direction} center={atrDev:F8} step={step:F8} levels={sb}");
                 }
@@ -182,16 +182,28 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
                     if (!goodLevels.Any())
                     {
+                        LogDebug("Такого быть не должно, сигнал на открытие позиции сработал, но после открытия позиции не найден подходящий свободный уровень");
                         return;
                     }
 
                     var maxValue = goodLevels.Max(l => l.Value);
                     var maxLevel = goodLevels.Where(l => l.Value == maxValue).FirstOrDefault();
                     _currentGrid.SetPosition(maxLevel.Key, obj);
+                    LogDebug($"Позиция присвоена уровню с индексом {maxLevel.Key}, AtrDev уровня = {maxValue:F6}");
                     var otherLevels = goodLevels.Except(new List<KeyValuePair<int, decimal>>() { maxLevel }).ToList();
                     foreach (var level in otherLevels)
                     {
+                        LogDebug($"Пустой уровень с индексом {level.Key} и значением {level.Value} удалён");
                         _currentGrid.DeleteByKey(level.Key);
+                    }
+                    StringBuilder sb = new StringBuilder();
+                    foreach (var position in positions)
+                    {
+                        sb.Append($"| [{position.Key}] {position.Value.EntryPrice:F3} | ");
+                    }
+                    if (_tab.PositionsAll.Any())
+                    {
+                        LogDebug($"В гриде на данный момент позиции с ценами входа {sb}");
                     }
                 }
                 catch (Exception ex)
