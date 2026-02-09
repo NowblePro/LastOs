@@ -53,6 +53,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // FairPrice Stop
         private FairPriceDecoration _fairPrice;
 
+        // DDR
+        private DDRDecoration _ddrDecoration;
+
         public MRZAtrRrDdr(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
@@ -93,6 +96,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _ddr = (DDR)IndicatorsFactory.CreateIndicatorByName(nameClass: "DDR", name: name + "DDR", canDelete: false);
             _ddr = (DDR)_tab.CreateCandleIndicator(_ddr, nameArea: "DDR");
+
+            _ddrDecoration = new DDRDecoration(this, _ddr);
+            _ddrDecoration.DDREvent += _ddrDecoration_DDREvent;
 
             // ATR decoration
             _atr = new AtrDecoration(this, true);
@@ -136,6 +142,62 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             ParametersChangedByUser();
         }
 
+        private decimal Spread
+        {
+            get
+            {
+                decimal result = _spread.ValueDecimal;
+                _ddrDecoration.ChangeStep(ref result);
+                return result;
+            }
+        }
+
+        private void _ddrDecoration_DDREvent(object sender, EventArgs e)
+        {
+            if (_ddrDecoration.Activated)
+            {
+                if (_currentGrid != null)
+                {
+                    var grid =_currentGrid.GetGrid();
+                    var positions = _currentGrid.GetPositions();
+                    StringBuilder debug = new StringBuilder();
+                    LogGrid("DDR activated, old grid:");
+
+                    // Удалить пустые уровни грида
+                    var emptyKeys = grid.Keys.Select(x => x).Where(k => !positions.ContainsKey(k)).ToList();
+                    emptyKeys.Sort();
+                    if (!emptyKeys.Any() || !positions.Any()) return;
+                    foreach ( var eptyKey in emptyKeys)
+                    {
+                        grid.Remove(eptyKey);
+                    }
+
+                    // Заполнить грид новыми уровнями
+                    decimal step = Spread;
+                    decimal maxLevel = grid.Values.Any() ? grid.Values.Max() : _atrDev.LastValue;
+                    int index = 1;
+                    foreach (var key in emptyKeys)
+                    {
+                        grid.Add(key, maxLevel + step * index++);
+                    }
+                    LogGrid("new grid:");
+                    void LogGrid(string header)
+                    {
+                        debug.Clear();
+                        debug.Append(header);
+                        foreach (var key in grid.Keys.OrderBy(k => k))
+                        {
+                            var level = grid[key];
+                            Position pos = positions.ContainsKey(key) ? positions[key] : null;
+                            string posStr = pos != null ? $", price = {pos.EntryPrice:F3}," : "";
+                            debug.Append($"|[{key}] = {level:F3}{posStr}|");
+                        }
+                        LogDebug(debug.ToString());
+                    }
+                }
+            }
+        }
+
         private void _tab_PositionClosingSuccesEvent(Position obj)
         {
 
@@ -159,7 +221,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal atrDev = _atrDev.LastValue;
             if (_currentGrid == null)
             {
-                decimal step = _spread.ValueDecimal;
+                decimal step = Spread;
                 _currentGrid = new MeanReverseGrid(atrDev, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
                 _volumeManager.Clear();
@@ -210,6 +272,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (candles.Count < 10 && _currentGrid != null && StartProgram == StartProgram.IsTester)
             {
                 _currentGrid = null;
+                _ddrDecoration.Activate(false);
             }
 
             // Вызов базовой обработки
@@ -247,6 +310,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                         LogDebug("All positions closed - resetting grid");
                         _currentGrid = null;
+                        _ddrDecoration.Activate(false);
                         _volumeManager.Clear();
                     }
                 }

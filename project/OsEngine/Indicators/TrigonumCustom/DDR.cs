@@ -16,6 +16,18 @@ namespace OsEngine.Indicators.TrigonumCustom
         private IndicatorDataSeries _series;
         private IndicatorDataSeries _seriesNotSmoothed;
 
+        /// <summary>
+        /// Размер окна на котором считается r
+        /// </summary>
+        public int N { get; set; } = 24;
+
+        /// <summary>
+        /// Сглаживание основного графика
+        /// </summary>
+        public int NSmooth { get; set; } = 2;
+
+        public decimal LastValue => _series.Values.LastOrDefault();
+
         public override void OnProcess(List<Candle> source, int index)
         {
             if (index < 1) return;
@@ -56,16 +68,6 @@ namespace OsEngine.Indicators.TrigonumCustom
             smoothed /= NSmooth;
             _series.Values[index] = smoothed;
         }
-
-        /// <summary>
-        /// Размер окна на котором считается r
-        /// </summary>
-        public int N { get; set; } = 50;
-
-        /// <summary>
-        /// Сглаживание основного графика
-        /// </summary>
-        public int NSmooth { get; set; } = 2;
 
         public override void OnStateChange(IndicatorState state)
         {
