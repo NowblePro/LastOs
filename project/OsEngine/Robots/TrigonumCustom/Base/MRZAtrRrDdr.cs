@@ -56,6 +56,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // DDR
         private DDRDecoration _ddrDecoration;
 
+        // Изменение цены относительно цены 24 часа назад
+        private Change24Decoration _change24;
+
         public MRZAtrRrDdr(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
@@ -138,6 +141,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             // Volatile stop
             new VolatileStopDecoration(this, VolatileStopHandler);
+
+            _change24 = new Change24Decoration(this);
 
             ParametersChangedByUser();
         }
@@ -415,6 +420,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // Логика первого входа и добавлений — объединяет ZScore (только для первой позиции) и AtrDev-grid
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
+            if (!_change24.CanBuy)
+            {
+                LogDebug($"Change24: Покупка запрещена, изменение {_change24.Change:F2}%");
+                return false;
+            }
             Candle last = candles.Last();
 
             // Снятие блокировки volatile stop по Buy
@@ -493,6 +503,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
+            if (!_change24.CanSell)
+            {
+                LogDebug($"Change24: Продажа запрещена, изменение {_change24.Change:F2}%");
+                return false;
+            }
             Candle last = candles.Last();
 
             // Снятие блокировки volatile stop по Sell

@@ -442,6 +442,7 @@
     </Compile>
     <Compile Include="Charts\Extensions.cs" />
     <Compile Include="Common\CandleMerger.cs" />
+    <Compile Include="Common\Change24Decoration.cs" />
     <Compile Include="Common\DDRDecoration.cs" />
     <Compile Include="Common\DivergenceDetector.cs" />
     <Compile Include="Common\FairPriceDecoration.cs" />
