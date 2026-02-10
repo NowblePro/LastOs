@@ -16,6 +16,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     public class MRZAtrRrDdr : BotPanelSimple
     {
         // Индикаторы
+        private Aindicator _ema;
         private Aindicator _sma;
         private ZScoreLow _zScoreLow;
         private ZScoreHigh _zScoreHigh;
@@ -31,6 +32,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _spread; // шаг по AtrDev для определения уровней
         private StrategyParameterDecimal _atrMultDev;
         private StrategyParameterBool _debugLogging;
+        private StrategyParameterInt _emaLength;
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
@@ -53,12 +55,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // FairPrice Stop
         private FairPriceDecoration _fairPrice;
 
+        // DDR
+        private DDRDecoration _ddrDecoration;
+
+        // Изменение цены относительно цены 24 часа назад
+        private Change24Decoration _change24;
+
+        private CanEnterByEmaDecoration _canEnterByEma;
+
         public MRZAtrRrDdr(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
             _tab.TPSLMode = TPSLMode.Partial;
 
             // Параметры
+            _emaLength = CreateParameter("EMA period", 200, 100, 300, 1, "Ema Filter");
             _periodSma = CreateParameter("Sma Period", 50, 10, 500, 10, "Robot");
             _zEnterBase = CreateParameter("Z Enter Base", 3m, 1m, 5m, 0.5m, "Robot");
             _gridSize = CreateParameter("Grid Size", 7, 3, 20, 1, "Robot");
@@ -70,6 +81,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _sma = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, nameArea: "Prime");
             _sma.Save();
+
+            // EMA
+            _ema = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Ema", name: name + "Ema", canDelete: false);
+            _ema = (Aindicator)_tab.CreateCandleIndicator(_ema, nameArea: "Prime");
+            _ema.Save();
 
             // ZScoreLow / ZScoreHigh / Channel
             _zScoreLow = (ZScoreLow)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreLow", name: name + "ZScoreLow", canDelete: false);
@@ -93,6 +109,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _ddr = (DDR)IndicatorsFactory.CreateIndicatorByName(nameClass: "DDR", name: name + "DDR", canDelete: false);
             _ddr = (DDR)_tab.CreateCandleIndicator(_ddr, nameArea: "DDR");
+
+            _ddrDecoration = new DDRDecoration(this, _ddr);
+            _ddrDecoration.DDREvent += _ddrDecoration_DDREvent;
 
             // ATR decoration
             _atr = new AtrDecoration(this, true);
@@ -133,7 +152,69 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // Volatile stop
             new VolatileStopDecoration(this, VolatileStopHandler);
 
+            _change24 = new Change24Decoration(this);
+
+            SetEmaParameters();
+            _canEnterByEma = new CanEnterByEmaDecoration(this);
+            _canEnterByEma.Ema = _ema;
+
             ParametersChangedByUser();
+        }
+
+        private decimal Spread
+        {
+            get
+            {
+                decimal result = _spread.ValueDecimal;
+                _ddrDecoration.ChangeStep(ref result);
+                return result;
+            }
+        }
+
+        private void _ddrDecoration_DDREvent(object sender, EventArgs e)
+        {
+            if (_ddrDecoration.Activated)
+            {
+                if (_currentGrid != null)
+                {
+                    var grid =_currentGrid.GetGrid();
+                    var positions = _currentGrid.GetPositions();
+                    StringBuilder debug = new StringBuilder();
+                    LogGrid("DDR activated, old grid:");
+
+                    // Удалить пустые уровни грида
+                    var emptyKeys = grid.Keys.Select(x => x).Where(k => !positions.ContainsKey(k)).ToList();
+                    emptyKeys.Sort();
+                    if (!emptyKeys.Any() || !positions.Any()) return;
+                    foreach ( var eptyKey in emptyKeys)
+                    {
+                        grid.Remove(eptyKey);
+                    }
+
+                    // Заполнить грид новыми уровнями
+                    decimal step = Spread;
+                    decimal maxLevel = grid.Values.Any() ? grid.Values.Max() : _atrDev.LastValue;
+                    int index = 1;
+                    foreach (var key in emptyKeys)
+                    {
+                        grid.Add(key, maxLevel + step * index++);
+                    }
+                    LogGrid("new grid:");
+                    void LogGrid(string header)
+                    {
+                        debug.Clear();
+                        debug.Append(header);
+                        foreach (var key in grid.Keys.OrderBy(k => k))
+                        {
+                            var level = grid[key];
+                            Position pos = positions.ContainsKey(key) ? positions[key] : null;
+                            string posStr = pos != null ? $", price = {pos.EntryPrice:F3}," : "";
+                            debug.Append($"|[{key}] = {level:F3}{posStr}|");
+                        }
+                        LogDebug(debug.ToString());
+                    }
+                }
+            }
         }
 
         private void _tab_PositionClosingSuccesEvent(Position obj)
@@ -159,7 +240,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal atrDev = _atrDev.LastValue;
             if (_currentGrid == null)
             {
-                decimal step = _spread.ValueDecimal;
+                decimal step = Spread;
                 _currentGrid = new MeanReverseGrid(atrDev, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
                 _volumeManager.Clear();
@@ -210,6 +291,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (candles.Count < 10 && _currentGrid != null && StartProgram == StartProgram.IsTester)
             {
                 _currentGrid = null;
+                _ddrDecoration.Activate(false);
             }
 
             // Вызов базовой обработки
@@ -247,6 +329,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                         LogDebug("All positions closed - resetting grid");
                         _currentGrid = null;
+                        _ddrDecoration.Activate(false);
                         _volumeManager.Clear();
                     }
                 }
@@ -352,6 +435,17 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
             Candle last = candles.Last();
+            if (!_change24.CanBuy)
+            {
+                LogDebug($"Change24 ({last.TimeStart}): Покупка запрещена, изменение {_change24.Change:F2}%");
+                return false;
+            }
+
+            if (!_canEnterByEma.CanBuy)
+            {
+                //LogDebug($"Ema: Покупка запрещена");
+                return false;
+            }
 
             // Снятие блокировки volatile stop по Buy
             if (_volatileStopActive && _volatileStopDirection == Side.Buy)
@@ -430,6 +524,17 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
             Candle last = candles.Last();
+            if (!_change24.CanSell)
+            {
+                LogDebug($"Change24 ({last.TimeStart}): Продажа запрещена, изменение {_change24.Change:F2}%");
+                return false;
+            }
+
+            if (!_canEnterByEma.CanSell)
+            {
+                //LogDebug($"Ema: Продажа запрещена");
+                return false;
+            }
 
             // Снятие блокировки volatile stop по Sell
             if (_volatileStopActive && _volatileStopDirection == Side.Sell)
@@ -523,6 +628,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             SetChannelParameters();
             SetVolumeManager();
             SetZScoreChannelReference();
+            SetEmaParameters();
         }
 
         private void SetZScoreChannelReference()
@@ -588,6 +694,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                     }
                 }
+            }
+        }
+
+        private void SetEmaParameters()
+        {
+            if (_emaLength == null || _ema == null) return;
+            if (_ema?.Parameters[0] is IndicatorParameterInt parameter)
+            {
+                parameter.ValueInt = _emaLength.ValueInt;
             }
         }
 
