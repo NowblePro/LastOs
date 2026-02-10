@@ -16,6 +16,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     public class MRZAtrRrDdr : BotPanelSimple
     {
         // Индикаторы
+        private Aindicator _ema;
         private Aindicator _sma;
         private ZScoreLow _zScoreLow;
         private ZScoreHigh _zScoreHigh;
@@ -31,6 +32,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _spread; // шаг по AtrDev для определения уровней
         private StrategyParameterDecimal _atrMultDev;
         private StrategyParameterBool _debugLogging;
+        private StrategyParameterInt _emaLength;
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
@@ -59,12 +61,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // Изменение цены относительно цены 24 часа назад
         private Change24Decoration _change24;
 
+        private CanEnterByEmaDecoration _canEnterByEma;
+
         public MRZAtrRrDdr(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
             _tab.TPSLMode = TPSLMode.Partial;
 
             // Параметры
+            _emaLength = CreateParameter("EMA period", 200, 100, 300, 1, "Ema Filter");
             _periodSma = CreateParameter("Sma Period", 50, 10, 500, 10, "Robot");
             _zEnterBase = CreateParameter("Z Enter Base", 3m, 1m, 5m, 0.5m, "Robot");
             _gridSize = CreateParameter("Grid Size", 7, 3, 20, 1, "Robot");
@@ -76,6 +81,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _sma = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, nameArea: "Prime");
             _sma.Save();
+
+            // EMA
+            _ema = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Ema", name: name + "Ema", canDelete: false);
+            _ema = (Aindicator)_tab.CreateCandleIndicator(_ema, nameArea: "Prime");
+            _ema.Save();
 
             // ZScoreLow / ZScoreHigh / Channel
             _zScoreLow = (ZScoreLow)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreLow", name: name + "ZScoreLow", canDelete: false);
@@ -143,6 +153,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             new VolatileStopDecoration(this, VolatileStopHandler);
 
             _change24 = new Change24Decoration(this);
+
+            SetEmaParameters();
+            _canEnterByEma = new CanEnterByEmaDecoration(this);
+            _canEnterByEma.Ema = _ema;
 
             ParametersChangedByUser();
         }
@@ -420,12 +434,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // Логика первого входа и добавлений — объединяет ZScore (только для первой позиции) и AtrDev-grid
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
+            Candle last = candles.Last();
             if (!_change24.CanBuy)
             {
-                LogDebug($"Change24: Покупка запрещена, изменение {_change24.Change:F2}%");
+                LogDebug($"Change24 ({last.TimeStart}): Покупка запрещена, изменение {_change24.Change:F2}%");
                 return false;
             }
-            Candle last = candles.Last();
+
+            if (!_canEnterByEma.CanBuy)
+            {
+                //LogDebug($"Ema: Покупка запрещена");
+                return false;
+            }
 
             // Снятие блокировки volatile stop по Buy
             if (_volatileStopActive && _volatileStopDirection == Side.Buy)
@@ -503,12 +523,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
+            Candle last = candles.Last();
             if (!_change24.CanSell)
             {
-                LogDebug($"Change24: Продажа запрещена, изменение {_change24.Change:F2}%");
+                LogDebug($"Change24 ({last.TimeStart}): Продажа запрещена, изменение {_change24.Change:F2}%");
                 return false;
             }
-            Candle last = candles.Last();
+
+            if (!_canEnterByEma.CanSell)
+            {
+                //LogDebug($"Ema: Продажа запрещена");
+                return false;
+            }
 
             // Снятие блокировки volatile stop по Sell
             if (_volatileStopActive && _volatileStopDirection == Side.Sell)
@@ -602,6 +628,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             SetChannelParameters();
             SetVolumeManager();
             SetZScoreChannelReference();
+            SetEmaParameters();
         }
 
         private void SetZScoreChannelReference()
@@ -667,6 +694,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                     }
                 }
+            }
+        }
+
+        private void SetEmaParameters()
+        {
+            if (_emaLength == null || _ema == null) return;
+            if (_ema?.Parameters[0] is IndicatorParameterInt parameter)
+            {
+                parameter.ValueInt = _emaLength.ValueInt;
             }
         }
 
