@@ -1428,6 +1428,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\LrZZAtrTakeSmaEntr.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversion1Fix.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversionZScore.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MRZAtrRrDdr.cs" />
