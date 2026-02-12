@@ -14,7 +14,7 @@ namespace OsEngine.Common
         private Dictionary<int, Position> _positions = new Dictionary<int, Position>();
         private int _index;
 
-        public MeanReverseGrid(decimal price, decimal delta, int levelsCount, Side side, int index)
+        public MeanReverseGrid(decimal gridValue, decimal delta, int levelsCount, Side side, int index)
         {
             if (levelsCount < 2) throw new Exception("Уровней должно быть хотя бы 2");
             _side = side;
@@ -23,14 +23,14 @@ namespace OsEngine.Common
             {
                 for (int i = 1; i < levelsCount + 1; i++)
                 {
-                    _grid.Add(i, price - delta * i);
+                    _grid.Add(i, gridValue - delta * i);
                 }
             }
             else
             {
                 for (int i = 1; i < levelsCount + 1; i++)
                 {
-                    _grid.Add(i, price + delta * i);
+                    _grid.Add(i, gridValue + delta * i);
                 }
             }
         }

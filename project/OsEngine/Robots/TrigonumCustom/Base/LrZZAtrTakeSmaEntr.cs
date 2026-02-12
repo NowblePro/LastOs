@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Drawing;
 using System.Text;
+using OsEngine.Charts.CandleChart.Indicators;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
 {
@@ -16,21 +17,22 @@ namespace OsEngine.Robots.TrigonumCustom.Base
     public class LrZZAtrTakeSmaEntr : BotPanelSimple
     {
         // Индикаторы
-        private Aindicator _sma;
         private ZScoreLow _zScoreLow;
         private ZScoreHigh _zScoreHigh;
         private ZScoreChannel _channel;
-        private AtrDev _atrDev;
         private AtrDecoration _atr; // для ATR TP/SL
         private DDR _ddr;
+        private LinearRegression _lr;
+        private Aindicator _sma;
 
         // Параметры
-        private StrategyParameterInt _periodSma;
+        private StrategyParameterInt _periodCentralLine;
         private StrategyParameterDecimal _zEnterBase;
         private StrategyParameterInt _gridSize;
         private StrategyParameterDecimal _spread; // шаг по AtrDev для определения уровней
         private StrategyParameterDecimal _atrMultDev;
         private StrategyParameterBool _debugLogging;
+        private StrategyParameterString _centralLine;
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
@@ -56,37 +58,52 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // DDR
         private DDRDecoration _ddrDecoration;
 
+        // Условия входа для лонга (для шорта зеркально):
+        // 1. Нижний канал пересекает свечу между Low и High.
+        // 2. Свеча лонговая (зелёная).
+        // 3. Свеча импульсная (хвосты маленькие, тело большое).
+        // 4. DDR меньше порога.
+        // 5. На каждый левел 1 вход. (стандартно для всех)
+        // 6. Последующие входы должны быть ниже по цене чем предыдущие.
+
+        // Особенности:
+        // 1. Усреднение по z-score каналу
+        // 2. "Недоход до SMA" рассчитывается только во время входа (тэйк не следует за SMA)
+        // 3. В роли центральной линии может выступать не только SMA но и линейная регрессия, переключается параметром Central Line
+
         public LrZZAtrTakeSmaEntr(string name, StartProgram startProgram) : base(name, startProgram)
         {
             _multiplePosition = true;
             _tab.TPSLMode = TPSLMode.Partial;
 
             // Параметры
-            _periodSma = CreateParameter("Sma Period", 50, 10, 500, 10, "Robot");
+            _periodCentralLine = CreateParameter("Central Line Period", 50, 10, 500, 10, "Robot");
             _zEnterBase = CreateParameter("Z Enter Base", 3m, 1m, 5m, 0.5m, "Robot");
             _gridSize = CreateParameter("Grid Size", 7, 3, 20, 1, "Robot");
             _spread = CreateParameter("Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
             _atrMultDev = CreateParameter("Atr Mult Setka", 1m, 0.1m, 5m, 0.1m, "ATR");
             _debugLogging = CreateParameter("Debug Logging", false, "Debug");
+            string[] centralLineTypes = Enum.GetNames(typeof(CentralLineType));
+            _centralLine = CreateParameter("Central Line", CentralLineType.LR.ToString(), centralLineTypes, "Robot");
 
-            // SMA
-            _sma = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
-            _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, nameArea: "Prime");
-            _sma.Save();
+            _lr = (LinearRegression)IndicatorsFactory.CreateIndicatorByName(nameClass: "LinearRegression", name: name + "LR", canDelete: false);
+            _lr = (LinearRegression)_tab.CreateCandleIndicator(_lr, nameArea: "Prime");
+            _lr.Save();
+
+            _sma = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma", false);
+            _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, "Prime");
 
             // ZScoreLow / ZScoreHigh / Channel
             _zScoreLow = (ZScoreLow)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreLow", name: name + "ZScoreLow", canDelete: false);
             _zScoreLow.PaintSeries = false;
             _zScoreLow = (ZScoreLow)_tab.CreateCandleIndicator(_zScoreLow, nameArea: "ZScoreLow");
             _zScoreLow.Save();
-            _zScoreLow.SMA = _sma;
-
+            
             _zScoreHigh = (ZScoreHigh)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreHigh", name: name + "ZScoreHigh", canDelete: false);
             _zScoreHigh.PaintSeries = false;
             _zScoreHigh = (ZScoreHigh)_tab.CreateCandleIndicator(_zScoreHigh, nameArea: "ZScoreHigh");
             _zScoreHigh.Save();
-            _zScoreHigh.SMA = _sma;
-
+            
             _channel = (ZScoreChannel)IndicatorsFactory.CreateIndicatorByName(nameClass: "ZScoreChannel", name: name + "ZScoreChannel", canDelete: false);
             _channel = (ZScoreChannel)_tab.CreateCandleIndicator(_channel, nameArea: "Prime");
             _channel.ZScoreReference = _zEnterBase.ValueDecimal;
@@ -98,19 +115,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _ddr = (DDR)_tab.CreateCandleIndicator(_ddr, nameArea: "DDR");
 
             _ddrDecoration = new DDRDecoration(this, _ddr);
-            _ddrDecoration.DDREvent += _ddrDecoration_DDREvent;
 
             // ATR decoration
             _atr = new AtrDecoration(this, true);
             _atr.CancelTPSL = false;
-
-            // AtrDev
-            _atrDev = (AtrDev)IndicatorsFactory.CreateIndicatorByName("AtrDev", name + "AtrDev", false);
-            _atrDev = (AtrDev)_tab.CreateCandleIndicator(_atrDev, "AtrDev");
-            _atrDev.Sma = _sma;
-            _atrDev.Atr = _atr;
-            _atrDev.OnlyPositive = true;
-            _atrDev.PercentView = true;
 
             // TP/SL
             _takeProfit = new TakeProfitDecoration(this, false, "ATR TP Enable", "ATR");
@@ -130,7 +138,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             // FairPrice Decoration
             _fairPrice = new FairPriceDecoration(this, "FairPrice");
-            _fairPrice.SetSma(_sma);
 
             // События
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
@@ -142,59 +149,32 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             ParametersChangedByUser();
         }
 
+        private Aindicator CentralLineIndicator
+        {
+            get
+            {
+                Aindicator result = null;
+                CentralLineType centralType = (CentralLineType)Enum.Parse(typeof(CentralLineType), _centralLine.ValueString);
+                switch (centralType)
+                {
+                    case CentralLineType.Sma:
+                        result = _sma;
+                        break;
+                    case CentralLineType.LR:
+                        result = _lr;
+                        break;
+                }
+                return result;
+            }
+        }
+
         private decimal Spread
         {
             get
             {
                 decimal result = _spread.ValueDecimal;
-                _ddrDecoration.ChangeStep(ref result);
+                //_ddrDecoration.ChangeStep(ref result);
                 return result;
-            }
-        }
-
-        private void _ddrDecoration_DDREvent(object sender, EventArgs e)
-        {
-            if (_ddrDecoration.Activated)
-            {
-                if (_currentGrid != null)
-                {
-                    var grid = _currentGrid.GetGrid();
-                    var positions = _currentGrid.GetPositions();
-                    StringBuilder debug = new StringBuilder();
-                    LogGrid("DDR activated, old grid:");
-
-                    // Удалить пустые уровни грида
-                    var emptyKeys = grid.Keys.Select(x => x).Where(k => !positions.ContainsKey(k)).ToList();
-                    emptyKeys.Sort();
-                    if (!emptyKeys.Any() || !positions.Any()) return;
-                    foreach (var eptyKey in emptyKeys)
-                    {
-                        grid.Remove(eptyKey);
-                    }
-
-                    // Заполнить грид новыми уровнями
-                    decimal step = Spread;
-                    decimal maxLevel = grid.Values.Any() ? grid.Values.Max() : _atrDev.LastValue;
-                    int index = 1;
-                    foreach (var key in emptyKeys)
-                    {
-                        grid.Add(key, maxLevel + step * index++);
-                    }
-                    LogGrid("new grid:");
-                    void LogGrid(string header)
-                    {
-                        debug.Clear();
-                        debug.Append(header);
-                        foreach (var key in grid.Keys.OrderBy(k => k))
-                        {
-                            var level = grid[key];
-                            Position pos = positions.ContainsKey(key) ? positions[key] : null;
-                            string posStr = pos != null ? $", price = {pos.EntryPrice:F3}," : "";
-                            debug.Append($"|[{key}] = {level:F3}{posStr}|");
-                        }
-                        LogDebug(debug.ToString());
-                    }
-                }
             }
         }
 
@@ -218,11 +198,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void _tab_PositionOpeningSuccesEvent(Position obj)
         {
-            decimal atrDev = _atrDev.LastValue;
+            decimal gridValue = obj.Direction == Side.Buy ? _zScoreLow.LastValue : _zScoreHigh.LastValue;
             if (_currentGrid == null)
             {
                 decimal step = Spread;
-                _currentGrid = new MeanReverseGrid(atrDev, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
+                _currentGrid = new MeanReverseGrid(gridValue, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
                 _volumeManager.Clear();
 
@@ -233,7 +213,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     {
                         sb.Append($"[{level.Key};{level.Value}] ");
                     }
-                    LogDebug($"Grid created dir={obj.Direction} center={atrDev:F8} step={step:F8} levels={sb}");
+                    LogDebug($"Grid created dir={obj.Direction} center={gridValue:F8} step={step:F8} levels={sb}");
                 }
             }
             else
@@ -244,7 +224,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     // Уровни которые меньше текущего atrDev и не занятые позициями
-                    var goodLevels = grid.Where(l => l.Value <= atrDev).Where(l => !positions.Keys.Contains(l.Key));
+                    var goodLevels = grid.Where(l => l.Value <= gridValue).Where(l => !positions.Keys.Contains(l.Key));
 
                     if (!goodLevels.Any())
                     {
@@ -420,7 +400,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // Снятие блокировки volatile stop по Buy
             if (_volatileStopActive && _volatileStopDirection == Side.Buy)
             {
-                decimal sma = _sma.DataSeries[0].Last;
+                decimal sma = CentralLineIndicator.DataSeries[0].Last;
                 if (sma <= last.High)
                 {
                     _volatileStopActive = false;
@@ -435,7 +415,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // Если грид противоположного направления — не входим
             if (_currentGrid != null && _gridDirection == Side.Sell) return false;
 
-            decimal smaValue = _sma.DataSeries[0].Last;
+            decimal smaValue = CentralLineIndicator.DataSeries[0].Last;
             decimal currentPrice = last.Close;
 
             // Первая позиция: ZScore используется только при отсутствии грида
@@ -471,15 +451,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 if (_gridDirection == Side.Sell) return false;
                 try
                 {
-                    decimal atrDev = _atrDev.LastValue;
+                    decimal gridValue = _zScoreLow.LastValue;
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
-                    //decimal currAtrDev = _atrDev.LastValue;
 
-                    var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
-                    if (!atrCandidates.Any()) return false;
+                    var gridCandidates = emptyLevels.Where(p => gridValue >= p.Value).ToList();
+                    if (!gridCandidates.Any()) return false;
                     if (positions.Where(p => p.Value.EntryPrice < currentPrice).Any()) return false;
                     return true;
                 }
@@ -498,7 +477,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // Снятие блокировки volatile stop по Sell
             if (_volatileStopActive && _volatileStopDirection == Side.Sell)
             {
-                decimal sma = _sma.DataSeries[0].Last;
+                decimal sma = CentralLineIndicator.DataSeries[0].Last;
                 if (sma >= last.Low)
                 {
                     _volatileStopActive = false;
@@ -512,7 +491,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_currentGrid != null && _gridDirection == Side.Buy) return false;
 
-            decimal smaValue = _sma.DataSeries[0].Last;
+            decimal smaValue = CentralLineIndicator.DataSeries[0].Last;
             decimal currentPrice = last.Close;
 
             if (_currentGrid == null)
@@ -547,14 +526,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 if (_gridDirection == Side.Buy) return false;
                 try
                 {
-                    decimal atrDev = _atrDev.LastValue;
+                    decimal gridValue = _zScoreHigh.LastValue;
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     var emptyLevels = grid.Where(p => !positions.ContainsKey(p.Key)).ToList();
 
-                    var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
-                    if (!atrCandidates.Any()) return false;
+                    var gridCandidates = emptyLevels.Where(p => gridValue >= p.Value).ToList();
+                    if (!gridCandidates.Any()) return false;
                     if (positions.Where(p => p.Value.EntryPrice > currentPrice).Any()) return false;
                     return true;
                 }
@@ -570,7 +549,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             return new List<Func<List<Candle>, bool>>()
             {
-                candles => _periodSma.ValueInt < candles.Count,
+                candles => _periodCentralLine.ValueInt < candles.Count,
                 candles => _atr.CurrentAtr != 0
             };
         }
@@ -583,10 +562,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         protected override void ParametersChangedByUser()
         {
             SetSmaParameters();
-            SetAtrDevParameters();
             SetChannelParameters();
             SetVolumeManager();
             SetZScoreChannelReference();
+            SetCentralLineIndicator();
         }
 
         private void SetZScoreChannelReference()
@@ -595,19 +574,29 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _channel.ZScoreReference = _zEnterBase.ValueDecimal;
         }
 
-        private void SetAtrDevParameters()
-        {
-            if (_atrDev == null || _atrMultDev == null) return;
-            _atrDev.AtrMultDev = _atrMultDev.ValueDecimal;
-        }
-
         private void SetSmaParameters()
         {
-            if (_sma == null || _periodSma == null) return;
+            if (_lr == null || _periodCentralLine == null || _sma == null) return;
+            _lr.N = _periodCentralLine.ValueInt;
             if (_sma?.Parameters[0] is IndicatorParameterInt parameter)
             {
-                parameter.ValueInt = _periodSma.ValueInt;
+                parameter.ValueInt = _periodCentralLine.ValueInt;
             }
+        }
+
+        private void SetCentralLineIndicator()
+        {
+            if (_centralLine == null ||
+                _zScoreLow == null ||
+                _zScoreHigh == null ||
+                _fairPrice == null ||
+                CentralLineIndicator == null)
+            {
+                return;
+            }
+            _zScoreLow.SMA = CentralLineIndicator;
+            _zScoreHigh.SMA = CentralLineIndicator;
+            _fairPrice.SetSma(CentralLineIndicator);
         }
 
         private void SetChannelParameters()
@@ -657,8 +646,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private bool CanEnterPositionBySma(decimal price, Side side)
         {
-            if (_sma == null || _sma.DataSeries == null || _sma.DataSeries[0].Values == null || _sma.DataSeries[0].Values.Count == 0) return true;
-            decimal sma = _sma.DataSeries[0].Last;
+            if (CentralLineIndicator == null || CentralLineIndicator.DataSeries == null || CentralLineIndicator.DataSeries[0].Values == null || CentralLineIndicator.DataSeries[0].Values.Count == 0) return true;
+            decimal sma = CentralLineIndicator.DataSeries[0].Last;
             if (side == Side.Buy)
             {
                 return price < sma; // для лонга цена должна быть ниже SMA
@@ -667,6 +656,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 return price > sma; // для шорта — выше SMA
             }
+        }
+
+        enum CentralLineType
+        {
+            Sma, LR
         }
     }
 }

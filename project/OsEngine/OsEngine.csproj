@@ -499,6 +499,7 @@
     <Compile Include="Indicators\Samples\Sample3IndicatorDataSeries.cs" />
     <Compile Include="Indicators\TrigonumCustom\AtrDev.cs" />
     <Compile Include="Indicators\TrigonumCustom\DDR.cs" />
+    <Compile Include="Indicators\TrigonumCustom\LinearRegression.cs" />
     <Compile Include="Indicators\TrigonumCustom\NadarayaWatson.cs" />
     <Compile Include="Indicators\TrigonumCustom\OrderBlockZigZag.cs" />
     <Compile Include="Indicators\TrigonumCustom\SessionIndicator.cs" />
