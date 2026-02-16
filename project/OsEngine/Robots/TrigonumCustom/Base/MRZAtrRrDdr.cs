@@ -348,7 +348,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private decimal GetTakeProfit(Position position)
         {
             // Получаем стоп-лосс (в цене)
-            decimal stopLossPrice = _stopLoss.On ? GetStopLoss(position) : GetStopLossIfDisabled(position);
+            decimal stopLossPrice = _stopLoss.On ? GetStopLoss(position) : GetStopLossForTakeProfitIfDisabled(position);
             decimal entry = position.EntryPrice;
 
             // Вычисляем расстояние стопа в пунктах
@@ -394,6 +394,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             else if (position.Direction == Side.Sell)
             {
                 stopPrice = position.EntryPrice + position.EntryPrice * (_stopLossLimitPercent.ValueDecimal / 100);
+            }
+            return stopPrice;
+        }
+
+        private decimal GetStopLossForTakeProfitIfDisabled(Position position)
+        {
+            decimal stopPrice = 0;
+            if (position.Direction == Side.Buy)
+            {
+                stopPrice = position.EntryPrice - position.EntryPrice * (_atrSlMultiplier.ValueDecimal / 100);
+            }
+            else if (position.Direction == Side.Sell)
+            {
+                stopPrice = position.EntryPrice + position.EntryPrice * (_atrSlMultiplier.ValueDecimal / 100);
             }
             return stopPrice;
         }
