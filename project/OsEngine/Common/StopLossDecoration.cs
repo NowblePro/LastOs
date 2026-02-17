@@ -59,6 +59,7 @@ namespace OsEngine.Common
         }
 
         public Func<Position, decimal> StopPriceFunc { get; set; } = null;
+        public Func<Position, decimal> StopPriceFuncIfDisabled { get; set; } = null;
 
         private void _tab_PositionOpeningSuccesEvent(Position position)
         {
@@ -77,41 +78,46 @@ namespace OsEngine.Common
             decimal stopPrice = 0;
             decimal stopOrderPrice = 0;
 
-            if (_fixStopOn.ValueBool)
+            if (StopPriceFunc == null && _fixStopOn.ValueBool)
             {
                 if (position.Direction == Side.Buy)
                 {
-                    if (StopPriceFunc != null)
-                    {
-                        stopPrice = StopPriceFunc.Invoke(position);
-                    }
-                    else
-                    {
-                        stopPrice = position.EntryPrice - position.EntryPrice * (_fixStop.ValueDecimal / 100);
-                    }
-                    stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage;
+                    stopPrice = position.EntryPrice - position.EntryPrice * (_fixStop.ValueDecimal / 100);
                 }
                 else if (position.Direction == Side.Sell)
                 {
-                    if (StopPriceFunc != null)
-                    {
-                        stopPrice = StopPriceFunc.Invoke(position);
-                    }
-                    else
-                    {
-                        stopPrice = position.EntryPrice + position.EntryPrice * (_fixStop.ValueDecimal / 100);
-                    }
-                    stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage;
+                    stopPrice = position.EntryPrice + position.EntryPrice * (_fixStop.ValueDecimal / 100);
                 }
+            }
+            else if (StopPriceFunc != null && _fixStopOn.ValueBool)
+            {
+                stopPrice = StopPriceFunc.Invoke(position);
+            }
+            else if (StopPriceFuncIfDisabled != null && !_fixStopOn.ValueBool)
+            {
+                stopPrice = StopPriceFuncIfDisabled.Invoke(position);
+            }
+            else
+            {
+                return;
+            }
 
-                if (orderType == OrderType.Limit)
-                {
-                    _tab.CloseAtStop(position, stopPrice, stopOrderPrice);
-                }
-                else if (orderType == OrderType.Market)
-                {
-                    _tab.CloseAtStopMarket(position, stopPrice);
-                }
+            if (position.Direction == Side.Buy)
+            {
+                stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage;
+            }
+            else if (position.Direction == Side.Sell)
+            {
+                stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage;
+            }
+
+            if (orderType == OrderType.Limit)
+            {
+                _tab.CloseAtStop(position, stopPrice, stopOrderPrice);
+            }
+            else if (orderType == OrderType.Market)
+            {
+                _tab.CloseAtStopMarket(position, stopPrice);
             }
         }
     }

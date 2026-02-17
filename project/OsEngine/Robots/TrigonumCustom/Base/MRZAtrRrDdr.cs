@@ -33,6 +33,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _atrMultDev;
         private StrategyParameterBool _debugLogging;
         private StrategyParameterInt _emaLength;
+        private StrategyParameterBool _enterFirstPosition;
+        private StrategyParameterBool _onlyOutsideChannel;
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
@@ -76,6 +78,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _spread = CreateParameter("Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
             _atrMultDev = CreateParameter("Atr Mult Setka", 1m, 0.1m, 5m, 0.1m, "ATR");
             _debugLogging = CreateParameter("Debug Logging", false, "Debug");
+            _enterFirstPosition = CreateParameter("Enter First Position", true, "Robot");
+            _onlyOutsideChannel = CreateParameter("Only Outside The Channel", false, "Robot");
 
             // SMA
             _sma = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
@@ -134,6 +138,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _stopLoss = new StopLossDecoration(this, false, "ATR SL Enable", "ATR");
             _atrSlMultiplier = CreateParameter("ATR SL Multiplier", 1m, 0.5m, 5m, 0.5m, "ATR");
             _stopLoss.StopPriceFunc = GetStopLoss;
+            _stopLoss.StopPriceFuncIfDisabled = GetStopLossIfDisabled;
 
             // Volume manager
             _r = CreateParameter("R, %", 1m, 1m, 15m, 1m, "Volume Manager");
@@ -180,12 +185,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var grid =_currentGrid.GetGrid();
                     var positions = _currentGrid.GetPositions();
                     StringBuilder debug = new StringBuilder();
-                    LogGrid("DDR activated, old grid:");
 
                     // Удалить пустые уровни грида
                     var emptyKeys = grid.Keys.Select(x => x).Where(k => !positions.ContainsKey(k)).ToList();
                     emptyKeys.Sort();
                     if (!emptyKeys.Any() || !positions.Any()) return;
+                    LogGrid("DDR activated, old grid:");
                     foreach ( var eptyKey in emptyKeys)
                     {
                         grid.Remove(eptyKey);
@@ -343,7 +348,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private decimal GetTakeProfit(Position position)
         {
             // Получаем стоп-лосс (в цене)
-            decimal stopLossPrice = GetStopLoss(position);
+            decimal stopLossPrice = _stopLoss.On ? GetStopLoss(position) : GetStopLossForTakeProfitIfDisabled(position);
             decimal entry = position.EntryPrice;
 
             // Вычисляем расстояние стопа в пунктах
@@ -377,6 +382,34 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 default:
                     return position.EntryPrice - stopLoss;
             }
+        }
+
+        private decimal GetStopLossIfDisabled(Position position)
+        {
+            decimal stopPrice = 0;
+            if (position.Direction == Side.Buy)
+            {
+                stopPrice = position.EntryPrice - position.EntryPrice * (_stopLossLimitPercent.ValueDecimal / 100);
+            }
+            else if (position.Direction == Side.Sell)
+            {
+                stopPrice = position.EntryPrice + position.EntryPrice * (_stopLossLimitPercent.ValueDecimal / 100);
+            }
+            return stopPrice;
+        }
+
+        private decimal GetStopLossForTakeProfitIfDisabled(Position position)
+        {
+            decimal stopPrice = 0;
+            if (position.Direction == Side.Buy)
+            {
+                stopPrice = position.EntryPrice - position.EntryPrice * (_atrSlMultiplier.ValueDecimal / 100);
+            }
+            else if (position.Direction == Side.Sell)
+            {
+                stopPrice = position.EntryPrice + position.EntryPrice * (_atrSlMultiplier.ValueDecimal / 100);
+            }
+            return stopPrice;
         }
 
         private void VolatileStopHandler()
@@ -465,6 +498,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // Если грид противоположного направления — не входим
             if (_currentGrid != null && _gridDirection == Side.Sell) return false;
 
+            // Если условие "торговать только за пределами канала" не выполняется
+            if (_onlyOutsideChannel.ValueBool && _zScoreLow.LastValue < last.Close)
+            {
+                return false;
+            }
+
             decimal smaValue = _sma.DataSeries[0].Last;
             decimal currentPrice = last.Close;
 
@@ -488,8 +527,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     {
                         _volumeManager.Clear();
                         _gridDirection = Side.Buy;
+                        
+                        if (!_enterFirstPosition.ValueBool)
+                        {
+                            // Строим грид, а впозицию не входим
+                            decimal atrDev = _atrDev.LastValue;
+                            decimal step = Spread;
+                            _currentGrid = new MeanReverseGrid(atrDev + step, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
+                            _volumeManager.Clear();
+                            return false;
+                        }
+
                         LogDebug($"Long first-entry check: price={price:F8} sma={smaValue:F8} zLow={z:F8} threshold={_zEnterBase.ValueDecimal:F8}");
                         LogDebug("Long first-entry condition satisfied -> returning true");
+
                         return true;
                     }
                 }
@@ -553,6 +604,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_currentGrid != null && _gridDirection == Side.Buy) return false;
 
+            // Если условие "торговать только за пределами канала" не выполняется
+            if (_onlyOutsideChannel.ValueBool && _zScoreHigh.LastValue > last.Close)
+            {
+                return false;
+            }
+
             decimal smaValue = _sma.DataSeries[0].Last;
             decimal currentPrice = last.Close;
 
@@ -575,8 +632,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     {
                         _volumeManager.Clear();
                         _gridDirection = Side.Sell;
+                        
+                        if (!_enterFirstPosition.ValueBool)
+                        {
+                            // Строим грид, а впозицию не входим
+                            decimal atrDev = _atrDev.LastValue;
+                            decimal step = Spread;
+                            _currentGrid = new MeanReverseGrid(atrDev + step, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
+                            _volumeManager.Clear();
+                            return false;
+                        }
+
                         LogDebug($"Short first-entry check: price={price:F8} sma={smaValue:F8} zHigh={z:F8} threshold={_zEnterBase.ValueDecimal:F8}");
                         LogDebug("Short first-entry condition satisfied -> returning true");
+
                         return true;
                     }
                 }
