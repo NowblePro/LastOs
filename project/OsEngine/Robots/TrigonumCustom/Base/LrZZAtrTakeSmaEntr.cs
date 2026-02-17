@@ -30,9 +30,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _zEnterBase;
         private StrategyParameterInt _gridSize;
         private StrategyParameterDecimal _spread; // шаг по AtrDev для определения уровней
-        private StrategyParameterDecimal _atrMultDev;
         private StrategyParameterBool _debugLogging;
         private StrategyParameterString _centralLine;
+        private StrategyParameterBool _enterFirstPosition;
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
@@ -84,10 +84,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _zEnterBase = CreateParameter("Z Enter Base", 3m, 1m, 5m, 0.5m, "Robot");
             _gridSize = CreateParameter("Grid Size", 7, 3, 20, 1, "Robot");
             _spread = CreateParameter("Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
-            _atrMultDev = CreateParameter("Atr Mult Setka", 1m, 0.1m, 5m, 0.1m, "ATR");
             _debugLogging = CreateParameter("Debug Logging", false, "Debug");
             string[] centralLineTypes = Enum.GetNames(typeof(CentralLineType));
             _centralLine = CreateParameter("Central Line", CentralLineType.LR.ToString(), centralLineTypes, "Robot");
+            _enterFirstPosition = CreateParameter("Enter First Position", true, "Robot");
 
             _lr = (LinearRegression)IndicatorsFactory.CreateIndicatorByName(nameClass: "LinearRegression", name: name + "LR", canDelete: false);
             _lr = (LinearRegression)_tab.CreateCandleIndicator(_lr, nameArea: "Prime");
@@ -132,6 +132,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _stopLoss = new StopLossDecoration(this, false, "ATR SL Enable", "ATR");
             _atrSlMultiplier = CreateParameter("ATR SL Multiplier", 1m, 0.5m, 5m, 0.5m, "ATR");
             _stopLoss.StopPriceFunc = GetStopLoss;
+            _stopLoss.StopPriceFuncIfDisabled = GetStopLossIfDisabled;
 
             // Volume manager
             _r = CreateParameter("R, %", 1m, 1m, 15m, 1m, "Volume Manager");
@@ -321,7 +322,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private decimal GetTakeProfit(Position position)
         {
             // Получаем стоп-лосс (в цене)
-            decimal stopLossPrice = GetStopLoss(position);
+            decimal stopLossPrice = _stopLoss.On ? GetStopLoss(position) : GetStopLossForTakeProfitIfDisabled(position);
             decimal entry = position.EntryPrice;
 
             // Вычисляем расстояние стопа в пунктах
@@ -355,6 +356,34 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 default:
                     return position.EntryPrice - stopLoss;
             }
+        }
+
+        private decimal GetStopLossIfDisabled(Position position)
+        {
+            decimal stopPrice = 0;
+            if (position.Direction == Side.Buy)
+            {
+                stopPrice = position.EntryPrice - position.EntryPrice * (_stopLossLimitPercent.ValueDecimal / 100);
+            }
+            else if (position.Direction == Side.Sell)
+            {
+                stopPrice = position.EntryPrice + position.EntryPrice * (_stopLossLimitPercent.ValueDecimal / 100);
+            }
+            return stopPrice;
+        }
+
+        private decimal GetStopLossForTakeProfitIfDisabled(Position position)
+        {
+            decimal stopPrice = 0;
+            if (position.Direction == Side.Buy)
+            {
+                stopPrice = position.EntryPrice - position.EntryPrice * (_atrSlMultiplier.ValueDecimal / 100);
+            }
+            else if (position.Direction == Side.Sell)
+            {
+                stopPrice = position.EntryPrice + position.EntryPrice * (_atrSlMultiplier.ValueDecimal / 100);
+            }
+            return stopPrice;
         }
 
         private void VolatileStopHandler()
@@ -461,6 +490,26 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     _volumeManager.Clear();
                     _gridDirection = Side.Buy;
+
+                    if (!_enterFirstPosition.ValueBool)
+                    {
+                        // Строим грид, а впозицию не входим
+                        decimal atrDev = z;
+                        decimal step = Spread;
+                        _currentGrid = new MeanReverseGrid(atrDev + step, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
+                        _volumeManager.Clear();
+                        if (_debugLogging != null && _debugLogging.ValueBool)
+                        {
+                            StringBuilder sb = new StringBuilder();
+                            foreach (var level in _currentGrid.GetGrid())
+                            {
+                                sb.Append($"[{level.Key};{level.Value:F3}] ");
+                            }
+                            LogDebug($"Grid created dir={_gridDirection} center={(atrDev + step):F3} step={step:F3} levels={sb}");
+                        }
+                        return false;
+                    }
+
                     LogDebug($"Long first-entry check: price={last.Close:F3} sma={smaValue:F3} zLow={z:F3} threshold={_zEnterBase.ValueDecimal:F3}");
                     LogDebug("Long first-entry condition satisfied -> returning true");
                     return true;
@@ -541,6 +590,26 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     _volumeManager.Clear();
                     _gridDirection = Side.Sell;
+
+                    if (!_enterFirstPosition.ValueBool)
+                    {
+                        // Строим грид, а впозицию не входим
+                        decimal atrDev = z;
+                        decimal step = Spread;
+                        _currentGrid = new MeanReverseGrid(atrDev + step, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
+                        _volumeManager.Clear();
+                        if (_debugLogging != null && _debugLogging.ValueBool)
+                        {
+                            StringBuilder sb = new StringBuilder();
+                            foreach (var level in _currentGrid.GetGrid())
+                            {
+                                sb.Append($"[{level.Key};{level.Value:F3}] ");
+                            }
+                            LogDebug($"Grid created dir={_gridDirection} center={(atrDev + step):F3} step={step:F3} levels={sb}");
+                        }
+                        return false;
+                    }
+
                     LogDebug($"Short first-entry check: price={last.Close:F3} sma={smaValue:F3} zHigh={z:F3} threshold={_zEnterBase.ValueDecimal:F3}");
                     LogDebug("Short first-entry condition satisfied -> returning true");
                     return true;
