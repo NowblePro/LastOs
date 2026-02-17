@@ -403,11 +403,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal stopPrice = 0;
             if (position.Direction == Side.Buy)
             {
-                stopPrice = position.EntryPrice - position.EntryPrice * (_atrSlMultiplier.ValueDecimal / 100);
+                stopPrice = position.EntryPrice - (_atrSlMultiplier.ValueDecimal * _atr.CurrentAtr);
             }
             else if (position.Direction == Side.Sell)
             {
-                stopPrice = position.EntryPrice + position.EntryPrice * (_atrSlMultiplier.ValueDecimal / 100);
+                stopPrice = position.EntryPrice + (_atrSlMultiplier.ValueDecimal * _atr.CurrentAtr);
             }
             return stopPrice;
         }
