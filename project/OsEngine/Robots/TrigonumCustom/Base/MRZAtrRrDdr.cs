@@ -499,7 +499,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_currentGrid != null && _gridDirection == Side.Sell) return false;
 
             // Если условие "торговать только за пределами канала" не выполняется
-            if (_onlyOutsideChannel.ValueBool && _zScoreLow.LastValue < last.Close)
+            if (_onlyOutsideChannel.ValueBool && _channel.ChannelDataLowLast < last.Close)
             {
                 return false;
             }
@@ -605,7 +605,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_currentGrid != null && _gridDirection == Side.Buy) return false;
 
             // Если условие "торговать только за пределами канала" не выполняется
-            if (_onlyOutsideChannel.ValueBool && _zScoreHigh.LastValue > last.Close)
+            if (_onlyOutsideChannel.ValueBool && _channel.ChannelDataHighLast > last.Close)
             {
                 return false;
             }
