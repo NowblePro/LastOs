@@ -58,6 +58,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         // DDR
         private DDRDecoration _ddrDecoration;
 
+        // TakeSma
+        private TakeSmaDecoration _takeSma;
+
         // Условия входа для лонга (для шорта зеркально):
         // 1. Нижний канал пересекает свечу между Low и High.
         // 2. Свеча лонговая (зелёная).
@@ -139,6 +142,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // FairPrice Decoration
             _fairPrice = new FairPriceDecoration(this, "FairPrice");
 
+            // TakeSma Decoration
+            _takeSma = new TakeSmaDecoration(this, "TakeSma");
+
             // События
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
             _tab.PositionClosingSuccesEvent += _tab_PositionClosingSuccesEvent;
@@ -198,7 +204,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void _tab_PositionOpeningSuccesEvent(Position obj)
         {
-            decimal gridValue = obj.Direction == Side.Buy ? _zScoreLow.LastValue : _zScoreHigh.LastValue;
+            decimal gridValue = obj.Direction == Side.Buy ? _zScoreLow.LastValue : -_zScoreHigh.LastValue;
             if (_currentGrid == null)
             {
                 decimal step = Spread;
@@ -211,9 +217,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     StringBuilder sb = new StringBuilder();
                     foreach (var level in _currentGrid.GetGrid())
                     {
-                        sb.Append($"[{level.Key};{level.Value}] ");
+                        sb.Append($"[{level.Key};{level.Value:F3}] ");
                     }
-                    LogDebug($"Grid created dir={obj.Direction} center={gridValue:F8} step={step:F8} levels={sb}");
+                    LogDebug($"Grid created dir={obj.Direction} center={gridValue:F3} step={step:F3} levels={sb}");
                 }
             }
             else
@@ -234,10 +240,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var maxValue = goodLevels.Max(l => l.Value);
                     var maxLevel = goodLevels.Where(l => l.Value == maxValue).FirstOrDefault();
                     _currentGrid.SetPosition(maxLevel.Key, obj);
+                    LogDebug($"Позиция присвоена уровню с индексом {maxLevel.Key}, AtrDev уровня = {maxValue:F6}");
                     var otherLevels = goodLevels.Except(new List<KeyValuePair<int, decimal>>() { maxLevel }).ToList();
                     foreach (var level in otherLevels)
                     {
+                        LogDebug($"Пустой уровень с индексом {level.Key} и значением {level.Value} удалён");
                         _currentGrid.DeleteByKey(level.Key);
+                    }
+                    StringBuilder sb = new StringBuilder();
+                    foreach (var position in positions)
+                    {
+                        sb.Append($"| [{position.Key}] {position.Value.EntryPrice:F3} | ");
+                    }
+                    if (_tab.PositionsAll.Any())
+                    {
+                        LogDebug($"В гриде на данный момент позиции с ценами входа {sb}");
                     }
                 }
                 catch (Exception ex)
@@ -397,6 +414,23 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             Candle last = candles.Last();
 
+            if (_ddrDecoration.Activated)
+            {
+                return false;
+            }
+
+            // Свеча должна быть "зелёная"
+            if (last.Close < last.Open)
+            {
+                return false;
+            }
+
+            // Свеча должна быть импульсная (тело свечи должно быть минимум 60%)
+            if ((Math.Abs(last.Open - last.Close) / (last.High - last.Low)) < 0.6m)
+            {
+                return false;
+            }
+
             // Снятие блокировки volatile stop по Buy
             if (_volatileStopActive && _volatileStopDirection == Side.Buy)
             {
@@ -421,27 +455,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // Первая позиция: ZScore используется только при отсутствии грида
             if (_currentGrid == null)
             {
-                // Для лонга логика: price (максимально удалённый от SMA) ниже SMA и соответствующий ZScoreLow exceed
-                decimal diffHigh = Math.Abs(last.High - smaValue);
-                decimal diffLow = Math.Abs(last.Low - smaValue);
-                decimal diffClose = Math.Abs(last.Close - smaValue);
-
-                decimal price;
-                if (diffHigh >= diffLow && diffHigh >= diffClose) price = last.High;
-                else if (diffLow >= diffHigh && diffLow >= diffClose) price = last.Low;
-                else price = last.Close;
-
-                if (price < smaValue)
+                decimal z = _zScoreLow.LastValue;
+                decimal channelValue = _channel.ChannelDataLowLast;
+                if (z >= _zEnterBase.ValueDecimal && channelValue > last.Low && channelValue < last.High)
                 {
-                    decimal z = _zScoreLow.LastValue;
-                    if (z >= _zEnterBase.ValueDecimal)
-                    {
-                        _volumeManager.Clear();
-                        _gridDirection = Side.Buy;
-                        LogDebug($"Long first-entry check: price={price:F8} sma={smaValue:F8} zLow={z:F8} threshold={_zEnterBase.ValueDecimal:F8}");
-                        LogDebug("Long first-entry condition satisfied -> returning true");
-                        return true;
-                    }
+                    _volumeManager.Clear();
+                    _gridDirection = Side.Buy;
+                    LogDebug($"Long first-entry check: price={last.Close:F3} sma={smaValue:F3} zLow={z:F3} threshold={_zEnterBase.ValueDecimal:F3}");
+                    LogDebug("Long first-entry condition satisfied -> returning true");
+                    return true;
                 }
 
                 return false;
@@ -474,6 +496,23 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             Candle last = candles.Last();
 
+            if (_ddrDecoration.Activated)
+            {
+                return false;
+            }
+
+            // Свеча должна быть "красная"
+            if (last.Close > last.Open)
+            {
+                return false;
+            }
+
+            // Свеча должна быть импульсная (тело свечи должно быть минимум 60%)
+            if ((Math.Abs(last.Open - last.Close) / (last.High - last.Low)) < 0.6m)
+            {
+                return false;
+            }
+
             // Снятие блокировки volatile stop по Sell
             if (_volatileStopActive && _volatileStopDirection == Side.Sell)
             {
@@ -496,27 +535,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_currentGrid == null)
             {
-                // Первая позиция для шорта: выбираем price наиболее удалённый от SMA; если он выше SMA и соответствующий ZScoreHigh >= threshold
-                decimal diffHigh = Math.Abs(last.High - smaValue);
-                decimal diffLow = Math.Abs(last.Low - smaValue);
-                decimal diffClose = Math.Abs(last.Close - smaValue);
-
-                decimal price;
-                if (diffHigh >= diffLow && diffHigh >= diffClose) price = last.High;
-                else if (diffLow >= diffHigh && diffLow >= diffClose) price = last.Low;
-                else price = last.Close;
-
-                if (price > smaValue)
+                decimal z = -_zScoreHigh.LastValue;
+                decimal channelValue = _channel.ChannelDataHighLast;
+                if (z >= _zEnterBase.ValueDecimal && channelValue > last.Low && channelValue < last.High)
                 {
-                    decimal z = _zScoreHigh.LastValue;
-                    if (z >= _zEnterBase.ValueDecimal)
-                    {
-                        _volumeManager.Clear();
-                        _gridDirection = Side.Sell;
-                        LogDebug($"Short first-entry check: price={price:F8} sma={smaValue:F8} zHigh={z:F8} threshold={_zEnterBase.ValueDecimal:F8}");
-                        LogDebug("Short first-entry condition satisfied -> returning true");
-                        return true;
-                    }
+                    _volumeManager.Clear();
+                    _gridDirection = Side.Sell;
+                    LogDebug($"Short first-entry check: price={last.Close:F3} sma={smaValue:F3} zHigh={z:F3} threshold={_zEnterBase.ValueDecimal:F3}");
+                    LogDebug("Short first-entry condition satisfied -> returning true");
+                    return true;
                 }
 
                 return false;
@@ -526,7 +553,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 if (_gridDirection == Side.Buy) return false;
                 try
                 {
-                    decimal gridValue = _zScoreHigh.LastValue;
+                    decimal gridValue = -_zScoreHigh.LastValue;
                     Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
@@ -590,6 +617,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 _zScoreLow == null ||
                 _zScoreHigh == null ||
                 _fairPrice == null ||
+                _takeSma == null ||
                 CentralLineIndicator == null)
             {
                 return;
@@ -597,6 +625,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _zScoreLow.SMA = CentralLineIndicator;
             _zScoreHigh.SMA = CentralLineIndicator;
             _fairPrice.SetSma(CentralLineIndicator);
+            _takeSma.SetSma(CentralLineIndicator);
         }
 
         private void SetChannelParameters()
