@@ -22,6 +22,10 @@ namespace OsEngine.Indicators.TrigonumCustom
         public decimal ZScoreReference { get; internal set; }
         int lastCount = -1;
         private DateTime _firstCandleTime = DateTime.MinValue;
+
+        public decimal ChannelDataLowLast => _channelDataLow.Values.LastOrDefault();
+        public decimal ChannelDataHighLast => _channelDataHigh.Values.LastOrDefault();
+
         public override void OnProcess(List<Candle> source, int index)
         {
             if (_firstCandleTime == DateTime.MinValue)

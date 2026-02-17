@@ -499,6 +499,7 @@
     <Compile Include="Indicators\Samples\Sample3IndicatorDataSeries.cs" />
     <Compile Include="Indicators\TrigonumCustom\AtrDev.cs" />
     <Compile Include="Indicators\TrigonumCustom\DDR.cs" />
+    <Compile Include="Indicators\TrigonumCustom\LinearRegression.cs" />
     <Compile Include="Indicators\TrigonumCustom\NadarayaWatson.cs" />
     <Compile Include="Indicators\TrigonumCustom\OrderBlockZigZag.cs" />
     <Compile Include="Indicators\TrigonumCustom\SessionIndicator.cs" />
@@ -1428,6 +1429,7 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\LrZZAtrTakeSmaEntr.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversion1Fix.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversionZScore.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MRZAtrRrDdr.cs" />

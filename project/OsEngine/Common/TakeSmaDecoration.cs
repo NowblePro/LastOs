@@ -22,6 +22,7 @@ namespace OsEngine.Common
         private StrategyParameterDecimal _takePercent; // 0.2 = 1/5
         private StrategyParameterString _orderTypeParam;
         private StrategyParameterDecimal _slippageParam;
+        private StrategyParameterBool _followSma;
 
         private Aindicator _sma;
         private decimal _takeOffset;
@@ -35,6 +36,7 @@ namespace OsEngine.Common
             // Параметры
             _enabled = bot.CreateParameter("TakeSma Enabled", true, paramTabName);
             _takePercent = bot.CreateParameter("Take Sma Percent", 20m, 10m, 30m, 5m, paramTabName);
+            _followSma = bot.CreateParameter("Follow Sma", true, paramTabName);
 
             // Slippage и тип ордера
             _slippageParam = _bot.Parameters
@@ -47,6 +49,15 @@ namespace OsEngine.Common
 
             // Подписка на завершение свечи
             _tab.CandleFinishedEvent += OnCandleFinished;
+        }
+
+        public bool FollowSma
+        {
+            get => _followSma.ValueBool;
+            set
+            {
+                _followSma.ValueBool = value;
+            }
         }
 
         public void SetSma(Aindicator sma)
@@ -91,36 +102,48 @@ namespace OsEngine.Common
                 decimal deviation = Math.Abs(entryPrice - sma) / sma;
                 _takeOffset = deviation * _takePercent.ValueDecimal / 100m;
                 _positionCount = positionCount;
+                if (!FollowSma)
+                {
+                    ChangeTake();
+                }
             }
             
-            Side side = openPositions.First().Direction;
-            foreach (var position in openPositions)
+            if (FollowSma)
             {
-                if (position.State != PositionStateType.Open)
-                    continue;
+                ChangeTake();
+            }
 
-                decimal stopPrice = 0;
-                decimal stopOrderPrice = 0;
-                if (side == Side.Buy)
+            void ChangeTake()
+            {
+                Side side = openPositions.First().Direction;
+                foreach (var position in openPositions)
                 {
-                    // Лонг: тейк ниже SMA
-                    stopPrice = sma - _takeOffset * sma;
-                    stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage;
-                }
-                else
-                {
-                    // Шорт: тейк выше SMA
-                    stopPrice = sma + _takeOffset * sma;
-                    stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage;
-                }
+                    if (position.State != PositionStateType.Open)
+                        continue;
 
-                if (orderType == OrderType.Limit)
-                {
-                    _tab.CloseAtProfit(position, stopPrice, stopOrderPrice);
-                }
-                else if (orderType == OrderType.Market)
-                {
-                    _tab.CloseAtProfitMarket(position, stopPrice);
+                    decimal stopPrice = 0;
+                    decimal stopOrderPrice = 0;
+                    if (side == Side.Buy)
+                    {
+                        // Лонг: тейк ниже SMA
+                        stopPrice = sma - _takeOffset * sma;
+                        stopOrderPrice = stopPrice - _tab.Security.PriceStep * _slippage;
+                    }
+                    else
+                    {
+                        // Шорт: тейк выше SMA
+                        stopPrice = sma + _takeOffset * sma;
+                        stopOrderPrice = stopPrice + _tab.Security.PriceStep * _slippage;
+                    }
+
+                    if (orderType == OrderType.Limit)
+                    {
+                        _tab.CloseAtProfit(position, stopPrice, stopOrderPrice);
+                    }
+                    else if (orderType == OrderType.Market)
+                    {
+                        _tab.CloseAtProfitMarket(position, stopPrice);
+                    }
                 }
             }
         }
