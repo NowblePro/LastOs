@@ -35,6 +35,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterInt _emaLength;
         private StrategyParameterBool _enterFirstPosition;
         private StrategyParameterBool _onlyOutsideChannel;
+        private StrategyParameterBool _multipleCandlePositions;
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
@@ -80,6 +81,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _debugLogging = CreateParameter("Debug Logging", false, "Debug");
             _enterFirstPosition = CreateParameter("Enter First Position", true, "Robot");
             _onlyOutsideChannel = CreateParameter("Only Outside The Channel", false, "Robot");
+            _multipleCandlePositions = CreateParameter("Multiple Candle Position", false, "Robot");
 
             // SMA
             _sma = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
@@ -281,7 +283,23 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var otherLevels = goodLevels.Except(new List<KeyValuePair<int, decimal>>() { maxLevel }).ToList();
                     foreach (var level in otherLevels)
                     {
-                        _currentGrid.DeleteByKey(level.Key);
+                        if (_multipleCandlePositions.ValueBool)
+                        {
+                            Position position = null;
+                            if (obj.Direction == Side.Buy)
+                            {
+                                position = _tab.BuyAtMarket(GetVolume());
+                            }
+                            else if (obj.Direction == Side.Sell)
+                            {
+                                position = _tab.SellAtMarket(GetVolume());
+                            }
+                            _currentGrid.SetPosition(level.Key, position);
+                        }
+                        else
+                        {
+                            _currentGrid.DeleteByKey(level.Key);
+                        }
                     }
                 }
                 catch (Exception ex)
