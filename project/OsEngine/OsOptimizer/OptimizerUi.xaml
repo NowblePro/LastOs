@@ -104,6 +104,52 @@
                         <TextBox Name="TextBoxFilterDealsCount" HorizontalAlignment="Left" Height="23" Margin="491,200,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="141"/>
                     </Grid>
                 </TabItem>
+                <TabItem Name="TabItemMlOptimizer" Header="ML Optimize" FontSize="14" Width="140">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,10">
+                            <Label Content="Target samples" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TextBoxRfSampleCount" Width="120" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            <Button x:Name="ButtonRunRandomForest" Content="Run Random Forest" Width="180" Height="30" Margin="12,0,0,0"/>
+                            <Button x:Name="ButtonRunRandomForestAndRefine" Content="Run ML + Refine" Width="160" Height="30" Margin="8,0,0,0"/>
+                            <Label x:Name="LabelRfPlanned" Content="" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                            <Button x:Name="ButtonRefineAndRun" Content="Refine &amp; Run" Width="140" Height="30" Margin="12,0,0,0"/>
+                            <Label x:Name="LabelRefinedPlanned" Content="" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock x:Name="TextBlockRfMetrics" Grid.Row="1" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <DataGrid x:Name="DataGridRfImportances" Grid.Row="2" AutoGenerateColumns="False" HeadersVisibility="Column" Margin="0,0,0,8" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Feature" Binding="{Binding Name}" Width="*" />
+                                <DataGridTextColumn Header="Importance" Binding="{Binding Importance}" Width="120" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DataGrid x:Name="DataGridRfBestParams" Grid.Row="3" AutoGenerateColumns="False" HeadersVisibility="Column" Margin="0,0,0,8" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Parameter" Binding="{Binding Name}" Width="*" />
+                                <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="200" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Label Content="Refined ranges" Grid.Row="4" />
+                        <DataGrid x:Name="DataGridRefinedRanges" Grid.Row="5" AutoGenerateColumns="False" HeadersVisibility="Column" Margin="0,0,0,8" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Parameter" Binding="{Binding Name}" Width="*" />
+                                <DataGridTextColumn Header="Best" Binding="{Binding Best}" Width="100" />
+                                <DataGridTextColumn Header="Start" Binding="{Binding Start}" Width="100" />
+                                <DataGridTextColumn Header="Step" Binding="{Binding Step}" Width="100" />
+                                <DataGridTextColumn Header="Stop" Binding="{Binding Stop}" Width="100" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock x:Name="TextBlockRfStatus" Grid.Row="6" TextWrapping="Wrap" />
+                    </Grid>
+                </TabItem>
                 <TabItem Name="TabItemResults" Header="Results" FontSize="14"  Width="120">
                     <Grid>
                         <TabControl  Name="TabControlResults" Margin="0,0,0,35">

@@ -49,13 +49,18 @@ namespace OsEngine.OsOptimizer
         private BotFactory _botFactory;
 
         /// <summary>
+        /// Занят ли исполнитель (идёт поток оптимизации)
+        /// </summary>
+        public bool IsWorking => _primeThreadWorker != null;
+
+        /// <summary>
         /// start the optimization process
         /// запустить процесс оптимизации
         /// </summary>
         /// <param name="parametersOn">the list of included parameters/список включенных в перебор параметров</param>
         /// <param name="parameters">all strategy parameters/все параметры стратегии</param>
         /// <returns>true if optimization start is successful/true если старт оптимизации закончился успешно</returns>
-        public bool Start(List<bool> parametersOn, List<IIStrategyParameter> parameters)
+        public bool Start(List<bool> parametersOn, List<IIStrategyParameter> parameters, List<OptimizerFaze> fazesOverride = null)
         {
             if (_primeThreadWorker != null)
             {
@@ -64,6 +69,7 @@ namespace OsEngine.OsOptimizer
             }
             _parametersOn = parametersOn;
             _parameters = parameters;
+            _activeFazes = fazesOverride ?? _master.Fazes;
 
             SendLogMessage(OsLocalization.Optimizer.Message2, LogMessageType.System);
 
@@ -91,6 +97,11 @@ namespace OsEngine.OsOptimizer
         /// параметры стратегии
         /// </summary>
         public List<IIStrategyParameter> _parameters;
+
+        /// <summary>
+        /// Фазы, используемые в текущем запуске (могут отличаться от сохранённых в мастере)
+        /// </summary>
+        private List<OptimizerFaze> _activeFazes;
 
         /// <summary>
         /// stop the optimization process
@@ -130,7 +141,14 @@ namespace OsEngine.OsOptimizer
 
             DateTime timeStart = DateTime.Now;
 
-            for (int i = 0; i < _master.Fazes.Count; i++)
+            if (_activeFazes == null || _activeFazes.Count == 0)
+            {
+                SendLogMessage("Не заданы этапы оптимизации.", LogMessageType.Error);
+                _primeThreadWorker = null;
+                return;
+            }
+
+            for (int i = 0; i < _activeFazes.Count; i++)
             {
                 if (_neadToStop)
                 {
@@ -139,22 +157,22 @@ namespace OsEngine.OsOptimizer
                     return;
                 }
 
-                if (_master.Fazes[i].TypeFaze == OptimizerFazeType.InSample)
+                if (_activeFazes[i].TypeFaze == OptimizerFazeType.InSample)
                 {
                     OptimazerFazeReport report = new OptimazerFazeReport();
-                    report.Faze = _master.Fazes[i];
+                    report.Faze = _activeFazes[i];
 
                     ReportsToFazes.Add(report);
 
                     StartAsuncBotFactoryInSample(countBots, _master.StrategyName, _master.IsScript, "InSample");
-                    StartOptimazeFazeInSample(_master.Fazes[i], report, _parameters, _parametersOn);
+                    StartOptimazeFazeInSample(_activeFazes[i], report, _parameters, _parametersOn);
                 }
                 else
                 {
                     SendLogMessage("ReportsCount" + ReportsToFazes[ReportsToFazes.Count - 1].Reports.Count.ToString(), LogMessageType.System);
 
                     OptimazerFazeReport report = new OptimazerFazeReport();
-                    report.Faze = _master.Fazes[i];
+                    report.Faze = _activeFazes[i];
 
                     ReportsToFazes.Add(report);
 

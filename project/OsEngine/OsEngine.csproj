@@ -1119,7 +1119,9 @@
     <Compile Include="OsOptimizer\OptimizerCustomPhazesEditor.cs" />
     <Compile Include="OsOptimizer\OptimizerExecutor.cs" />
     <Compile Include="OsOptimizer\OptimizerMaster.cs" />
+    <Compile Include="OsOptimizer\RandomForestOptimizer.cs" />
     <Compile Include="OsOptimizer\OptimizerReport.cs" />
+    <Compile Include="OsOptimizer\RefinedParameterRange.cs" />
     <Compile Include="OsOptimizer\OptimizerReportCharting.cs" />
     <Compile Include="OsOptimizer\OptimizerReportUi.xaml.cs">
       <DependentUpon>OptimizerReportUi.xaml</DependentUpon>
