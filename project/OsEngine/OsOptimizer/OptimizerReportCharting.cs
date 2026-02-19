@@ -2024,6 +2024,25 @@ namespace OsEngine.OsOptimizer
 
                 }
 
+                // Подсветка holdout / последнего OOS
+                if (outOfSampleReports.Count > 0 && series.Points.Count > 0)
+                {
+                    int highlightIndex = outOfSampleReports.FindIndex(r => r.Faze != null && r.Faze.SpecialPeriodName == "Holdout last 2m");
+                    if (highlightIndex == -1)
+                    {
+                        highlightIndex = outOfSampleReports.Count - 1;
+                    }
+                    if (highlightIndex >= 0 && highlightIndex < series.Points.Count)
+                    {
+                        var p = series.Points[highlightIndex];
+                        p.Color = Color.LimeGreen;
+                        p.BorderColor = Color.LimeGreen;
+                        p.MarkerStyle = MarkerStyle.Circle;
+                        p.MarkerSize = 9;
+                        p.MarkerColor = Color.LimeGreen;
+                    }
+                }
+
                 if (max != decimal.MinValue &&
                     min != decimal.MaxValue)
                 {

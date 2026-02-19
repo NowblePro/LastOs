@@ -13,6 +13,7 @@ using OsEngine.OsOptimizer.OptEntity;
 using OsEngine.OsTrader.Panels;
 using OsEngine.Robots;
 using System;
+using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -46,6 +47,8 @@ namespace OsEngine.OsOptimizer
             _master.NewSecurityEvent += _master_NewSecurityEvent;
             _master.DateTimeStartEndChange += _master_DateTimeStartEndChange;
             _master.TestReadyEvent += _master_TestReadyEvent;
+            _master.RandomForestReadyEvent += _master_RandomForestReadyEvent;
+            _master.RefinedGridReadyEvent += _master_RefinedGridReadyEvent;
 
             CreateTableTabsSimple();
             CreateTableTabsIndex();
@@ -53,6 +56,15 @@ namespace OsEngine.OsOptimizer
             CreateTableFazes();
             CreateTableParametrs();
             CreateTableOptimizeFazes();
+
+            DataGridRfImportances.ItemsSource = _rfImportances;
+            DataGridRfBestParams.ItemsSource = _rfBestParams;
+            DataGridRefinedRanges.ItemsSource = _refinedRanges;
+            TextBoxRfSampleCount.Text = DefaultRfSamples.ToString(CultureInfo.InvariantCulture);
+            ButtonRunRandomForest.Click += ButtonRunRandomForest_Click;
+            ButtonRunRandomForestAndRefine.Click += ButtonRunRandomForestAndRefine_Click;
+            ButtonRefineAndRun.Click += ButtonRefineAndRun_Click;
+            TextBlockRfMetrics.Text = "R2 on holdout: -\nMAE on holdout: -";
 
             for (int i = 1; i < 51; i++)
             {
@@ -361,6 +373,96 @@ namespace OsEngine.OsOptimizer
             }
         }
 
+        private void _master_RandomForestReadyEvent(RandomForestOptimizationResult result)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => _master_RandomForestReadyEvent(result));
+                return;
+            }
+
+            ButtonRunRandomForest.IsEnabled = true;
+
+            if (result == null)
+            {
+                TextBlockRfStatus.Text = "Нет данных для ML оптимизации.";
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(result.StatusMessage) && result.StatusMessage != "OK" && result.FeatureImportances.Count == 0)
+            {
+                _rfImportances.Clear();
+                _rfBestParams.Clear();
+                TextBlockRfMetrics.Text = string.Empty;
+                TextBlockRfStatus.Text = result.StatusMessage;
+                return;
+            }
+
+            _rfImportances.Clear();
+            foreach (FeatureImportanceRecord record in result.FeatureImportances.OrderByDescending(r => r.Importance))
+            {
+                _rfImportances.Add(record);
+            }
+
+            _rfBestParams.Clear();
+            foreach (ParameterValueRecord record in result.BestParameters)
+            {
+                _rfBestParams.Add(record);
+            }
+
+            TextBlockRfMetrics.Text = string.Format(CultureInfo.InvariantCulture,
+                "R2 on holdout: {0:F6}\nMAE on holdout: {1:F4}\nBest predicted {2}: {3:F2}",
+                result.R2Holdout,
+                result.MaeHoldout,
+                result.TargetMetric,
+                result.BestPredictedTarget);
+
+            string status = string.IsNullOrEmpty(result.StatusMessage) ? "OK" : result.StatusMessage;
+            int runs = Math.Max(result.SampledCombinationCount, _lastRfPlannedCount);
+            TextBlockRfStatus.Text = $"{status}. Train: {result.TrainCount}, Holdout: {result.HoldoutCount}, Runs: {runs}";
+
+            // включаем кнопку refined если есть запланированные раннеры
+            ButtonRefineAndRun.IsEnabled = _lastRefinedPlannedCount > 0;
+            ButtonRunRandomForestAndRefine.IsEnabled = true;
+            ButtonRunRandomForest.IsEnabled = true;
+
+            if (_autoRefineAfterRf || _pendingAutoRefine)
+            {
+                _autoRefineAfterRf = false;
+                _pendingAutoRefine = false;
+                if (_lastRefinedPlannedCount > 0)
+                {
+                    StartRefinedRunInternal();
+                }
+                else
+                {
+                    TextBlockRfStatus.Text += " | Нет уточнённой сетки для авто-прогона.";
+                }
+            }
+        }
+
+        private void _master_RefinedGridReadyEvent(List<RefinedParameterRange> ranges, int planned)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => _master_RefinedGridReadyEvent(ranges, planned));
+                return;
+            }
+
+            _refinedRanges.Clear();
+            if (ranges != null)
+            {
+                foreach (RefinedParameterRange r in ranges)
+                {
+                    _refinedRanges.Add(r);
+                }
+            }
+
+            _lastRefinedPlannedCount = planned;
+            LabelRefinedPlanned.Content = planned > 0 ? $"Refined runs: {planned}" : string.Empty;
+            ButtonRefineAndRun.IsEnabled = planned > 0;
+        }
+
         private void CheckTabVisibility()
         {
             if (!Dispatcher.CheckAccess())
@@ -378,6 +480,15 @@ namespace OsEngine.OsOptimizer
         private bool _testIsEnd;
 
         private List<OptimazerFazeReport> _reports;
+
+        private readonly ObservableCollection<FeatureImportanceRecord> _rfImportances = new ObservableCollection<FeatureImportanceRecord>();
+        private readonly ObservableCollection<ParameterValueRecord> _rfBestParams = new ObservableCollection<ParameterValueRecord>();
+        private int _lastRfPlannedCount;
+        private const int DefaultRfSamples = 3000;
+        private readonly ObservableCollection<RefinedParameterRange> _refinedRanges = new ObservableCollection<RefinedParameterRange>();
+        private int _lastRefinedPlannedCount;
+        private bool _autoRefineAfterRf;
+        private bool _pendingAutoRefine;
 
         private void RepaintResults()
         {
@@ -760,6 +871,77 @@ namespace OsEngine.OsOptimizer
 
                 _master.Stop();
                 ButtonGo.Content = OsLocalization.Optimizer.Label9;
+            }
+        }
+
+        private void ButtonRunRandomForest_Click(object sender, RoutedEventArgs e)
+        {
+            _autoRefineAfterRf = false;
+            RunRandomForestInternal();
+        }
+
+        private void ButtonRunRandomForestAndRefine_Click(object sender, RoutedEventArgs e)
+        {
+            _autoRefineAfterRf = true;
+            RunRandomForestInternal();
+        }
+
+        private void RunRandomForestInternal()
+        {
+            SaveParamsFromTable();
+
+            if (!int.TryParse(TextBoxRfSampleCount.Text, out int targetSamples))
+            {
+                targetSamples = DefaultRfSamples;
+            }
+
+            targetSamples = Math.Max(10, targetSamples);
+
+            ButtonRunRandomForest.IsEnabled = false;
+            ButtonRunRandomForestAndRefine.IsEnabled = false;
+            TextBlockRfStatus.Text = $"Запуск случайного леса на {targetSamples} выборок...";
+            LabelRfPlanned.Content = string.Empty;
+            LabelRefinedPlanned.Content = string.Empty;
+            _pendingAutoRefine = _autoRefineAfterRf;
+
+            if (_master.StartRandomForest(targetSamples, out _lastRfPlannedCount))
+            {
+                LabelRfPlanned.Content = $"Planned runs: {_lastRfPlannedCount}";
+                TabControlPrime.SelectedItem = TabItemMlOptimizer;
+            }
+            else
+            {
+                ButtonRunRandomForest.IsEnabled = true;
+                ButtonRunRandomForestAndRefine.IsEnabled = true;
+                _autoRefineAfterRf = false;
+                _pendingAutoRefine = false;
+                TextBlockRfStatus.Text = "Не удалось запустить ML оптимизацию (проверьте параметры и занятость оптимизатора).";
+            }
+        }
+
+        private void ButtonRefineAndRun_Click(object sender, RoutedEventArgs e)
+        {
+            _autoRefineAfterRf = false;
+            StartRefinedRunInternal();
+        }
+
+        private void StartRefinedRunInternal()
+        {
+            ButtonRefineAndRun.IsEnabled = false;
+            ButtonRunRandomForestAndRefine.IsEnabled = false;
+            TextBlockRfStatus.Text = "Запуск уточнённого перебора...";
+
+            if (_master.StartRefinedRun(out _lastRefinedPlannedCount))
+            {
+                LabelRefinedPlanned.Content = $"Refined runs: {_lastRefinedPlannedCount}";
+                ButtonGo.Content = OsLocalization.Optimizer.Label32;
+                StopUserActivity();
+            }
+            else
+            {
+                ButtonRefineAndRun.IsEnabled = true;
+                ButtonRunRandomForestAndRefine.IsEnabled = true;
+                TextBlockRfStatus.Text = "Нет уточнённой сетки или оптимизатор занят.";
             }
         }
 
@@ -1538,13 +1720,15 @@ namespace OsEngine.OsOptimizer
                     
                 PaintTableOptimizeFazes();
 
-                if (_master.Fazes == null ||
-                    _master.Fazes.Count == 0)
+                List<OptimizerFaze> fazesToDraw = _master.GetFazesForDisplay();
+
+                if (fazesToDraw == null ||
+                    fazesToDraw.Count == 0)
                 {
                     return;
                 }
 
-                WolkForwardPeriodsPainter.PaintForwards(HostWalkForwardPeriods, _master.Fazes);
+                WolkForwardPeriodsPainter.PaintForwards(HostWalkForwardPeriods, fazesToDraw);
 
                 PaintCountBotsInOptimization();
             }
@@ -1657,9 +1841,11 @@ namespace OsEngine.OsOptimizer
 
             PaintTableOptimizeFazes();
 
-            if (_master.Fazes.Count != 0)
+            List<OptimizerFaze> fazesToDraw = _master.GetFazesForDisplay();
+
+            if (fazesToDraw != null && fazesToDraw.Count != 0)
             {
-                WolkForwardPeriodsPainter.PaintForwards(HostWalkForwardPeriods, _master.Fazes);
+                WolkForwardPeriodsPainter.PaintForwards(HostWalkForwardPeriods, fazesToDraw);
             }
         }
 

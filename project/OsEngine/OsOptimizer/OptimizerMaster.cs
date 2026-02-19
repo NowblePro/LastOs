@@ -32,6 +32,24 @@ namespace OsEngine.OsOptimizer
         private decimal _trWeight = 0.25m;
         private decimal _gprWeight = 0.25m;
 
+        private bool _randomForestMode;
+        private int _randomForestTarget = 3000;
+        private int _randomForestPlannedCount;
+        private RandomForestOptimizationResult _lastRandomForestResult;
+        private List<IIStrategyParameter> _refinedParameters;
+        private List<OptimizerFaze> _lastRunFazes;
+        private List<OptimizerFaze> _originalFazes;
+        private bool _startRefineAfterCurrent;
+
+        public List<OptimizerFaze> GetFazesForDisplay()
+        {
+            if (_lastRunFazes != null && _lastRunFazes.Count > 0)
+            {
+                return _lastRunFazes;
+            }
+            return Fazes;
+        }
+
         private object saveLoadLocker = new object();
 
         public decimal PPRWeight => _pprWeight;
@@ -313,11 +331,79 @@ namespace OsEngine.OsOptimizer
                 PrimeProgressBarStatus.CurrentValue = PrimeProgressBarStatus.MaxValue;
             }
 
+            RandomForestOptimizationResult rfResult = null;
+
+            if (_randomForestMode)
+            {
+                try
+                {
+                    rfResult = RandomForestOptimizer.Build(reports, _paramOn ?? new List<bool>());
+                    if (rfResult != null)
+                    {
+                        rfResult.SampledCombinationCount = _randomForestPlannedCount;
+                        _lastRandomForestResult = rfResult;
+                        TryBuildRefinedGrid(rfResult);
+                    }
+                }
+                catch (Exception error)
+                {
+                    SendLogMessage("Random forest optimization failed: " + error, LogMessageType.Error);
+                    rfResult = new RandomForestOptimizationResult
+                    {
+                        StatusMessage = "Error: " + error.Message
+                    };
+                }
+                finally
+                {
+                    _randomForestMode = false;
+                }
+            }
+
             CalculateAggregateMetrics(reports);
+
+            if (rfResult != null)
+            {
+                RandomForestReadyEvent?.Invoke(rfResult);
+            }
+
+            if (_startRefineAfterCurrent && !_randomForestMode)
+            {
+                _startRefineAfterCurrent = false;
+                Task.Run(() => WaitAndStartRefineAfterIdle());
+            }
 
             if (TestReadyEvent != null)
             {
                 TestReadyEvent(reports);
+            }
+        }
+
+        private async Task WaitAndStartRefineAfterIdle()
+        {
+            try
+            {
+                int attempts = 0;
+                while (_optimizerExecutor.IsWorking && attempts < 200)
+                {
+                    await Task.Delay(200);
+                    attempts++;
+                }
+
+                if (_optimizerExecutor.IsWorking)
+                {
+                    SendLogMessage("Не удалось дождаться освобождения оптимизатора для запуска уточнённого перебора.", LogMessageType.Error);
+                    return;
+                }
+
+                int tmp;
+                if (!StartRefinedRun(out tmp))
+                {
+                    SendLogMessage("Авто‑запуск уточнённого перебора не стартовал (проверьте лог).", LogMessageType.Error);
+                }
+            }
+            catch (Exception e)
+            {
+                SendLogMessage("Авто‑запуск уточнённого перебора после завершения не удался: " + e, LogMessageType.Error);
             }
         }
 
@@ -326,6 +412,17 @@ namespace OsEngine.OsOptimizer
         /// событие: тестирование завершилось
         /// </summary>
         public event Action<List<OptimazerFazeReport>> TestReadyEvent;
+
+        /// <summary>
+        /// event: random forest optimization summary is ready
+        /// событие: подготовлено резюме по случайному лесу
+        /// </summary>
+        public event Action<RandomForestOptimizationResult> RandomForestReadyEvent;
+
+        /// <summary>
+        /// event: построена уточнённая сетка параметров после RF
+        /// </summary>
+        public event Action<List<RefinedParameterRange>, int> RefinedGridReadyEvent;
 
         /// <summary>
         /// Посчитать общие (включая все периоды) для одного бота метрики, после того как метрики для отдельных периодов были посчитаны
@@ -1476,12 +1573,567 @@ namespace OsEngine.OsOptimizer
                 return false;
             }
 
-            if (_optimizerExecutor.Start(_paramOn, _parameters))
+            if (_optimizerExecutor.Start(_paramOn, _parameters, Fazes))
             {
                 ProgressBarStatuses = new List<ProgressBarStatus>();
                 PrimeProgressBarStatus = new ProgressBarStatus();
             }
             return true;
+        }
+
+        /// <summary>
+        /// Запуск оптимизации с урезанной сеткой и последующим анализом случайным лесом
+        /// </summary>
+        /// <param name="targetSamples">желаемое количество прогонов</param>
+        /// <param name="plannedCount">фактическое количество прогонов после дискретизации</param>
+        /// <returns></returns>
+        public bool StartRandomForest(int targetSamples, out int plannedCount)
+        {
+            plannedCount = 0;
+
+            if (targetSamples < 10)
+            {
+                targetSamples = 10;
+            }
+
+            if (CheckReadyData() == false)
+            {
+                return false;
+            }
+
+            if (_parameters == null || _parameters.Count == 0)
+            {
+                SendLogMessage("Нет параметров стратегии для запуска оптимизации.", LogMessageType.Error);
+                return false;
+            }
+
+            _originalFazes = CloneFazes(Fazes);
+            List<IIStrategyParameter> sampledParameters = BuildRandomForestParameters(targetSamples);
+            List<OptimizerFaze> rfFazes = BuildRandomForestFazes(_originalFazes ?? Fazes, TimeSpan.FromDays(60));
+            _lastRunFazes = rfFazes;
+
+            plannedCount = _optimizerExecutor.BotCountOneFaze(sampledParameters, _paramOn);
+
+            _randomForestTarget = targetSamples;
+            _randomForestPlannedCount = plannedCount;
+            _randomForestMode = true;
+            _refinedParameters = null;
+            _lastRandomForestResult = null;
+
+            SendLogMessage($"Random Forest: целевые прогоны {targetSamples}, фактически запустим {plannedCount}.", LogMessageType.System);
+
+            if (_optimizerExecutor.Start(_paramOn, sampledParameters, rfFazes))
+            {
+                ProgressBarStatuses = new List<ProgressBarStatus>();
+                PrimeProgressBarStatus = new ProgressBarStatus();
+                return true;
+            }
+
+            _randomForestMode = false;
+            return false;
+        }
+
+        private List<IIStrategyParameter> BuildRandomForestParameters(int targetSamples)
+        {
+            // Клонируем параметры, чтобы не трогать текущее состояние UI
+            OptimizerReport tempReport = new OptimizerReport(_parameters);
+            List<IIStrategyParameter> cloned = tempReport.GetParameters();
+
+            if (_paramOn == null || _paramOn.Count == 0)
+            {
+                return cloned;
+            }
+
+            List<int> numericIndexes = new List<int>();
+            for (int i = 0; i < cloned.Count && i < _paramOn.Count; i++)
+            {
+                if (_paramOn[i] && IsNumericParameter(cloned[i]))
+                {
+                    numericIndexes.Add(i);
+                }
+            }
+
+            int varyingCount = numericIndexes.Count;
+
+            if (varyingCount == 0)
+            {
+                return cloned;
+            }
+
+            double perParam = Math.Pow(targetSamples, 1.0 / Math.Max(1, varyingCount));
+            int perParamCount = Math.Max(2, (int)Math.Round(perParam));
+
+            // чуть подстраиваем, чтобы не сильно выходить за рамки
+            while (Math.Pow(perParamCount, varyingCount) > targetSamples * 1.3 && perParamCount > 2)
+            {
+                perParamCount--;
+            }
+            while (Math.Pow(perParamCount, varyingCount) < targetSamples * 0.7)
+            {
+                perParamCount++;
+            }
+
+            foreach (int idx in numericIndexes)
+            {
+                IIStrategyParameter parameter = cloned[idx];
+
+                if (parameter.Type == StrategyParameterType.Int)
+                {
+                    StrategyParameterInt intParam = (StrategyParameterInt)parameter;
+                    int diff = intParam.ValueIntStop - intParam.ValueIntStart;
+                    int step = diff <= 0 || perParamCount <= 1
+                        ? intParam.ValueIntStep
+                        : Math.Max(1, (int)Math.Round(diff / (double)(perParamCount - 1)));
+
+                    cloned[idx] = new StrategyParameterInt(intParam.Name, intParam.ValueInt, intParam.ValueIntStart,
+                        intParam.ValueIntStop, step, intParam.TabName);
+                }
+                else if (parameter.Type == StrategyParameterType.Decimal)
+                {
+                    StrategyParameterDecimal decParam = (StrategyParameterDecimal)parameter;
+                    decimal step = SafeStep(decParam.ValueDecimalStart, decParam.ValueDecimalStop, perParamCount, decParam.ValueDecimalStep);
+
+                    cloned[idx] = new StrategyParameterDecimal(decParam.Name, decParam.ValueDecimal, decParam.ValueDecimalStart,
+                        decParam.ValueDecimalStop, step, decParam.TabName);
+                }
+                else if (parameter.Type == StrategyParameterType.DecimalCheckBox)
+                {
+                    StrategyParameterDecimalCheckBox decCbParam = (StrategyParameterDecimalCheckBox)parameter;
+                    decimal step = SafeStep(decCbParam.ValueDecimalStart, decCbParam.ValueDecimalStop, perParamCount, decCbParam.ValueDecimalStep);
+                    bool isChecked = decCbParam.CheckState == System.Windows.Forms.CheckState.Checked;
+
+                    cloned[idx] = new StrategyParameterDecimalCheckBox(decCbParam.Name, decCbParam.ValueDecimal,
+                        decCbParam.ValueDecimalStart, decCbParam.ValueDecimalStop, step, isChecked, decCbParam.TabName);
+                }
+            }
+
+            return cloned;
+        }
+
+        private static decimal SafeStep(decimal start, decimal stop, int count, decimal fallback)
+        {
+            decimal diff = stop - start;
+            if (count <= 1 || diff == 0)
+            {
+                return fallback;
+            }
+
+            decimal step = diff / (count - 1);
+            if (step <= 0)
+            {
+                return fallback;
+            }
+
+            return step;
+        }
+
+        private static bool IsNumericParameter(IIStrategyParameter parameter)
+        {
+            return parameter.Type == StrategyParameterType.Int
+                   || parameter.Type == StrategyParameterType.Decimal
+                   || parameter.Type == StrategyParameterType.DecimalCheckBox;
+        }
+
+        private List<OptimizerFaze> CloneFazes(List<OptimizerFaze> source)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+            List<OptimizerFaze> copy = new List<OptimizerFaze>();
+            foreach (OptimizerFaze faze in source)
+            {
+                copy.Add(new OptimizerFaze(faze));
+            }
+            return copy;
+        }
+
+        private List<OptimizerFaze> BuildRandomForestFazes(List<OptimizerFaze> baseFazes, TimeSpan holdout)
+        {
+            if (baseFazes == null || baseFazes.Count == 0)
+            {
+                return baseFazes;
+            }
+
+            DateTime end = baseFazes[baseFazes.Count - 1].TimeEnd;
+            DateTime cutoff = end.Subtract(holdout);
+            if (cutoff <= baseFazes[0].TimeStart)
+            {
+                cutoff = baseFazes[0].TimeStart.AddDays(1);
+            }
+
+            List<OptimizerFaze> rfFazes = new List<OptimizerFaze>();
+            for (int i = 0; i < baseFazes.Count; i++)
+            {
+                OptimizerFaze faze = baseFazes[i];
+                if (faze.TimeEnd <= cutoff)
+                {
+                    rfFazes.Add(new OptimizerFaze(faze));
+                }
+                else if (faze.TimeStart < cutoff)
+                {
+                    OptimizerFaze trimmed = new OptimizerFaze(faze);
+                    trimmed.TimeEnd = cutoff;
+                    trimmed.Days = Math.Max(1, (int)(cutoff - trimmed.TimeStart).TotalDays);
+                    rfFazes.Add(trimmed);
+                    break;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (rfFazes.Count == 0)
+            {
+                OptimizerFaze only = new OptimizerFaze();
+                only.TypeFaze = OptimizerFazeType.InSample;
+                only.TimeStart = baseFazes[0].TimeStart;
+                only.TimeEnd = cutoff;
+                only.Days = Math.Max(1, (int)(cutoff - only.TimeStart).TotalDays);
+                rfFazes.Add(only);
+            }
+
+            return rfFazes;
+        }
+
+        private List<OptimizerFaze> BuildRefinedRunFazes(List<OptimizerFaze> baseFazes, TimeSpan holdout)
+        {
+            if (baseFazes == null || baseFazes.Count == 0)
+            {
+                return baseFazes;
+            }
+
+            DateTime start = baseFazes[0].TimeStart;
+            DateTime end = baseFazes[baseFazes.Count - 1].TimeEnd;
+            DateTime holdoutStart = end.Subtract(holdout);
+
+            if (holdoutStart <= start)
+            {
+                holdoutStart = start.AddDays(1);
+            }
+
+            List<OptimizerFaze> result = new List<OptimizerFaze>();
+
+            OptimizerFaze inSample = new OptimizerFaze();
+            inSample.TypeFaze = OptimizerFazeType.InSample;
+            inSample.TimeStart = start;
+            inSample.TimeEnd = holdoutStart;
+            inSample.Days = Math.Max(1, (int)(holdoutStart - start).TotalDays);
+            result.Add(inSample);
+
+            OptimizerFaze holdoutFaze = new OptimizerFaze();
+            holdoutFaze.TypeFaze = OptimizerFazeType.OutOfSample;
+            holdoutFaze.TimeStart = holdoutStart;
+            holdoutFaze.TimeEnd = end;
+            holdoutFaze.Days = Math.Max(1, (int)(end - holdoutStart).TotalDays);
+            holdoutFaze.SpecialPeriodName = "Holdout last 2m";
+            result.Add(holdoutFaze);
+
+            return result;
+        }
+
+        private void TryBuildRefinedGrid(RandomForestOptimizationResult rfResult)
+        {
+            try
+            {
+                if (rfResult == null || rfResult.BestParameters == null || rfResult.BestParameters.Count == 0)
+                {
+                    return;
+                }
+
+                List<IIStrategyParameter> source = _parameters;
+                if (source == null)
+                {
+                    return;
+                }
+
+                List<bool> paramOnSafe = new List<bool>();
+                if (_paramOn == null || _paramOn.Count == 0)
+                {
+                    for (int i = 0; i < source.Count; i++)
+                    {
+                        paramOnSafe.Add(true);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < source.Count; i++)
+                    {
+                        if (i < _paramOn.Count)
+                        {
+                            paramOnSafe.Add(_paramOn[i]);
+                        }
+                        else
+                        {
+                            paramOnSafe.Add(true);
+                        }
+                    }
+                }
+
+                decimal maxImp = rfResult.FeatureImportances.Count > 0
+                    ? (decimal)rfResult.FeatureImportances.Max(f => f.Importance)
+                    : 0m;
+
+                List<IIStrategyParameter> refined = new List<IIStrategyParameter>();
+                List<RefinedParameterRange> ranges = new List<RefinedParameterRange>();
+
+                for (int i = 0; i < source.Count; i++)
+                {
+                    IIStrategyParameter param = source[i];
+                    if (!paramOnSafe[i] || !IsNumericParameter(param))
+                    {
+                        refined.Add(param);
+                        continue;
+                    }
+
+                    decimal importance = 0m;
+                    FeatureImportanceRecord rec = rfResult.FeatureImportances.FirstOrDefault(f => f.Name == param.Name);
+                    if (rec != null)
+                    {
+                        importance = (decimal)rec.Importance;
+                    }
+                    decimal norm = maxImp > 0 ? importance / maxImp : 0.2m;
+                    if (norm < 0.1m)
+                    {
+                        norm = 0.1m;
+                    }
+                    decimal widthK = 0.2m + (0.8m * norm);
+                    int steps = 3 + (int)Math.Round(5 * (double)norm);
+
+                    if (param.Type == StrategyParameterType.Int)
+                    {
+                        StrategyParameterInt p = (StrategyParameterInt)param;
+                        int bestVal = p.ValueInt;
+                        ParameterValueRecord bp = rfResult.BestParameters.FirstOrDefault(x => x.Name == param.Name);
+                        if (bp != null)
+                        {
+                            int.TryParse(bp.Value, out bestVal);
+                        }
+                        int width = Math.Max(1, (int)Math.Round(bestVal * (double)widthK));
+                        int start = Math.Max(p.ValueIntStart, bestVal - width / 2);
+                        int stop = Math.Min(p.ValueIntStop, bestVal + width / 2);
+                        if (stop <= start)
+                        {
+                            stop = start + 1;
+                        }
+                        int step = Math.Max(1, (stop - start) / Math.Max(2, steps - 1));
+
+                        refined.Add(new StrategyParameterInt(p.Name, bestVal, start, stop, step, p.TabName));
+                        ranges.Add(new RefinedParameterRange
+                        {
+                            Name = p.Name,
+                            Start = start.ToString(),
+                            Stop = stop.ToString(),
+                            Step = step.ToString(),
+                            Best = bestVal.ToString()
+                        });
+                    }
+                    else if (param.Type == StrategyParameterType.Decimal)
+                    {
+                        StrategyParameterDecimal p = (StrategyParameterDecimal)param;
+                        decimal bestVal = p.ValueDecimal;
+                        ParameterValueRecord bp = rfResult.BestParameters.FirstOrDefault(x => x.Name == param.Name);
+                        if (bp != null)
+                        {
+                            decimal.TryParse(bp.Value, out bestVal);
+                        }
+                        decimal width = Math.Max(p.ValueDecimalStep, bestVal * widthK);
+                        decimal start = Math.Max(p.ValueDecimalStart, bestVal - width / 2);
+                        decimal stop = Math.Min(p.ValueDecimalStop, bestVal + width / 2);
+                        if (stop <= start)
+                        {
+                            stop = start + p.ValueDecimalStep;
+                        }
+                        decimal step = SafeStep(start, stop, steps, p.ValueDecimalStep);
+
+                        refined.Add(new StrategyParameterDecimal(p.Name, bestVal, start, stop, step, p.TabName));
+                        ranges.Add(new RefinedParameterRange
+                        {
+                            Name = p.Name,
+                            Start = start.ToString(),
+                            Stop = stop.ToString(),
+                            Step = step.ToString(),
+                            Best = bestVal.ToString()
+                        });
+                    }
+                    else if (param.Type == StrategyParameterType.DecimalCheckBox)
+                    {
+                        StrategyParameterDecimalCheckBox p = (StrategyParameterDecimalCheckBox)param;
+                        decimal bestVal = p.ValueDecimal;
+                        ParameterValueRecord bp = rfResult.BestParameters.FirstOrDefault(x => x.Name == param.Name);
+                        if (bp != null)
+                        {
+                            decimal.TryParse(bp.Value.Split(' ')[0], out bestVal);
+                        }
+                        decimal width = Math.Max(p.ValueDecimalStep, bestVal * widthK);
+                        decimal start = Math.Max(p.ValueDecimalStart, bestVal - width / 2);
+                        decimal stop = Math.Min(p.ValueDecimalStop, bestVal + width / 2);
+                        if (stop <= start)
+                        {
+                            stop = start + p.ValueDecimalStep;
+                        }
+                        decimal step = SafeStep(start, stop, steps, p.ValueDecimalStep);
+
+                        bool isChecked = p.CheckState == System.Windows.Forms.CheckState.Checked;
+                        refined.Add(new StrategyParameterDecimalCheckBox(p.Name, bestVal, start, stop, step, isChecked, p.TabName));
+                        ranges.Add(new RefinedParameterRange
+                        {
+                            Name = p.Name,
+                            Start = start.ToString(),
+                            Stop = stop.ToString(),
+                            Step = step.ToString(),
+                            Best = bestVal.ToString()
+                        });
+                    }
+                }
+
+                _refinedParameters = refined;
+
+                if (ranges.Count == 0)
+                {
+                    ranges = BuildRangesFromParameters(_refinedParameters);
+                }
+
+                int planned = _optimizerExecutor.BotCountOneFaze(_refinedParameters, _paramOn);
+                SendLogMessage($"Refined grid built. Count: {ranges.Count}, Planned: {planned}", LogMessageType.System);
+                RefinedGridReadyEvent?.Invoke(ranges, planned);
+            }
+            catch (Exception e)
+            {
+                SendLogMessage("Refined grid build error: " + e, LogMessageType.Error);
+            }
+        }
+
+        private List<RefinedParameterRange> BuildRangesFromParameters(List<IIStrategyParameter> parameters)
+        {
+            List<RefinedParameterRange> ranges = new List<RefinedParameterRange>();
+            if (parameters == null)
+            {
+                return ranges;
+            }
+
+            foreach (IIStrategyParameter param in parameters)
+            {
+                if (!IsNumericParameter(param))
+                {
+                    continue;
+                }
+
+                if (param.Type == StrategyParameterType.Int)
+                {
+                    StrategyParameterInt p = (StrategyParameterInt)param;
+                    ranges.Add(new RefinedParameterRange
+                    {
+                        Name = p.Name,
+                        Best = p.ValueInt.ToString(),
+                        Start = p.ValueIntStart.ToString(),
+                        Stop = p.ValueIntStop.ToString(),
+                        Step = p.ValueIntStep.ToString()
+                    });
+                }
+                else if (param.Type == StrategyParameterType.Decimal)
+                {
+                    StrategyParameterDecimal p = (StrategyParameterDecimal)param;
+                    ranges.Add(new RefinedParameterRange
+                    {
+                        Name = p.Name,
+                        Best = p.ValueDecimal.ToString(),
+                        Start = p.ValueDecimalStart.ToString(),
+                        Stop = p.ValueDecimalStop.ToString(),
+                        Step = p.ValueDecimalStep.ToString()
+                    });
+                }
+                else if (param.Type == StrategyParameterType.DecimalCheckBox)
+                {
+                    StrategyParameterDecimalCheckBox p = (StrategyParameterDecimalCheckBox)param;
+                    ranges.Add(new RefinedParameterRange
+                    {
+                        Name = p.Name,
+                        Best = p.ValueDecimal.ToString(),
+                        Start = p.ValueDecimalStart.ToString(),
+                        Stop = p.ValueDecimalStop.ToString(),
+                        Step = p.ValueDecimalStep.ToString()
+                    });
+                }
+            }
+
+            return ranges;
+        }
+
+        public bool StartRefinedRun(out int plannedCount)
+        {
+            plannedCount = 0;
+            if (_refinedParameters == null)
+            {
+                // попробуем восстановить сетку из последнего RF
+                if (_lastRandomForestResult != null)
+                {
+                    TryBuildRefinedGrid(_lastRandomForestResult);
+                }
+                if (_refinedParameters == null)
+                {
+                    SendLogMessage("Нет уточнённой сетки параметров, сначала запустите Random Forest.", LogMessageType.Error);
+                    return false;
+                }
+            }
+
+            List<OptimizerFaze> refinedFazes = BuildRefinedRunFazes(_originalFazes ?? Fazes, TimeSpan.FromDays(60));
+            _lastRunFazes = refinedFazes;
+
+            List<bool> paramOnSafe = new List<bool>();
+            if (_paramOn == null || _paramOn.Count == 0)
+            {
+                for (int i = 0; i < _refinedParameters.Count; i++)
+                {
+                    paramOnSafe.Add(true);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < _refinedParameters.Count; i++)
+                {
+                    paramOnSafe.Add(i < _paramOn.Count ? _paramOn[i] : true);
+                }
+            }
+            _paramOn = paramOnSafe;
+
+            try
+            {
+                plannedCount = _optimizerExecutor.BotCountOneFaze(_refinedParameters, paramOnSafe);
+            }
+            catch (Exception e)
+            {
+                SendLogMessage("Ошибка расчёта количества прогонов на уточнённой сетке: " + e, LogMessageType.Error);
+                return false;
+            }
+
+            if (_optimizerExecutor.IsWorking)
+            {
+                _startRefineAfterCurrent = true;
+                SendLogMessage("Оптимизатор занят, запустим уточнённый перебор сразу после текущего теста.", LogMessageType.System);
+                return false;
+            }
+
+            if (CheckReadyData() == false)
+            {
+                SendLogMessage("Не готово к запуску уточнённого перебора (проверьте фазы/данные).", LogMessageType.Error);
+                return false;
+            }
+
+            _lastRunFazes = refinedFazes;
+
+            SendLogMessage($"Запуск уточнённого перебора: параметров={_refinedParameters.Count}, включённых={paramOnSafe.Count(p => p)}, планируется ботов={plannedCount}", LogMessageType.System);
+
+            if (_optimizerExecutor.Start(paramOnSafe, _refinedParameters, refinedFazes))
+            {
+                ProgressBarStatuses = new List<ProgressBarStatus>();
+                PrimeProgressBarStatus = new ProgressBarStatus();
+                return true;
+            }
+
+            SendLogMessage("Оптимизатор занят, дождитесь завершения текущего запуска.", LogMessageType.Error);
+            return false;
         }
 
         /// <summary>
