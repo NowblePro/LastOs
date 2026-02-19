@@ -28,6 +28,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// Базовый уровень Z Score (который отрисовывается и который является последним уровнем)
         /// </summary>
         private StrategyParameterDecimal _zScoreRef;
+        private decimal _spreadPrev = 0;
+        private decimal _zScoreRefPrev = 0;
 
         private ZScoreGrid _highGrid;
         private ZScoreGrid _lowGrid;
@@ -354,6 +356,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 _lowGrid.Clear();
             }
 
+            if (_spread.ValueDecimal == _spreadPrev && _zScoreRef.ValueDecimal == _zScoreRefPrev)
+            {
+                return;
+            }
+
+            _spreadPrev = _spread.ValueDecimal;
+            _zScoreRefPrev = _zScoreRef.ValueDecimal;
             _highGrid = new ZScoreGrid(_spread.ValueDecimal, _zScoreRef.ValueDecimal, _tab);
             _lowGrid = new ZScoreGrid(_spread.ValueDecimal, _zScoreRef.ValueDecimal, _tab);
         }
@@ -549,40 +558,6 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         }
                     }
                 }
-            }
-        }
-    }
-
-    class MeanReverseVolumeManager
-    {
-        private decimal _r = 0.01m;
-        private decimal _currentVolume;
-
-        public decimal R
-        {
-            get { return _r; }
-            set { _r = value; }
-        }
-
-        public Func<bool, decimal> GetVolumeFunc { get; set; }
-        public Func<decimal, decimal> Rounding { get; set; }
-
-        public void Clear()
-        {
-            _currentVolume = 0;
-        }
-
-        public decimal GetNextVolume(bool getRounded = true)
-        {
-            if (_currentVolume == 0)
-            {
-                _currentVolume = GetVolumeFunc(getRounded);
-                return _currentVolume;
-            }
-            else
-            {
-                _currentVolume = Rounding(_currentVolume * (1 + R / 100m));
-                return _currentVolume;
             }
         }
     }

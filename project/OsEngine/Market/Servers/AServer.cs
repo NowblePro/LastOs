@@ -7,6 +7,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Media;
 using System.Threading;
 using System.Threading.Tasks;
@@ -2937,6 +2938,11 @@ namespace OsEngine.Market.Servers
         public event Action<string, LogMessageType> LogMessageEvent;
 
         #endregion
+
+        public IServerParameter GetParameter(string name)
+        {
+            return ServerParameters.Where(p => p.Name.Equals(name)).FirstOrDefault();
+        }
     }
 
     public class OrderAserverSender

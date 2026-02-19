@@ -31,26 +31,40 @@ namespace OsEngine.Common
         private bool _needUpdateIterator;
         private int _iterator = 1;
 
-        public AtrDecoration(BotPanel bot)
+        public AtrDecoration(BotPanel bot, bool showStandartAtr = true)
         {
             _bot = bot;
             _tab = bot.TabsSimple[0];
 
             LengthAtr = bot.CreateParameter("Length ATR", 96, 7, 1000, 1, "ATR");
             MultiplierAtr = bot.CreateParameter("Multiplier Atr", 1, 1m, 10, 1, "ATR");
-            _atrRegime = bot.CreateParameter("Atr Regime", AtrRegime.Off.ToString(), Enum.GetNames(typeof(AtrRegime)), "ATR");
+            
             _ATR = IndicatorsFactory.CreateIndicatorByName("ATR", (string.IsNullOrEmpty(bot.PublicName) ?  bot.NameStrategyUniq : bot.PublicName) + "Atr", false);
             _ATR = (Aindicator)_tab.CreateCandleIndicator(_ATR, "NewArea");
+            _ATR.DataSeries[0].IsPaint = showStandartAtr;
             bot.ParametrsChangeByUser += Bot_ParametrsChangeByUser;
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
         }
 
-        public event EventHandler<bool> SignalCalculated;
+        private event EventHandler<bool> _signalCalculated;
+        public event EventHandler<bool> SignalCalculated 
+        {
+            add
+            {
+                _atrRegime = _bot.CreateParameter("Atr Regime", AtrRegime.Off.ToString(), Enum.GetNames(typeof(AtrRegime)), "ATR");
+            }
+            remove
+            {
+
+            }
+        }
         public event EventHandler<AtrRegime> AtrFilterIsOnChanged;
 
         public AtrRegime AtrRegime => (AtrRegime)Enum.Parse(typeof(AtrRegime), _atrRegime.ValueString);
 
         public decimal CurrentAtr => _ATR.DataSeries[0].Last;
+
+        public List<decimal> AtrValues => _ATR.DataSeries[0].Values;
 
         public bool CancelTPSL { get; set; } = true;
 
@@ -59,7 +73,7 @@ namespace OsEngine.Common
             List<Position> positions = _tab.PositionsOpenAll;
             if (candles.Count == 0) return;
             decimal lastCandle = candles.Last().Close;
-            if ((AtrRegime)Enum.Parse(typeof(AtrRegime), _atrRegime.ValueString) != AtrRegime.Off)
+            if (_atrRegime != null && (AtrRegime)Enum.Parse(typeof(AtrRegime), _atrRegime.ValueString) != AtrRegime.Off)
             {
                 if (_ATR.DataSeries[0].Last == 0 && _needUpdateIterator)
                 {
@@ -71,7 +85,7 @@ namespace OsEngine.Common
 
                 if (candles.Count < LengthAtr.ValueInt)
                 {
-                    SignalCalculated?.Invoke(this, true);
+                    _signalCalculated?.Invoke(this, true);
                     return;
                 }
 
@@ -104,10 +118,10 @@ namespace OsEngine.Common
                         _tab.SellAtStopCancel();
                     }
                     _needUpdateLastIndex = true;
-                    SignalCalculated?.Invoke(this, true);
+                    _signalCalculated?.Invoke(this, true);
                     return;
                 }
-                SignalCalculated?.Invoke(this, false);
+                _signalCalculated?.Invoke(this, false);
             }
         }
 

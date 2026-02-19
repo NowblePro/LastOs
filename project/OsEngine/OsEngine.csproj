@@ -442,12 +442,19 @@
     </Compile>
     <Compile Include="Charts\Extensions.cs" />
     <Compile Include="Common\CandleMerger.cs" />
+    <Compile Include="Common\CanEnterByEmaDecoration.cs" />
+    <Compile Include="Common\Change24Decoration.cs" />
+    <Compile Include="Common\DDRDecoration.cs" />
     <Compile Include="Common\DivergenceDetector.cs" />
+    <Compile Include="Common\FairPriceDecoration.cs" />
     <Compile Include="Common\ImbalanceDetector.cs" />
+    <Compile Include="Common\MeanReverseGrid.cs" />
+    <Compile Include="Common\MeanReverseVolumeManager.cs" />
     <Compile Include="Common\OrderType.cs" />
     <Compile Include="Common\AtrDecoration.cs" />
     <Compile Include="Common\StopLossDecoration.cs" />
     <Compile Include="Common\TakeProfitDecoration.cs" />
+    <Compile Include="Common\TakeSmaDecoration.cs" />
     <Compile Include="Common\TrailingStopDecoration.cs" />
     <Compile Include="Common\UI\PhaseDirectories.xaml.cs">
       <DependentUpon>PhaseDirectories.xaml</DependentUpon>
@@ -490,6 +497,9 @@
     <Compile Include="Indicators\Samples\Sample1Blank.cs" />
     <Compile Include="Indicators\Samples\Sample2IndicatorParameters.cs" />
     <Compile Include="Indicators\Samples\Sample3IndicatorDataSeries.cs" />
+    <Compile Include="Indicators\TrigonumCustom\AtrDev.cs" />
+    <Compile Include="Indicators\TrigonumCustom\DDR.cs" />
+    <Compile Include="Indicators\TrigonumCustom\LinearRegression.cs" />
     <Compile Include="Indicators\TrigonumCustom\NadarayaWatson.cs" />
     <Compile Include="Indicators\TrigonumCustom\OrderBlockZigZag.cs" />
     <Compile Include="Indicators\TrigonumCustom\SessionIndicator.cs" />
@@ -1421,7 +1431,12 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\LrZZAtrTakeSmaEntr.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MeanReversion1Fix.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\MeanReversionZScore.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MRZAtrRrDdr.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MRZScoreAtrRR.cs" />
+    <Compile Include="Robots\TrigonumCustom\Base\MRZScoreAtrTakeSMA.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\NextLevelBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\CoinGlass\BreakHighLowByAdxRsiCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\DivergenceRsi.cs" />
