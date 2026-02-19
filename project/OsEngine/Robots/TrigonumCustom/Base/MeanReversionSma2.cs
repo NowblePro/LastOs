@@ -27,6 +27,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterInt _periodEma;
         private StrategyParameterDecimal _spread;
         private MeanReverseGrid _currentGrid = null;
+        private StrategyParameterInt _gridSize;
 
         /// <summary>
         /// Период за который анализируются доходности свечей, чтобы отменять лимитки в случае резкого увеличении доходности в сторону, противоположную позиции
@@ -47,6 +48,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _tab.TPSLMode = TPSLMode.Partial;
             _periodSma = CreateParameter("SMA period", 20, 20, 400, 1, "Robot");
             _periodEma = CreateParameter("EMA period", 200, 100, 300, 1, "Robot");
+            _gridSize = CreateParameter("Grid Size", 7, 1, 10, 1, "Robot");
 
             _sma = (Aindicator)IndicatorsFactory.CreateIndicatorByName(nameClass: "Sma", name: name + "Sma", canDelete: false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, nameArea: "Prime");
@@ -210,7 +212,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (_currentGrid == null)
             {
-                _currentGrid = new MeanReverseGrid(obj.EntryPrice, _spread.ValueDecimal * _zScore.CurrentSigma, 7, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                int gridSize = _gridSize.ValueInt - 1;
+                if (gridSize < 1) return;
+                _currentGrid = new MeanReverseGrid(obj.EntryPrice, _spread.ValueDecimal * _zScore.CurrentSigma, gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
                 Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                 List<int> keysToDelete = new List<int>();
                 foreach (KeyValuePair<int, decimal> pair in grid)
