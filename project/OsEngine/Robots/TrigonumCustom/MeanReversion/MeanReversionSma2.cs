@@ -10,6 +10,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Documents;
 using System.Windows.Forms.DataVisualization.Charting;
 
 namespace OsEngine.Robots.TrigonumCustom.Base
@@ -41,6 +42,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// Текущее значение квантиля, куда входят последние <see cref="_lossCandlesCount"/> свечей по доходности
         /// </summary>
         private int _currentQuantile = 0;
+        private LogDecoration _logDecoration;
 
         public MeanReversionSma2(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -74,6 +76,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _periodLossFilter = CreateParameter("Period", 100, 100, 500, 100, "Volatile Stop");
             _lossCandlesCount = CreateParameter("Candles Count", 3, 3, 5, 1, "Volatile Stop");
             _quantile = CreateParameter("Quantile", 90, 80, 95, 5, "Volatile Stop");
+
+            _logDecoration = new LogDecoration(this);
 
             new TakeProfitDecoration(this);
             new StopLossDecoration(this);
@@ -288,11 +292,22 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_currentGrid == null)
             {
+                Candle last = candles.Last();
                 decimal z = _zScore.CurrentZ;
                 decimal ema = _ema.DataSeries[0].Last;
-                decimal price = candles.Last().Close;
+                decimal price = last.Close;
                 if (z < _zEnterBaseLong.ValueDecimal && price > ema)
                 {
+                    _logDecoration.LogDebug(
+                    $"LONG check | " +
+                    $"Time: {last.TimeStart:HH:mm:ss} | " +
+                    $"Close: {price:F3} | " +
+                    $"EMA: {ema:F3} | " +
+                    $"Z: {z:F3} | " +
+                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"Price > EMA: {price > ema} | " +
+                    $"Z < zEnterBaseShort: {z < _zEnterBaseShort.ValueDecimal} | " +
+                    $"Signal: {(z < _zEnterBaseShort.ValueDecimal && price > ema)}");
                     return true;
                 }
             }
@@ -306,11 +321,22 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_currentGrid == null)
             {
+                Candle last = candles.Last();
                 decimal z = _zScore.CurrentZ;
                 decimal ema = _ema.DataSeries[0].Last;
-                decimal price = candles.Last().Close;
+                decimal price = last.Close;
                 if (z > _zEnterBaseShort.ValueDecimal && price < ema)
                 {
+                    _logDecoration.LogDebug(
+                    $"SHORT check | " +
+                    $"Time: {last.TimeStart:HH:mm:ss} | " +
+                    $"Close: {price:F3} | " +
+                    $"EMA: {ema:F3} | " +
+                    $"Z: {z:F3} | " +
+                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"Price < EMA: {price < ema} | " +
+                    $"Z > zEnterBaseShort: {z > _zEnterBaseShort.ValueDecimal} | " +
+                    $"Signal: {(z > _zEnterBaseShort.ValueDecimal && price < ema)}");
                     return true;
                 }
             }
