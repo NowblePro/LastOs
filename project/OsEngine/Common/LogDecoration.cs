@@ -4,6 +4,8 @@ using OsEngine.OsTrader.Panels;
 using OsEngine.OsTrader.Panels.Tab;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,6 +18,8 @@ namespace OsEngine.Common
 
         private BotTabSimple _tab;
         private BotPanel _bot;
+        private string robotNameUniq;
+        private string robotPath;
 
         public LogDecoration(BotPanel bot)
         {
@@ -23,13 +27,53 @@ namespace OsEngine.Common
             _tab = bot.TabsSimple[0];
             _debugLogging = bot.CreateParameter("Debug Logging", false, "Robot");
             bot.ParametrsChangeByUser += Bot_ParametrsChangeByUser;
+            string path = Path.Combine(AppContext.BaseDirectory, "Engine", "Log", "Robots");
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+            robotNameUniq = _bot.NameStrategyUniq;
+            robotPath = Path.Combine(AppContext.BaseDirectory, "Engine", "Log", "Robots", $"{_bot.NameStrategyUniq}.txt");
+        }
+
+        private string RobotPath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_bot.NameStrategyUniq)) return "";
+                if (_bot.NameStrategyUniq != robotNameUniq)
+                {
+                    robotPath = Path.Combine(AppContext.BaseDirectory, "Engine", "Log", "Robots", $"{_bot.NameStrategyUniq}.txt");
+                    robotNameUniq = _bot.NameStrategyUniq;
+                }
+                return robotPath;
+            }
         }
 
         public void LogDebug(string message)
         {
-            if (_debugLogging != null && _debugLogging.ValueBool)
+            if (_debugLogging == null || !_debugLogging.ValueBool) return;
+
+            try
             {
                 _bot.SendNewLogMessage(message, Logging.LogMessageType.System);
+
+                string robotPath = RobotPath;
+                if (_tab.StartProgram == StartProgram.IsOsOptimizer || string.IsNullOrEmpty(robotPath))
+                {
+                    return;
+                }
+
+                if (!message.EndsWith("\n") && !message.EndsWith("\r"))
+                {
+                    message += Environment.NewLine;
+                }
+
+                File.AppendAllText(robotPath, message);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Log Error: {ex.Message}");
             }
         }
 
