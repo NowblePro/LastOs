@@ -448,6 +448,7 @@
     <Compile Include="Common\DivergenceDetector.cs" />
     <Compile Include="Common\FairPriceDecoration.cs" />
     <Compile Include="Common\ImbalanceDetector.cs" />
+    <Compile Include="Common\LogDecoration.cs" />
     <Compile Include="Common\MeanReverseGrid.cs" />
     <Compile Include="Common\MeanReverseVolumeManager.cs" />
     <Compile Include="Common\OrderType.cs" />
@@ -1431,12 +1432,12 @@
     <Compile Include="Robots\TrigonumCustom\Base\BreakHighLowByAtrExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakKeltnerChannelsRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\BreakLinearRegressionChannel2Rsi.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\LrZZAtrTakeSmaEntr.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\MeanReversion1Fix.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\MeanReversionZScore.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\MRZAtrRrDdr.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\MRZScoreAtrRR.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\MRZScoreAtrTakeSMA.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\LrZZAtrTakeSmaEntr.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\MeanReversion1Fix.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\MeanReversionZScore.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\MRZAtrRrDdr.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\MRZScoreAtrRR.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\MRZScoreAtrTakeSMA.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\NextLevelBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\CoinGlass\BreakHighLowByAdxRsiCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\DivergenceRsi.cs" />
@@ -1444,8 +1445,8 @@
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseMoveLongBotExtTimeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseSmaLRTm.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ImpulseTwoSmaRsi.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\MeanReversionSma2.cs" />
-    <Compile Include="Robots\TrigonumCustom\Base\MeanReversionSma.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\MeanReversionSma2.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\MeanReversionSma.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ParabolicSarClassicTradeRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\ReverseAdaptivePriceChannelRsi.cs" />
     <Compile Include="Robots\TrigonumCustom\BotPanelSimple.cs" />

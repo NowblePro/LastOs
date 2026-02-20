@@ -47,6 +47,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StopLossDecoration _stopLoss;
         private StrategyParameterDecimal _atrSlMultiplier;
         private StrategyParameterDecimal _stopLossLimitPercent;
+        private LogDecoration _logDecoration;
 
         public MeanReversion1Fix(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -99,6 +100,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _stopLoss.StopPriceFunc = GetStopLoss;
 
             new VolatileStopDecoration(this, VolatileStopHandler);
+
+            _logDecoration = new LogDecoration(this);
 
             // События
             _tab.PositionOpeningSuccesEvent += _tab_PositionOpeningSuccesEvent;
@@ -401,10 +404,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 decimal z = _atrDev.LastValue;
                 decimal ema = _ema.DataSeries[0].Last;
-
-                if (z < _zEnterBaseLong.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice < ema) : (currentPrice > ema)))
+                bool signal = z < _zEnterBaseLong.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice < ema) : (currentPrice > ema));
+                if (signal)
                 {
                     _volumeManager.Clear();
+                    _logDecoration.LogDebug(
+                    $"LONG check | " +
+                    $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
+                    $"Close: {currentPrice:F3} | " +
+                    $"EMA: {ema:F3} | " +
+                    $"Z: {z:F3} | " +
+                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"Price < EMA: {currentPrice < ema} | " +
+                    $"Z > zEnterBaseShort: {z > _zEnterBaseShort.ValueDecimal} | " +
+                    $"emaReverseLogic: {_emaReverseLogic.ValueBool} | " +
+                    $"Signal: {signal}");
                     return true;
                 }
             }
@@ -425,7 +439,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
                     var target = candidates.OrderBy(p => p.Value).First();
                     _nextGridKeyToFill = target.Key;
-
+                    _logDecoration.LogDebug(
+                    $"SHORT check | " +
+                    $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
+                    $"Close: {currentPrice:F3} | " +
+                    $"emptyLevels.Count: {emptyLevels.Count:F3} | " +
+                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"emaReverseLogic: {_emaReverseLogic.ValueBool} | ");
                     return true;
                 }
                 catch (Exception ex)
@@ -484,10 +504,21 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 decimal z = _atrDev.LastValue;
                 decimal ema = _ema.DataSeries[0].Last;
-
-                if (z > _zEnterBaseShort.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice > ema) : (currentPrice < ema)))
+                bool signal = z > _zEnterBaseShort.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice > ema) : (currentPrice < ema));
+                if (signal)
                 {
                     _volumeManager.Clear();
+                    _logDecoration.LogDebug(
+                    $"SHORT check | " +
+                    $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
+                    $"Close: {currentPrice:F3} | " +
+                    $"EMA: {ema:F3} | " +
+                    $"Z: {z:F3} | " +
+                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"Price < EMA: {currentPrice < ema} | " +
+                    $"Z > zEnterBaseShort: {z > _zEnterBaseShort.ValueDecimal} | " +
+                    $"emaReverseLogic: {_emaReverseLogic.ValueBool} | " +
+                    $"Signal: {signal}");
                     return true;
                 }
             }
@@ -508,7 +539,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
                     var target = candidates.OrderByDescending(p => p.Value).First();
                     _nextGridKeyToFill = target.Key;
-
+                    _logDecoration.LogDebug(
+                    $"SHORT check | " +
+                    $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
+                    $"Close: {currentPrice:F3} | " +
+                    $"emptyLevels.Count: {emptyLevels.Count:F3} | " +
+                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"emaReverseLogic: {_emaReverseLogic.ValueBool} | ");
                     return true;
                 }
                 catch (Exception ex)

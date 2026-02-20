@@ -165,8 +165,13 @@ namespace OsEngine.Robots.TrigonumCustom
 
         protected virtual void CandleFinishedEvent(List<Candle> candles)
         {
+            Candle last = candles.Last();
+            if (last.State != CandleState.Finished)
+            {
+                return;
+            }
             if (GetCheckers().Any(p => !p(candles))) return;
-            decimal lastPrice = candles.Last().Close;
+            decimal lastPrice = last.Close;
             List<Position> positions = _tab.PositionsOpenAll;
             decimal slippage = _slippage.ValueDecimal * lastPrice / 100;
             OrderType orderType = OrderType.Limit;
