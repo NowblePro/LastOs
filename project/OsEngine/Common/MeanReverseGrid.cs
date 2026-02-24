@@ -13,11 +13,13 @@ namespace OsEngine.Common
         private Dictionary<int, decimal> _grid = new Dictionary<int, decimal>();
         private Dictionary<int, Position> _positions = new Dictionary<int, Position>();
         private int _index;
+        private decimal _step;
 
         public MeanReverseGrid(decimal gridValue, decimal delta, int levelsCount, Side side, int index)
         {
             if (levelsCount < 2) throw new Exception("Уровней должно быть хотя бы 2");
             _side = side;
+            _step = delta;
             _index = index;
             if (side == Side.Buy)
             {
@@ -59,6 +61,19 @@ namespace OsEngine.Common
             _grid.Remove(key);
             // Позиция к этому моменту должна быть закрыта
             _positions.Remove(key);
+        }
+
+        public override string ToString()
+        {
+            StringBuilder result = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
+            foreach (var level in _grid)
+            {
+                sb.Append($"[{level.Key};{level.Value:F3}] ");
+            }
+
+            result.Append($"| MR Grid: Direction={Direction}, Step={_step}, levels:{sb} |");
+            return result.ToString();
         }
     }
 }

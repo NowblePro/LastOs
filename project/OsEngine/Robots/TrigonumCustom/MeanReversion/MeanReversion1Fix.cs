@@ -183,6 +183,31 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
+            if (_logDecoration.IsOn)
+            {
+                Candle last = candles.Last();
+                decimal currentPrice = last.Close;
+                decimal z = _atrDev.LastValue;
+                decimal ema = _ema.DataSeries[0].Last;
+                decimal sma = _sma.DataSeries[0].Last;
+                decimal price = last.Close;
+                bool signalLong = z < _zEnterBaseLong.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice < ema) : (currentPrice > ema));
+                bool signalShort = z > _zEnterBaseShort.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice > ema) : (currentPrice < ema));
+                _logDecoration.LogDebug(
+                        $"Time: {last.TimeStart:HH:mm:ss} | " +
+                        $"Open: {last.Open:F3} | " +
+                        $"Close: {last.Close:F3} | " +
+                        $"Low: {last.Low:F3} | " +
+                        $"High: {last.High:F3} | " +
+                        $"EMA: {ema:F3} | " +
+                        $"SMA: {sma:F3} | " +
+                        $"AtrDev: {z:F3} | " +
+                        $"zEnterBaseLong: {_zEnterBaseLong.ValueDecimal:F3} | " +
+                        $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                        $"LongSignal: {signalLong} | " +
+                        $"ShortSignal: {signalShort} |" +
+                        $"{_currentGrid}");
+            }
             ApplySmaFilter(candles);
 
             base.CandleFinishedEvent(candles);
@@ -365,10 +390,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 decimal sma = _sma.DataSeries[0].Last;
                 if (sma <= last.High)
                 {
+                    if (_logDecoration.IsOn)
+                    {
+                        _logDecoration.LogDebug("Стоп по волатильности на лонг прекратил действовать (sma <= last.High)");
+                    }
                     _volatileStopActive = false;
                 }
                 else
                 {
+                    if (_logDecoration.IsOn)
+                    {
+                        _logDecoration.LogDebug("Стоп по волатильности отменил проверку на лонг");
+                    }
                     return false;
                 }
             }
@@ -414,9 +447,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     $"Close: {currentPrice:F3} | " +
                     $"EMA: {ema:F3} | " +
                     $"Z: {z:F3} | " +
-                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"zEnterBaseLong: {_zEnterBaseLong.ValueDecimal:F3} | " +
                     $"Price < EMA: {currentPrice < ema} | " +
-                    $"Z > zEnterBaseShort: {z > _zEnterBaseShort.ValueDecimal} | " +
+                    $"Z < zEnterBaseLong: {z < _zEnterBaseLong.ValueDecimal} | " +
                     $"emaReverseLogic: {_emaReverseLogic.ValueBool} | " +
                     $"Signal: {signal}");
                     return true;
@@ -440,11 +473,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var target = candidates.OrderBy(p => p.Value).First();
                     _nextGridKeyToFill = target.Key;
                     _logDecoration.LogDebug(
-                    $"SHORT check | " +
+                    $"LONG fills grid | " +
                     $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
                     $"Close: {currentPrice:F3} | " +
                     $"emptyLevels.Count: {emptyLevels.Count:F3} | " +
-                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"zEnterBaseLong: {_zEnterBaseLong.ValueDecimal:F3} | " +
+                    $"nextGridKeyToFill: {_nextGridKeyToFill} | " +
                     $"emaReverseLogic: {_emaReverseLogic.ValueBool} | ");
                     return true;
                 }
@@ -466,10 +500,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 decimal sma = _sma.DataSeries[0].Last;
                 if (sma >= last.Low)
                 {
+                    if (_logDecoration.IsOn)
+                    {
+                        _logDecoration.LogDebug("Стоп по волатильности на шорт прекратил действовать (sma >= last.Low)");
+                    }
                     _volatileStopActive = false;
                 }
                 else
                 {
+                    if (_logDecoration.IsOn)
+                    {
+                        _logDecoration.LogDebug("Стоп по волатильности отменил проверку на шорт");
+                    }
                     return false;
                 }
             }
@@ -540,11 +582,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var target = candidates.OrderByDescending(p => p.Value).First();
                     _nextGridKeyToFill = target.Key;
                     _logDecoration.LogDebug(
-                    $"SHORT check | " +
+                    $"SHORT fills grid | " +
                     $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
                     $"Close: {currentPrice:F3} | " +
                     $"emptyLevels.Count: {emptyLevels.Count:F3} | " +
                     $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"nextGridKeyToFill: {_nextGridKeyToFill} | " +
                     $"emaReverseLogic: {_emaReverseLogic.ValueBool} | ");
                     return true;
                 }

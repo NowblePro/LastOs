@@ -36,6 +36,8 @@ namespace OsEngine.Common
             robotPath = Path.Combine(AppContext.BaseDirectory, "Engine", "Log", "Robots", $"{_bot.NameStrategyUniq}.txt");
         }
 
+        public bool IsOn => _debugLogging?.ValueBool ?? false;
+
         private string RobotPath
         {
             get
