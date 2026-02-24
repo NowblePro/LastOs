@@ -87,6 +87,29 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override void CandleFinishedEvent(List<Candle> candles)
         {
+            if (_logDecoration.IsOn)
+            {
+                Candle last = candles.Last();
+                decimal z = _zScore.CurrentZ;
+                decimal ema = _ema.DataSeries[0].Last;
+                decimal sma = _sma.DataSeries[0].Last;
+                decimal price = last.Close;
+                _logDecoration.LogDebug(
+                        $"Time: {last.TimeStart:HH:mm:ss} | " +
+                        $"Open: {last.Open:F3} | " +
+                        $"Close: {last.Close:F3} | " +
+                        $"Low: {last.Low:F3} | " +
+                        $"High: {last.High:F3} | " +
+                        $"EMA: {ema:F3} | " +
+                        $"SMA: {sma:F3} | " +
+                        $"Z: {z:F3} | " +
+                        $"zEnterBaseLong: {_zEnterBaseLong.ValueDecimal:F3} | " +
+                        $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                        $"Price > EMA: {price > ema} | " +
+                        $"LongSignal: {(z < _zEnterBaseLong.ValueDecimal && price > ema)} | " +
+                        $"ShortSignal: {(z > _zEnterBaseShort.ValueDecimal && price < ema)} |");
+            }
+            
             CandleProfitFilter(candles);
             base.CandleFinishedEvent(candles);
             if (_tab.PositionsOpenAll.Count == 0)
@@ -288,7 +311,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenLongPosition(List<Candle> candles)
         {
-            if (_currentGrid != null && _currentGrid.Direction == Side.Sell) return false;
+            if (_currentGrid != null && _currentGrid.Direction == Side.Sell)
+            {
+                _logDecoration.LogDebug($"LONG check: _currentGrid != null && _currentGrid.Direction == Side.Sell, RETURN FALSE");
+                return false;
+            }
 
             if (_currentGrid == null)
             {
@@ -304,10 +331,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     $"Close: {price:F3} | " +
                     $"EMA: {ema:F3} | " +
                     $"Z: {z:F3} | " +
-                    $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +
+                    $"_zEnterBaseLong: {_zEnterBaseLong.ValueDecimal:F3} | " +
                     $"Price > EMA: {price > ema} | " +
-                    $"Z < zEnterBaseShort: {z < _zEnterBaseShort.ValueDecimal} | " +
-                    $"Signal: {(z < _zEnterBaseShort.ValueDecimal && price > ema)}");
+                    $"Z < _zEnterBaseLong: {z < _zEnterBaseLong.ValueDecimal} | " +
+                    $"Signal: {(z < _zEnterBaseLong.ValueDecimal && price > ema)}");
                     return true;
                 }
             }
@@ -317,7 +344,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override bool CheckOpenShortPosition(List<Candle> candles)
         {
-            if (_currentGrid != null && _currentGrid.Direction == Side.Buy) return false;
+            if (_currentGrid != null && _currentGrid.Direction == Side.Buy)
+            {
+                _logDecoration.LogDebug($"SHORT check: _currentGrid != null && _currentGrid.Direction == Side.Buy, RETURN FALSE");
+                return false; 
+            }
 
             if (_currentGrid == null)
             {
