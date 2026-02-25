@@ -194,7 +194,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 bool signalLong = z < _zEnterBaseLong.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice < ema) : (currentPrice > ema));
                 bool signalShort = z > _zEnterBaseShort.ValueDecimal && (_emaReverseLogic.ValueBool ? (currentPrice > ema) : (currentPrice < ema));
                 _logDecoration.LogDebug(
-                        $"Time: {last.TimeStart:HH:mm:ss} | " +
+                        $"Time: {last.TimeStart:dd.MM.yyyy HH:mm:ss} | " +
                         $"Open: {last.Open:F3} | " +
                         $"Close: {last.Close:F3} | " +
                         $"Low: {last.Low:F3} | " +
@@ -443,7 +443,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _volumeManager.Clear();
                     _logDecoration.LogDebug(
                     $"LONG check | " +
-                    $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
+                    $"Time: {lastCandle.TimeStart:dd.MM.yyyy HH:mm:ss} | " +
                     $"Close: {currentPrice:F3} | " +
                     $"EMA: {ema:F3} | " +
                     $"Z: {z:F3} | " +
@@ -474,7 +474,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _nextGridKeyToFill = target.Key;
                     _logDecoration.LogDebug(
                     $"LONG fills grid | " +
-                    $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
+                    $"Time: {lastCandle.TimeStart:dd.MM.yyyy HH:mm:ss} | " +
                     $"Close: {currentPrice:F3} | " +
                     $"emptyLevels.Count: {emptyLevels.Count:F3} | " +
                     $"zEnterBaseLong: {_zEnterBaseLong.ValueDecimal:F3} | " +
@@ -552,7 +552,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _volumeManager.Clear();
                     _logDecoration.LogDebug(
                     $"SHORT check | " +
-                    $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
+                    $"Time: {lastCandle.TimeStart:dd.MM.yyyy HH:mm:ss} | " +
                     $"Close: {currentPrice:F3} | " +
                     $"EMA: {ema:F3} | " +
                     $"Z: {z:F3} | " +
@@ -583,7 +583,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _nextGridKeyToFill = target.Key;
                     _logDecoration.LogDebug(
                     $"SHORT fills grid | " +
-                    $"Time: {lastCandle.TimeStart:HH:mm:ss} | " +
+                    $"Time: {lastCandle.TimeStart:dd.MM.yyyy HH:mm:ss} | " +
                     $"Close: {currentPrice:F3} | " +
                     $"emptyLevels.Count: {emptyLevels.Count:F3} | " +
                     $"zEnterBaseShort: {_zEnterBaseShort.ValueDecimal:F3} | " +

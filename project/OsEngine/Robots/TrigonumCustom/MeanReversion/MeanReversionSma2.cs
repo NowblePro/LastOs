@@ -95,7 +95,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 decimal sma = _sma.DataSeries[0].Last;
                 decimal price = last.Close;
                 _logDecoration.LogDebug(
-                        $"Time: {last.TimeStart:HH:mm:ss} | " +
+                        $"Time: {last.TimeStart:dd.MM.yyyy HH:mm:ss} | " +
                         $"Open: {last.Open:F3} | " +
                         $"Close: {last.Close:F3} | " +
                         $"Low: {last.Low:F3} | " +
@@ -327,7 +327,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     _logDecoration.LogDebug(
                     $"LONG check | " +
-                    $"Time: {last.TimeStart:HH:mm:ss} | " +
+                    $"Time: {last.TimeStart:dd.MM.yyyy HH:mm:ss} | " +
                     $"Close: {price:F3} | " +
                     $"EMA: {ema:F3} | " +
                     $"Z: {z:F3} | " +
@@ -360,7 +360,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 {
                     _logDecoration.LogDebug(
                     $"SHORT check | " +
-                    $"Time: {last.TimeStart:HH:mm:ss} | " +
+                    $"Time: {last.TimeStart:dd.MM.yyyy HH:mm:ss} | " +
                     $"Close: {price:F3} | " +
                     $"EMA: {ema:F3} | " +
                     $"Z: {z:F3} | " +
