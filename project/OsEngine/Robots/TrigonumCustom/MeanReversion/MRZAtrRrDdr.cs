@@ -288,11 +288,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             Position position = null;
                             if (obj.Direction == Side.Buy)
                             {
-                                position = _tab.BuyAtMarket(GetVolume());
+                                position = _tab.BuyAtLimit(GetVolume(), obj.EntryPrice);
                             }
                             else if (obj.Direction == Side.Sell)
                             {
-                                position = _tab.SellAtMarket(GetVolume());
+                                position = _tab.SellAtLimit(GetVolume(), obj.EntryPrice);
                             }
                             _currentGrid.SetPosition(level.Key, position);
                         }
