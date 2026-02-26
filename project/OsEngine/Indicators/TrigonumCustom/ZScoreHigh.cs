@@ -69,9 +69,13 @@ namespace OsEngine.Indicators.TrigonumCustom
                     _firstCandleTime = source[0].TimeStart;
                 }
 
-                for (int i = lastIndex + 1; i < source.Count; i++)
+                for (int i = lastIndex + 1; i <= index && i < source.Count; i++)
                 {
                     Candle candle = source[i];
+                    if (candle.State != CandleState.Finished)
+                    {
+                        break;
+                    }
                     decimal sma = _sma.DataSeries[0].Values[i];
                     if (sma == 0) continue;
                     decimal high = Math.Max(0, candle.High - sma);

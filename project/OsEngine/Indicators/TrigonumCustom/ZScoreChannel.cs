@@ -38,9 +38,13 @@ namespace OsEngine.Indicators.TrigonumCustom
                 _firstCandleTime = source[0].TimeStart;
             }
 
-            for (int i = lastIndex + 1; i < source.Count; i++)
+            for (int i = lastIndex + 1; i <= index && i < source.Count; i++)
             {
                 Candle candle = source[i];
+                if (candle.State != CandleState.Finished)
+                {
+                    break;
+                }
                 DateTime time = candle.TimeStart;
 
                 if (LowZScore.Ready)

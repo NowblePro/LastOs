@@ -40,20 +40,20 @@ namespace OsEngine.Indicators.TrigonumCustom
                 _firstCandleTime = source[0].TimeStart;
             }
             
-            for (int i = lastIndex + 1; i < source.Count; i++)
+            for (int i = lastIndex + 1; i <= index && i < source.Count; i++)
             {
                 if (i >= _window_sigma.ValueInt)
                 {
+                    Candle candle = source[i];
+                    if (candle.State != CandleState.Finished)
+                    {
+                        break;
+                    }
                     decimal price = source[i].Close;
                     decimal sma = _sma.DataSeries[0].Values[i];
                     int startIndex = i - _window_sigma.ValueInt + 1;
 
-                    Candle candle = source[i];
 
-                    DateTime targetTime = new DateTime(2026, 2, 25, 1, 15, 0);
-                    DateTime candleTime = candle.TimeStart;
-
-                    double diffMinutes = Math.Abs((candleTime - targetTime).TotalMinutes);
                     IEnumerable<decimal> closes = source.Skip(startIndex).Take(_window_sigma.ValueInt).Select(candle => candle.Close);
                     
                     decimal sigma = GetSigma(closes);
@@ -61,21 +61,6 @@ namespace OsEngine.Indicators.TrigonumCustom
                     _seriesZ.Values[i] = value;
                     _seriesSigma.Values[i] = sigma;
                     lastIndex = i;
-
-                    if (diffMinutes < 1.0)
-                    {
-                        
-                    }
-
-                    string path = Path.Combine(AppContext.BaseDirectory, "123.txt");
-                    StringBuilder sb = new StringBuilder();
-                    sb.Append($"Price = {price:F3}, Sma = {sma:F3}, i = {i}, index = {index}, sigma = {sigma:F3}, value = {value:F3} array = [");
-                    foreach (decimal d in closes)
-                    {
-                        sb.Append($"|{d:F3}|");
-                    }
-                    sb.Append("]");
-                    File.AppendAllText(path, $"{candle.TimeStart:dd.MM.yyyy HH:mm:ss}: {sb}{Environment.NewLine}");
                 }
             }
         }
