@@ -2,9 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Documents;
 using static Tinkoff.InvestApi.V1.GetTechAnalysisRequest.Types;
 
 namespace OsEngine.Indicators.TrigonumCustom
@@ -37,15 +39,24 @@ namespace OsEngine.Indicators.TrigonumCustom
                 lastIndex = -1;
                 _firstCandleTime = source[0].TimeStart;
             }
-
-            for (int i = lastIndex + 1; i < source.Count; i++)
+            
+            for (int i = lastIndex + 1; i <= index && i < source.Count; i++)
             {
                 if (i >= _window_sigma.ValueInt)
                 {
+                    Candle candle = source[i];
+                    if (candle.State != CandleState.Finished)
+                    {
+                        break;
+                    }
                     decimal price = source[i].Close;
                     decimal sma = _sma.DataSeries[0].Values[i];
                     int startIndex = i - _window_sigma.ValueInt + 1;
-                    decimal sigma = GetSigma(source.Skip(startIndex).Take(_window_sigma.ValueInt).Select(candle => candle.Close));
+
+
+                    IEnumerable<decimal> closes = source.Skip(startIndex).Take(_window_sigma.ValueInt).Select(candle => candle.Close);
+                    
+                    decimal sigma = GetSigma(closes);
                     decimal value = (price - sma) / sigma;
                     _seriesZ.Values[i] = value;
                     _seriesSigma.Values[i] = sigma;
