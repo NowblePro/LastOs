@@ -44,8 +44,6 @@ namespace OsEngine.Indicators.TrigonumCustom
         public bool Ready => _deviation.Count > _window_sigma.ValueInt;
 
         public decimal LastValue => _seriesZ.Values.LastOrDefault();
-        private int lastIndex = -1;
-
         public Dictionary<DateTime, decimal> _all_deviations = new Dictionary<DateTime, decimal>();
         public Dictionary<DateTime, decimal> AllDeviations => _all_deviations;
 
@@ -66,40 +64,31 @@ namespace OsEngine.Indicators.TrigonumCustom
                     _deviation.Clear();
                     _all_deviations.Clear();
                     Means.Clear();
-                    lastIndex = -1;
                     _firstCandleTime = source[0].TimeStart;
                 }
 
-                for (int i = lastIndex + 1; i <= index && i < source.Count; i++)
+                Candle candle = source[index];
+                decimal sma = _sma.DataSeries[0].Values[index];
+                if (sma == 0) return;
+                decimal low = Math.Max(0, sma - candle.Low);
+                if (candle.State == CandleState.Finished && low > 0)
                 {
-                    Candle candle = source[i];
-                    if (candle.State != CandleState.Finished)
-                    {
-                        break;
-                    }
-                    decimal sma = _sma.DataSeries[0].Values[i];
-                    if (sma == 0) continue;
-                    decimal low = Math.Max(0, sma - candle.Low);
-                    if (low > 0)
-                    {
-                        _deviation.Add(low);
-                    }
-                    if (_sma == null || _deviation.Count < _window_sigma.ValueInt || _window_sigma.ValueInt == 0)
-                    {
-                        continue;
-                    }
-                    int skip = _deviation.Count - _window_sigma.ValueInt;
-                    decimal avg = _deviation.Skip(skip).Average();
-                    Means[candle.TimeStart] = avg / sma;
-                    decimal sumOfSquares = (decimal)_deviation.Skip(skip).Sum(x => Math.Pow((double)(x - avg), 2));
-                    decimal variance = sumOfSquares / _window_sigma.ValueInt;
-                    decimal standartDeviation = (decimal)Math.Sqrt((double)variance);
-                    _all_deviations[candle.TimeStart] = standartDeviation / sma;
-                    if (standartDeviation == 0) continue;
-                    decimal result = (low - avg) / standartDeviation;
-                    _seriesZ.Values[i] = result;
-                    lastIndex = i;
+                    _deviation.Add(low);
                 }
+                if (_sma == null || _deviation.Count < _window_sigma.ValueInt || _window_sigma.ValueInt == 0)
+                {
+                    return;
+                }
+                int skip = _deviation.Count - _window_sigma.ValueInt;
+                decimal avg = _deviation.Skip(skip).Average();
+                Means[candle.TimeStart] = avg / sma;
+                decimal sumOfSquares = (decimal)_deviation.Skip(skip).Sum(x => Math.Pow((double)(x - avg), 2));
+                decimal variance = sumOfSquares / _window_sigma.ValueInt;
+                decimal standartDeviation = (decimal)Math.Sqrt((double)variance);
+                _all_deviations[candle.TimeStart] = standartDeviation / sma;
+                if (standartDeviation == 0) return;
+                decimal result = (low - avg) / standartDeviation;
+                _seriesZ.Values[index] = result;
             }
             catch (Exception ex)
             {
@@ -126,7 +115,6 @@ namespace OsEngine.Indicators.TrigonumCustom
         private void Reset(IIndicator indicator)
         {
             _seriesZ.Clear();
-            lastIndex = -1;
             _deviation.Clear();
             _all_deviations.Clear();
             Means.Clear();

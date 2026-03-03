@@ -21,7 +21,6 @@ namespace OsEngine.Indicators.TrigonumCustom
         /// Ширина окна для расчёта отклонения
         /// </summary>
         private IndicatorParameterInt _window_sigma;
-        private int lastIndex = -1;
         private DateTime _firstCandleTime = DateTime.MinValue;
         public override void OnProcess(List<Candle> source, int index)
         {
@@ -36,32 +35,23 @@ namespace OsEngine.Indicators.TrigonumCustom
             }
             else if (source[0].TimeStart != _firstCandleTime)
             {
-                lastIndex = -1;
                 _firstCandleTime = source[0].TimeStart;
             }
-            
-            for (int i = lastIndex + 1; i <= index && i < source.Count; i++)
+
+            Candle candle = source[index];
+
+            if (index >= _window_sigma.ValueInt)
             {
-                if (i >= _window_sigma.ValueInt)
-                {
-                    Candle candle = source[i];
-                    if (candle.State != CandleState.Finished)
-                    {
-                        break;
-                    }
-                    decimal price = source[i].Close;
-                    decimal sma = _sma.DataSeries[0].Values[i];
-                    int startIndex = i - _window_sigma.ValueInt + 1;
+                decimal price = source[index].Close;
+                decimal sma = _sma.DataSeries[0].Values[index];
+                int startIndex = index - _window_sigma.ValueInt + 1;
 
+                IEnumerable<decimal> closes = source.Skip(startIndex).Take(_window_sigma.ValueInt).Select(candle => candle.Close);
 
-                    IEnumerable<decimal> closes = source.Skip(startIndex).Take(_window_sigma.ValueInt).Select(candle => candle.Close);
-                    
-                    decimal sigma = GetSigma(closes);
-                    decimal value = (price - sma) / sigma;
-                    _seriesZ.Values[i] = value;
-                    _seriesSigma.Values[i] = sigma;
-                    lastIndex = i;
-                }
+                decimal sigma = GetSigma(closes);
+                decimal value = (price - sma) / sigma;
+                _seriesZ.Values[index] = value;
+                _seriesSigma.Values[index] = sigma;
             }
         }
 
@@ -113,7 +103,6 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         private void Reset(IIndicator indicator)
         {
-            lastIndex = -1;
             _seriesZ.Clear();
             _seriesSigma.Clear();
         }
