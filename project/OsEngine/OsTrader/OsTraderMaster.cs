@@ -326,34 +326,458 @@ namespace OsEngine.OsTrader
         {
             try
             {
-                using (StreamWriter writer = new StreamWriter(@"Engine\Settings" + _typeWorkKeeper + "Keeper.txt", false))
-                {
-                    for (int i = 0; PanelsArray != null && i < PanelsArray.Count; i++)
-                    {
-                        if(PanelsArray[i].IsScript == false)
-                        {
-                            writer.WriteLine(PanelsArray[i].NameStrategyUniq + "@" +
-                                             PanelsArray[i].GetNameStrategyType() +
-                                              "@" + false
-                                              + "@" + PanelsArray[i].PublicName);
-                        }
-                        else
-                        {
-                            writer.WriteLine(PanelsArray[i].NameStrategyUniq + "@" +
-                            PanelsArray[i].FileName +
-                            "@" + true
-                             + "@" + PanelsArray[i].PublicName);
-                        }
-                    }
-
-                    writer.Close();
-                }
+                SaveKeeperFile(@"Engine\Settings" + _typeWorkKeeper + "Keeper.txt", false);
             }
             catch
             {
                 // ignored
             }
         }
+
+        public int SyncBotsToTesterKeeper()
+        {
+            try
+            {
+                SaveCurrentBotsStateForSync();
+                Save();
+                string enginePath = GetEnginePathForSync();
+
+                DeleteOldTesterCloneFiles(enginePath);
+                CopyCurrentBotFilesToTesterClones(enginePath);
+                NormalizeTesterCloneConnectorSettings(enginePath);
+                SaveKeeperFile(@"Engine\SettingsTesterKeeper.txt", true);
+
+                int botsCount = PanelsArray?.Count ?? 0;
+
+                SendNewLogMessage("Bots synced to Tester Light: " + botsCount, LogMessageType.System);
+
+                return botsCount;
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                return 0;
+            }
+        }
+
+        private void SaveKeeperFile(string path, bool useTesterCloneNames)
+        {
+            using (StreamWriter writer = new StreamWriter(path, false))
+            {
+                for (int i = 0; PanelsArray != null && i < PanelsArray.Count; i++)
+                {
+                    writer.WriteLine(GetKeeperLine(PanelsArray[i], useTesterCloneNames));
+                }
+
+                writer.Close();
+            }
+        }
+
+        private string GetKeeperLine(BotPanel bot, bool useTesterCloneNames)
+        {
+            string botName = useTesterCloneNames
+                ? GetTesterCloneBotName(bot.NameStrategyUniq)
+                : bot.NameStrategyUniq;
+
+            if (bot.IsScript == false)
+            {
+                return botName + "@" +
+                       bot.GetNameStrategyType() +
+                       "@" + false +
+                       "@" + bot.PublicName;
+            }
+
+            return botName + "@" +
+                   bot.FileName +
+                   "@" + true +
+                   "@" + bot.PublicName;
+        }
+
+        private void SaveCurrentBotsStateForSync()
+        {
+            for (int i = 0; PanelsArray != null && i < PanelsArray.Count; i++)
+            {
+                try
+                {
+                    BotPanel bot = PanelsArray[i];
+
+                    if (bot == null)
+                    {
+                        continue;
+                    }
+
+                    bot.SaveParametrs();
+
+                    List<IIBotTab> tabs = bot.GetTabs();
+
+                    for (int i2 = 0; tabs != null && i2 < tabs.Count; i2++)
+                    {
+                        SaveBotTabState(tabs[i2]);
+                    }
+                }
+                catch (Exception error)
+                {
+                    SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                }
+            }
+        }
+
+        private void SaveBotTabState(IIBotTab tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            if (tab is BotTabSimple simpleTab)
+            {
+                simpleTab.Connector?.Save();
+                simpleTab.TimeFrameBuilder?.Save();
+                simpleTab.ManualPositionSupport?.Save();
+            }
+            else if (tab is BotTabScreener screenerTab)
+            {
+                screenerTab.SaveSettings();
+            }
+            else if (tab is BotTabIndex indexTab)
+            {
+                indexTab.Save();
+            }
+        }
+
+        private void DeleteOldTesterCloneFiles(string enginePath)
+        {
+            if (Directory.Exists(enginePath) == false)
+            {
+                return;
+            }
+
+            string[] files = Directory.GetFiles(enginePath);
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                try
+                {
+                    string fileName = System.IO.Path.GetFileName(files[i]);
+
+                    if (fileName.StartsWith(TesterClonePrefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Delete(files[i]);
+                    }
+                }
+                catch (Exception error)
+                {
+                    SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                }
+            }
+        }
+
+        private void CopyCurrentBotFilesToTesterClones(string enginePath)
+        {
+            if (Directory.Exists(enginePath) == false || PanelsArray == null || PanelsArray.Count == 0)
+            {
+                return;
+            }
+
+            List<BotPanel> sortedBots = PanelsArray
+                .Where(bot => bot != null && string.IsNullOrEmpty(bot.NameStrategyUniq) == false)
+                .OrderByDescending(bot => bot.NameStrategyUniq.Length)
+                .ToList();
+
+            string[] files = Directory.GetFiles(enginePath);
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                try
+                {
+                    string fileName = System.IO.Path.GetFileName(files[i]);
+                    BotPanel ownerBot = GetOwnerBotForFile(fileName, sortedBots);
+
+                    if (ownerBot == null || ShouldSkipFileForTesterClone(fileName, ownerBot.NameStrategyUniq))
+                    {
+                        continue;
+                    }
+
+                    string cloneFileName = GetTesterCloneBotName(ownerBot.NameStrategyUniq)
+                                           + fileName.Substring(ownerBot.NameStrategyUniq.Length);
+
+                    File.Copy(files[i], System.IO.Path.Combine(enginePath, cloneFileName), true);
+                }
+                catch (Exception error)
+                {
+                    SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                }
+            }
+        }
+
+        private void NormalizeTesterCloneConnectorSettings(string enginePath)
+        {
+            if (Directory.Exists(enginePath) == false)
+            {
+                return;
+            }
+
+            string testerDataFolder = GetTesterDataFolderForSync(enginePath);
+            string[] files = Directory.GetFiles(enginePath, TesterClonePrefix + "*ConnectorPrime.txt");
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                try
+                {
+                    string[] lines = File.ReadAllLines(files[i]);
+
+                    if (lines == null || lines.Length < 5)
+                    {
+                        continue;
+                    }
+
+                    if (lines.Length < 6)
+                    {
+                        Array.Resize(ref lines, 6);
+                    }
+
+                    lines[0] = "GodMode";
+                    lines[1] = "False";
+                    lines[2] = GetTesterSecurityFileName(lines[2], testerDataFolder);
+                    lines[3] = ServerType.Tester.ToString();
+                    lines[4] = "TestClass";
+                    lines[5] = "False";
+
+                    File.WriteAllLines(files[i], lines);
+                }
+                catch (Exception error)
+                {
+                    SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                }
+            }
+        }
+
+        private string GetEnginePathForSync()
+        {
+            try
+            {
+                string baseDirEngine = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Engine");
+
+                if (Directory.Exists(baseDirEngine))
+                {
+                    return baseDirEngine;
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+
+            return "Engine";
+        }
+
+        private string GetTesterDataFolderForSync(string enginePath)
+        {
+            try
+            {
+                string testServerPath = System.IO.Path.Combine(enginePath, "TestServer.txt");
+
+                if (File.Exists(testServerPath))
+                {
+                    string[] testServerLines = File.ReadAllLines(testServerPath);
+
+                    if (testServerLines.Length > 0 && string.IsNullOrWhiteSpace(testServerLines[0]) == false)
+                    {
+                        string activeSetPath = testServerLines[0].Trim();
+
+                        if (Directory.Exists(activeSetPath))
+                        {
+                            return activeSetPath;
+                        }
+
+                        string baseDirectoryPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, activeSetPath);
+
+                        if (Directory.Exists(baseDirectoryPath))
+                        {
+                            return baseDirectoryPath;
+                        }
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+
+            string baseDirData = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
+
+            if (Directory.Exists(baseDirData))
+            {
+                return baseDirData;
+            }
+
+            return Directory.Exists("Data") ? "Data" : null;
+        }
+
+        private string GetTesterSecurityFileName(string securityName, string testerDataFolder)
+        {
+            if (string.IsNullOrWhiteSpace(securityName))
+            {
+                return securityName;
+            }
+
+            if (securityName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+            {
+                securityName = System.IO.Path.GetFileName(securityName);
+            }
+
+            string requestedName = securityName.Trim();
+            string requestedFileName = requestedName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)
+                ? requestedName
+                : requestedName + ".txt";
+
+            try
+            {
+                string exactMatch = TryFindTesterSecurityFile(requestedFileName, testerDataFolder);
+
+                if (string.IsNullOrWhiteSpace(exactMatch) == false)
+                {
+                    return exactMatch;
+                }
+
+                string securityNameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(requestedFileName);
+
+                string stemMatch = TryFindTesterSecurityFileByStem(securityNameWithoutExtension, testerDataFolder);
+
+                if (string.IsNullOrWhiteSpace(stemMatch) == false)
+                {
+                    return stemMatch;
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+
+            return requestedFileName;
+        }
+
+        private string TryFindTesterSecurityFile(string fileName, string testerDataFolder)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return null;
+            }
+
+            string fullPathInTesterSet = TryFindFileInDirectoryTree(testerDataFolder, fileName);
+
+            if (string.IsNullOrWhiteSpace(fullPathInTesterSet) == false)
+            {
+                return System.IO.Path.GetFileName(fullPathInTesterSet);
+            }
+
+            string baseDirData = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
+            string fullPathInBaseData = TryFindFileInDirectoryTree(baseDirData, fileName);
+
+            if (string.IsNullOrWhiteSpace(fullPathInBaseData) == false)
+            {
+                return System.IO.Path.GetFileName(fullPathInBaseData);
+            }
+
+            string fullPathInRelativeData = TryFindFileInDirectoryTree("Data", fileName);
+
+            if (string.IsNullOrWhiteSpace(fullPathInRelativeData) == false)
+            {
+                return System.IO.Path.GetFileName(fullPathInRelativeData);
+            }
+
+            return null;
+        }
+
+        private string TryFindTesterSecurityFileByStem(string securityStem, string testerDataFolder)
+        {
+            if (string.IsNullOrWhiteSpace(securityStem))
+            {
+                return null;
+            }
+
+            string exactFileName = securityStem + ".txt";
+
+            string fullPath = TryFindFileInDirectoryTree(testerDataFolder, exactFileName);
+
+            if (string.IsNullOrWhiteSpace(fullPath) == false)
+            {
+                return System.IO.Path.GetFileName(fullPath);
+            }
+
+            string baseDirData = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
+            fullPath = TryFindFileInDirectoryTree(baseDirData, exactFileName);
+
+            if (string.IsNullOrWhiteSpace(fullPath) == false)
+            {
+                return System.IO.Path.GetFileName(fullPath);
+            }
+
+            fullPath = TryFindFileInDirectoryTree("Data", exactFileName);
+
+            if (string.IsNullOrWhiteSpace(fullPath) == false)
+            {
+                return System.IO.Path.GetFileName(fullPath);
+            }
+
+            return null;
+        }
+
+        private string TryFindFileInDirectoryTree(string directoryPath, string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(directoryPath) ||
+                string.IsNullOrWhiteSpace(fileName) ||
+                Directory.Exists(directoryPath) == false)
+            {
+                return null;
+            }
+
+            string[] matches = Directory.GetFiles(directoryPath, fileName, SearchOption.AllDirectories);
+
+            if (matches.Length == 0)
+            {
+                return null;
+            }
+
+            return matches[0];
+        }
+
+        private BotPanel GetOwnerBotForFile(string fileName, List<BotPanel> sortedBots)
+        {
+            for (int i = 0; sortedBots != null && i < sortedBots.Count; i++)
+            {
+                if (fileName.StartsWith(sortedBots[i].NameStrategyUniq, StringComparison.OrdinalIgnoreCase))
+                {
+                    return sortedBots[i];
+                }
+            }
+
+            return null;
+        }
+
+        private bool ShouldSkipFileForTesterClone(string fileName, string botName)
+        {
+            if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(botName) || fileName.Length < botName.Length)
+            {
+                return true;
+            }
+
+            string suffix = fileName.Substring(botName.Length);
+
+            if (suffix.IndexOf("DealController", StringComparison.OrdinalIgnoreCase) > -1)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private string GetTesterCloneBotName(string originalBotName)
+        {
+            return TesterClonePrefix + originalBotName;
+        }
+
+        private const string TesterClonePrefix = "TLClone ";
 
         /// <summary>
         /// Changed selected item

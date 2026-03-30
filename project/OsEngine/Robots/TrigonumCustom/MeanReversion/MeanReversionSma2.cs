@@ -43,6 +43,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// </summary>
         private int _currentQuantile = 0;
         private LogDecoration _logDecoration;
+        private decimal? _pendingGridSigma;
+
+        protected override bool UseTesterParityMode => true;
 
         public MeanReversionSma2(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -241,9 +244,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 int gridSize = _gridSize.ValueInt - 1;
                 if (gridSize < 1) return;
-                _currentGrid = new MeanReverseGrid(obj.EntryPrice, _spread.ValueDecimal * _zScore.CurrentSigma, gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                decimal centerPrice = UseTesterParityModeInLive
+                    ? GetPlannedEntryPrice(obj, obj.EntryPrice)
+                    : obj.EntryPrice;
+                decimal sigma = UseTesterParityModeInLive && _pendingGridSigma.HasValue
+                    ? _pendingGridSigma.Value
+                    : _zScore.CurrentSigma;
+
+                _currentGrid = new MeanReverseGrid(centerPrice, _spread.ValueDecimal * sigma, gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                _pendingGridSigma = null;
                 Dictionary<int, decimal> grid = _currentGrid.GetGrid();
                 List<int> keysToDelete = new List<int>();
+                DateTime signalCandleTime = GetLatestFinishedCandleTime();
                 foreach (KeyValuePair<int, decimal> pair in grid)
                 {
                     try
@@ -256,11 +268,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         Position position = null;
                         if (_currentGrid.Direction == Side.Buy)
                         {
-                            position = _tab.BuyAtLimit(GetVolume(), pair.Value);
+                            position = OpenPlannedLimit(Side.Buy, GetVolume(), pair.Value, signalCandleTime);
                         }
                         else if (_currentGrid.Direction == Side.Sell)
                         {
-                            position = _tab.SellAtLimit(GetVolume(), pair.Value);
+                            position = OpenPlannedLimit(Side.Sell, GetVolume(), pair.Value, signalCandleTime);
                         }
                         else
                         {
@@ -280,6 +292,16 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     _currentGrid.DeleteByKey(key);
                 }
             }
+        }
+
+        protected override void OnBeforeBaseEntryOrder(List<Candle> candles, Side side, OrderType orderType, decimal plannedPrice, decimal volume)
+        {
+            if (!UseTesterParityModeInLive || _currentGrid != null)
+            {
+                return;
+            }
+
+            _pendingGridSigma = _zScore.CurrentSigma;
         }
 
         private void UpdateParameters()

@@ -54,6 +54,22 @@ namespace OsEngine.Indicators.TrigonumCustom
         {
             try
             {
+                if (source == null ||
+                    source.Count == 0 ||
+                    index < 0 ||
+                    index >= source.Count ||
+                    _sma == null ||
+                    _sma.DataSeries == null ||
+                    _sma.DataSeries.Count == 0 ||
+                    _sma.DataSeries[0] == null ||
+                    _sma.DataSeries[0].Values == null ||
+                    _sma.DataSeries[0].Values.Count <= index ||
+                    _window_sigma == null ||
+                    _window_sigma.ValueInt == 0)
+                {
+                    return;
+                }
+
                 if (_firstCandleTime == DateTime.MinValue)
                 {
                     _firstCandleTime = source[0].TimeStart;
@@ -75,7 +91,7 @@ namespace OsEngine.Indicators.TrigonumCustom
                 {
                     _deviation.Add(low);
                 }
-                if (_sma == null || _deviation.Count < _window_sigma.ValueInt || _window_sigma.ValueInt == 0)
+                if (_deviation.Count < _window_sigma.ValueInt)
                 {
                     return;
                 }

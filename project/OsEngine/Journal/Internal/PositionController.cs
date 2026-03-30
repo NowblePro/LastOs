@@ -700,6 +700,8 @@ namespace OsEngine.Journal.Internal
                 return;
             }
 
+            bool tradeMatched = false;
+
             for (int i = _deals.Count - 1; i > -1; i--)
             {
                 Position position = _deals[i];
@@ -766,8 +768,23 @@ namespace OsEngine.Journal.Internal
                     }
 
                     ProcessPosition(position);
+                    tradeMatched = true;
                     break;
                 }
+            }
+
+            if (tradeMatched == false)
+            {
+                SendNewLogMessage(
+                    "MyTrade without matching order. " +
+                    "Security: " + trade.SecurityNameCode + " " +
+                    "Side: " + trade.Side + " " +
+                    "Volume: " + trade.Volume + " " +
+                    "Price: " + trade.Price + " " +
+                    "Time: " + trade.Time.ToString("dd.MM.yyyy HH:mm:ss") + " " +
+                    "Order: " + trade.NumberOrderParent + " " +
+                    "Trade: " + trade.NumberTrade,
+                    LogMessageType.System);
             }
             _neadToSave = true;
         }

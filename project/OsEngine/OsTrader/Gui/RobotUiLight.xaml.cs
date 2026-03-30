@@ -85,6 +85,9 @@ namespace OsEngine.OsTrader.Gui
             TabHistoricalOrders.Header = OsLocalization.Trader.Label190;
             TabStopLimitPoses.Header = OsLocalization.Trader.Label193;
             ButtonSupportTable.Content = OsLocalization.Market.Label81;
+            ButtonSyncToTesterLight.Content = OsLocalization.CurLocalization == OsLocalization.OsLocalType.Ru
+                ? "Сохранить в Tester Light"
+                : "Save To Tester Light";
         }
 
         void TesterUi_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -141,6 +144,30 @@ namespace OsEngine.OsTrader.Gui
         {
             SupportTableUi supportTableUi = new SupportTableUi();
             supportTableUi.ShowDialog();
+        }
+
+        private void ButtonSyncToTesterLight_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                int botsCount = _strategyKeeper.SyncBotsToTesterKeeper();
+
+                if (botsCount == 0)
+                {
+                    MessageBox.Show(OsLocalization.CurLocalization == OsLocalization.OsLocalType.Ru
+                        ? "В Bot Station Light нет ботов для переноса."
+                        : "There are no bots in Bot Station Light to sync.");
+                    return;
+                }
+
+                MessageBox.Show(OsLocalization.CurLocalization == OsLocalization.OsLocalType.Ru
+                    ? "Роботы перенесены в Tester Light.\r\n\r\nПерезапустите приложение и откройте Tester Light, чтобы увидеть этот набор."
+                    : "Bots were saved to Tester Light.\r\n\r\nRestart the application and open Tester Light to see this set.");
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show(error.ToString());
+            }
         }
 
         // Block interface

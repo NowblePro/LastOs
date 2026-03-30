@@ -48,6 +48,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _atrSlMultiplier;
         private StrategyParameterDecimal _stopLossLimitPercent;
         private LogDecoration _logDecoration;
+        private decimal? _pendingFirstEntryAtr;
+
+        protected override bool UseTesterParityMode => true;
 
         public MeanReversion1Fix(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -113,13 +116,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             if (_currentGrid == null)
             {
-                decimal atr = _atr.CurrentAtr;
-                decimal centerPrice = obj.EntryPrice;
+                decimal atr = UseTesterParityModeInLive && _pendingFirstEntryAtr.HasValue
+                    ? _pendingFirstEntryAtr.Value
+                    : _atr.CurrentAtr;
+                decimal centerPrice = UseTesterParityModeInLive
+                    ? GetPlannedEntryPrice(obj, obj.EntryPrice)
+                    : obj.EntryPrice;
                 decimal step = _spread.ValueDecimal + atr * _atrMultSpread.ValueDecimal;
 
                 _currentGrid = new MeanReverseGrid(centerPrice, step, _gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
                 _nextGridKeyToFill = -1;
+                _pendingFirstEntryAtr = null;
             }
             else
             {
@@ -179,6 +187,16 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     SendNewLogMessage(ex.Message, Logging.LogMessageType.Error);
                 }
             }
+        }
+
+        protected override void OnBeforeBaseEntryOrder(List<Candle> candles, Side side, OrderType orderType, decimal plannedPrice, decimal volume)
+        {
+            if (!UseTesterParityModeInLive || _currentGrid != null)
+            {
+                return;
+            }
+
+            _pendingFirstEntryAtr = _atr.CurrentAtr;
         }
 
         protected override void CandleFinishedEvent(List<Candle> candles)

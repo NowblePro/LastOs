@@ -71,6 +71,7 @@
                         <WindowsFormsHost Name="HostServers" Margin="0,0,0,25"/>
                         <WindowsFormsHost Name="HostServerLog" Margin="0,0,0,0" Grid.Column="1"/>
                         <CheckBox x:Name="CheckBoxServerAutoOpen" Content="Deploy servers automatically" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="5,0,0,0"/>
+                        <Button Name="ButtonSyncToTesterLight" Content="Save To Tester Light" VerticalAlignment="Bottom" Click="ButtonSyncToTesterLight_Click" HorizontalAlignment="Right" Width="165" Margin="0,0,145,0"/>
                         <Button Name="ButtonSupportTable" Content="Support table" VerticalAlignment="Bottom" Click="ButtonSupportTable_Click" HorizontalAlignment="Right" Width="133"/>
                     </Grid>
 

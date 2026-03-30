@@ -33,6 +33,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
+        private int _nextGridKeyToFill = -1;
+        private decimal? _pendingFirstGridAtrDev;
 
         // Volatile stop
         private bool _volatileStopActive = false;
@@ -51,6 +53,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         // FairPrice Stop
         private FairPriceDecoration _fairPrice;
+        protected override bool UseTesterParityMode => true;
 
         public MRZScoreAtrRR(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -152,13 +155,17 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void _tab_PositionOpeningSuccesEvent(Position obj)
         {
-            decimal atrDev = _atrDev.LastValue;
+            decimal atrDev = UseTesterParityModeInLive && _pendingFirstGridAtrDev.HasValue
+                ? _pendingFirstGridAtrDev.Value
+                : _atrDev.LastValue;
             if (_currentGrid == null)
             {
                 decimal step = _spread.ValueDecimal;
                 _currentGrid = new MeanReverseGrid(atrDev, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
                 _volumeManager.Clear();
+                _pendingFirstGridAtrDev = null;
+                _nextGridKeyToFill = -1;
 
                 if (_debugLogging != null && _debugLogging.ValueBool)
                 {
@@ -178,24 +185,46 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     // Уровни которые меньше текущего atrDev и не занятые позициями
-                    var goodLevels = grid.Where(l => l.Value <= atrDev).Where(l => !positions.Keys.Contains(l.Key));
+                    List<KeyValuePair<int, decimal>> goodLevels = grid
+                        .Where(l => l.Value <= atrDev)
+                        .Where(l => !positions.Keys.Contains(l.Key))
+                        .ToList();
 
-                    if (!goodLevels.Any())
+                    KeyValuePair<int, decimal> maxLevel;
+
+                    if (_nextGridKeyToFill != -1 &&
+                        grid.ContainsKey(_nextGridKeyToFill) &&
+                        !positions.ContainsKey(_nextGridKeyToFill))
                     {
-                        LogDebug("Такого быть не должно, сигнал на открытие позиции сработал, но после открытия позиции не найден подходящий свободный уровень");
-                        return;
+                        maxLevel = new KeyValuePair<int, decimal>(_nextGridKeyToFill, grid[_nextGridKeyToFill]);
+                    }
+                    else
+                    {
+                        if (!goodLevels.Any())
+                        {
+                            LogDebug("Такого быть не должно, сигнал на открытие позиции сработал, но после открытия позиции не найден подходящий свободный уровень");
+                            return;
+                        }
+
+                        var maxValue = goodLevels.Max(l => l.Value);
+                        maxLevel = goodLevels.Where(l => l.Value == maxValue).FirstOrDefault();
                     }
 
-                    var maxValue = goodLevels.Max(l => l.Value);
-                    var maxLevel = goodLevels.Where(l => l.Value == maxValue).FirstOrDefault();
                     _currentGrid.SetPosition(maxLevel.Key, obj);
-                    LogDebug($"Позиция присвоена уровню с индексом {maxLevel.Key}, AtrDev уровня = {maxValue:F6}");
+                    LogDebug($"Позиция присвоена уровню с индексом {maxLevel.Key}, AtrDev уровня = {maxLevel.Value:F6}");
+
+                    if (!goodLevels.Any(l => l.Key == maxLevel.Key))
+                    {
+                        goodLevels.Add(maxLevel);
+                    }
+
                     var otherLevels = goodLevels.Except(new List<KeyValuePair<int, decimal>>() { maxLevel }).ToList();
                     foreach (var level in otherLevels)
                     {
                         LogDebug($"Пустой уровень с индексом {level.Key} и значением {level.Value} удалён");
                         _currentGrid.DeleteByKey(level.Key);
                     }
+                    _nextGridKeyToFill = -1;
                     StringBuilder sb = new StringBuilder();
                     foreach (var position in positions)
                     {
@@ -425,6 +454,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
                     if (!atrCandidates.Any()) return false;
                     if (positions.Where(p => p.Value.EntryPrice < currentPrice).Any()) return false;
+
+                    var target = atrCandidates.OrderByDescending(p => p.Value).First();
+                    _nextGridKeyToFill = target.Key;
                     return true;
                 }
                 catch (Exception ex)
@@ -500,6 +532,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
                     if (!atrCandidates.Any()) return false;
                     if (positions.Where(p => p.Value.EntryPrice > currentPrice).Any()) return false;
+
+                    var target = atrCandidates.OrderByDescending(p => p.Value).First();
+                    _nextGridKeyToFill = target.Key;
                     return true;
                 }
                 catch (Exception ex)
@@ -522,6 +557,16 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         protected override decimal GetVolume(bool getRounded = true)
         {
             return _volumeManager.GetNextVolume(getRounded);
+        }
+
+        protected override void OnBeforeBaseEntryOrder(List<Candle> candles, Side side, OrderType orderType, decimal plannedPrice, decimal volume)
+        {
+            if (!UseTesterParityModeInLive || _currentGrid != null)
+            {
+                return;
+            }
+
+            _pendingFirstGridAtrDev = _atrDev.LastValue;
         }
 
         protected override void ParametersChangedByUser()

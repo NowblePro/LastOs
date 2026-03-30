@@ -27,6 +27,14 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public override void OnProcess(List<Candle> source, int index)
         {
+            if (source == null ||
+                source.Count == 0 ||
+                index < 0 ||
+                index >= source.Count)
+            {
+                return;
+            }
+
             if (_firstCandleTime == DateTime.MinValue)
             {
                 _firstCandleTime = source[0].TimeStart;
@@ -39,7 +47,7 @@ namespace OsEngine.Indicators.TrigonumCustom
             Candle candle = source[index];
             DateTime time = candle.TimeStart;
 
-            if (LowZScore.Ready)
+            if (CanUseLowZScore(index))
             {
                 decimal avgLow = LowZScore.SMA.DataSeries[0].Values[index];
                 if (avgLow == 0) return;
@@ -72,7 +80,7 @@ namespace OsEngine.Indicators.TrigonumCustom
                 _channelDataLow.Values[index] = level3Low;
             }
 
-            if (HighZScore.Ready)
+            if (CanUseHighZScore(index))
             {
                 decimal avgHigh = HighZScore.SMA.DataSeries[0].Values[index];
                 if (avgHigh == 0) return;
@@ -106,6 +114,34 @@ namespace OsEngine.Indicators.TrigonumCustom
             }
 
             lastCount = source.Count;
+        }
+
+        private bool CanUseLowZScore(int index)
+        {
+            return LowZScore != null &&
+                   LowZScore.Ready &&
+                   LowZScore.SMA != null &&
+                   LowZScore.SMA.DataSeries != null &&
+                   LowZScore.SMA.DataSeries.Count > 0 &&
+                   LowZScore.SMA.DataSeries[0] != null &&
+                   LowZScore.SMA.DataSeries[0].Values != null &&
+                   LowZScore.SMA.DataSeries[0].Values.Count > index &&
+                   LowZScore.Means != null &&
+                   LowZScore.AllDeviations != null;
+        }
+
+        private bool CanUseHighZScore(int index)
+        {
+            return HighZScore != null &&
+                   HighZScore.Ready &&
+                   HighZScore.SMA != null &&
+                   HighZScore.SMA.DataSeries != null &&
+                   HighZScore.SMA.DataSeries.Count > 0 &&
+                   HighZScore.SMA.DataSeries[0] != null &&
+                   HighZScore.SMA.DataSeries[0].Values != null &&
+                   HighZScore.SMA.DataSeries[0].Values.Count > index &&
+                   HighZScore.Means != null &&
+                   HighZScore.AllDeviations != null;
         }
 
         public override void OnStateChange(IndicatorState state)

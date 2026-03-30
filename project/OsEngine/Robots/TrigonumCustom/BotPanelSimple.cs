@@ -15,6 +15,19 @@ namespace OsEngine.Robots.TrigonumCustom
 {
     public abstract class BotPanelSimple : BotPanel
     {
+        private class DeferredParityEntry
+        {
+            public Side Side;
+            public decimal Volume;
+            public DateTime SignalCandleTime;
+        }
+
+        private class PlannedEntryAnchor
+        {
+            public decimal Price;
+            public DateTime SignalCandleTime;
+        }
+
         protected BotTabSimple _tab;
         protected StrategyParameterString _regimeString;
         protected StrategyParameterString _volumeType;
@@ -30,6 +43,8 @@ namespace OsEngine.Robots.TrigonumCustom
         /// Если true - разрешено заходить в несколько позиций, false - только одна позиция
         /// </summary>
         protected bool _multiplePosition = false;
+        private readonly List<DeferredParityEntry> _deferredParityEntries = new List<DeferredParityEntry>();
+        private readonly Dictionary<Position, PlannedEntryAnchor> _plannedEntryAnchors = new Dictionary<Position, PlannedEntryAnchor>();
 
         public BotPanelSimple(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -45,6 +60,7 @@ namespace OsEngine.Robots.TrigonumCustom
             _saveJson = CreateParameter("Save Json Data", false, "Base");
             _orderType = CreateParameter("OrderType", OrderType.Limit.ToString(), Enum.GetNames(typeof(OrderType)), "Base");
             _tab.CandleFinishedEvent += _tab_CandleFinishedEvent;
+            _tab.CandleUpdateEvent += _tab_CandleUpdateEvent;
             ParametrsChangeByUser += BotPanelSimple_ParametrsChangeByUser;
             BotPanelSimple_ParametrsChangeByUser();
             ChartMaster = _tab.GetChartMaster();
@@ -122,6 +138,11 @@ namespace OsEngine.Robots.TrigonumCustom
             CandleFinishedEvent(candles);
         }
 
+        private void _tab_CandleUpdateEvent(List<Candle> candles)
+        {
+            CandleUpdateEvent(candles);
+        }
+
         private void SetCommonParameters()
         {
             if (Enum.TryParse(_regimeString.ValueString, out BotRegime regime))
@@ -163,6 +184,156 @@ namespace OsEngine.Robots.TrigonumCustom
         /// <returns></returns>
         protected abstract List<Func<List<Candle>, bool>> GetCheckers();
 
+        protected virtual bool UseTesterParityMode => false;
+
+        protected bool UseTesterParityModeInLive =>
+            UseTesterParityMode && StartProgram == StartProgram.IsOsTrader;
+
+        protected virtual void CandleUpdateEvent(List<Candle> candles)
+        {
+            if (!UseTesterParityModeInLive)
+            {
+                return;
+            }
+
+            ProcessDeferredParityEntries(candles);
+        }
+
+        protected virtual void OnBeforeBaseEntryOrder(
+            List<Candle> candles,
+            Side side,
+            OrderType orderType,
+            decimal plannedPrice,
+            decimal volume)
+        {
+        }
+
+        protected void RememberPlannedEntry(Position position, decimal price, DateTime signalCandleTime)
+        {
+            if (position == null)
+            {
+                return;
+            }
+
+            _plannedEntryAnchors[position] = new PlannedEntryAnchor
+            {
+                Price = price,
+                SignalCandleTime = signalCandleTime
+            };
+        }
+
+        protected decimal GetPlannedEntryPrice(Position position, decimal fallbackPrice)
+        {
+            if (position != null &&
+                _plannedEntryAnchors.TryGetValue(position, out PlannedEntryAnchor anchor))
+            {
+                return anchor.Price;
+            }
+
+            return fallbackPrice;
+        }
+
+        protected DateTime? GetPlannedEntrySignalTime(Position position)
+        {
+            if (position != null &&
+                _plannedEntryAnchors.TryGetValue(position, out PlannedEntryAnchor anchor))
+            {
+                return anchor.SignalCandleTime;
+            }
+
+            return null;
+        }
+
+        protected DateTime GetLatestFinishedCandleTime()
+        {
+            List<Candle> candles = _tab?.CandlesFinishedOnly;
+
+            if (candles == null || candles.Count == 0)
+            {
+                return DateTime.MinValue;
+            }
+
+            return candles[candles.Count - 1].TimeStart;
+        }
+
+        protected Position OpenPlannedLimit(Side side, decimal volume, decimal price, DateTime signalCandleTime)
+        {
+            Position position = null;
+
+            if (side == Side.Buy)
+            {
+                position = _tab.BuyAtLimit(volume, price);
+            }
+            else if (side == Side.Sell)
+            {
+                position = _tab.SellAtLimit(volume, price);
+            }
+
+            RememberPlannedEntry(position, price, signalCandleTime);
+
+            return position;
+        }
+
+        private void QueueDeferredParityEntry(Side side, decimal volume, DateTime signalCandleTime)
+        {
+            if (_deferredParityEntries.Any(entry =>
+                    entry.SignalCandleTime == signalCandleTime &&
+                    entry.Side == side))
+            {
+                return;
+            }
+
+            _deferredParityEntries.Add(new DeferredParityEntry
+            {
+                Side = side,
+                Volume = volume,
+                SignalCandleTime = signalCandleTime
+            });
+        }
+
+        private void ProcessDeferredParityEntries(List<Candle> candles)
+        {
+            if (candles == null ||
+                candles.Count == 0 ||
+                _deferredParityEntries.Count == 0)
+            {
+                return;
+            }
+
+            Candle currentCandle = candles[candles.Count - 1];
+
+            if (currentCandle == null)
+            {
+                return;
+            }
+
+            List<DeferredParityEntry> readyEntries = _deferredParityEntries
+                .Where(entry => currentCandle.TimeStart > entry.SignalCandleTime)
+                .ToList();
+
+            for (int i = 0; i < readyEntries.Count; i++)
+            {
+                DeferredParityEntry entry = readyEntries[i];
+                Position position = null;
+
+                if (entry.Side == Side.Buy)
+                {
+                    position = _tab.BuyAtMarket(entry.Volume);
+                }
+                else if (entry.Side == Side.Sell)
+                {
+                    position = _tab.SellAtMarket(entry.Volume);
+                }
+
+                decimal plannedEntryPrice = currentCandle.Open != 0
+                    ? currentCandle.Open
+                    : currentCandle.Close;
+
+                RememberPlannedEntry(position, plannedEntryPrice, entry.SignalCandleTime);
+                _deferredParityEntries.Remove(entry);
+            }
+        }
+
         protected virtual void CandleFinishedEvent(List<Candle> candles)
         {
             Candle last = candles.Last();
@@ -203,24 +374,54 @@ namespace OsEngine.Robots.TrigonumCustom
             {
                 if (_regime != BotRegime.OnlyShort && CheckOpenLongPosition(candles))
                 {
+                    decimal volume = GetVolume();
+                    DateTime signalCandleTime = last.TimeStart;
+
                     if (orderType == OrderType.Market)
                     {
-                        _tab.BuyAtMarket(GetVolume());
+                        decimal plannedPrice = last.Close;
+                        OnBeforeBaseEntryOrder(candles, Side.Buy, orderType, plannedPrice, volume);
+
+                        if (UseTesterParityModeInLive)
+                        {
+                            QueueDeferredParityEntry(Side.Buy, volume, signalCandleTime);
+                        }
+                        else
+                        {
+                            _tab.BuyAtMarket(volume);
+                        }
                     }
                     else if (orderType == OrderType.Limit)
                     {
-                        _tab.BuyAtLimit(GetVolume(), lastPrice + slippage);
+                        decimal plannedPrice = lastPrice + slippage;
+                        OnBeforeBaseEntryOrder(candles, Side.Buy, orderType, plannedPrice, volume);
+                        OpenPlannedLimit(Side.Buy, volume, plannedPrice, signalCandleTime);
                     }
                 }
                 else if (_regime != BotRegime.OnlyLong && CheckOpenShortPosition(candles))
                 {
+                    decimal volume = GetVolume();
+                    DateTime signalCandleTime = last.TimeStart;
+
                     if (orderType == OrderType.Market)
                     {
-                        _tab.SellAtMarket(GetVolume());
+                        decimal plannedPrice = last.Close;
+                        OnBeforeBaseEntryOrder(candles, Side.Sell, orderType, plannedPrice, volume);
+
+                        if (UseTesterParityModeInLive)
+                        {
+                            QueueDeferredParityEntry(Side.Sell, volume, signalCandleTime);
+                        }
+                        else
+                        {
+                            _tab.SellAtMarket(volume);
+                        }
                     }
                     else if (orderType == OrderType.Limit)
                     {
-                        _tab.SellAtLimit(GetVolume(), lastPrice - slippage);
+                        decimal plannedPrice = lastPrice - slippage;
+                        OnBeforeBaseEntryOrder(candles, Side.Sell, orderType, plannedPrice, volume);
+                        OpenPlannedLimit(Side.Sell, volume, plannedPrice, signalCandleTime);
                     }
                 }
             }

@@ -24,7 +24,18 @@ namespace OsEngine.Indicators.TrigonumCustom
         private DateTime _firstCandleTime = DateTime.MinValue;
         public override void OnProcess(List<Candle> source, int index)
         {
-            if (_window_sigma.ValueInt > index || _sma == null)
+            if (source == null ||
+                source.Count == 0 ||
+                index < 0 ||
+                index >= source.Count ||
+                _window_sigma == null ||
+                _window_sigma.ValueInt > index ||
+                _sma == null ||
+                _sma.DataSeries == null ||
+                _sma.DataSeries.Count == 0 ||
+                _sma.DataSeries[0] == null ||
+                _sma.DataSeries[0].Values == null ||
+                _sma.DataSeries[0].Values.Count <= index)
             {
                 return;
             }

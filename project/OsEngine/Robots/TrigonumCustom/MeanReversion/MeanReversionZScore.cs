@@ -45,6 +45,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private StrategyParameterDecimal _r;
         private MeanReverseVolumeManager _volumeManager;
+        protected override bool UseTesterParityMode => true;
 
         public MeanReversionZScore(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -107,19 +108,36 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void _tab_PositionOpeningFailEvent(Position position)
         {
-            //_lowGrid.ClearPosition(position);
-            //_highGrid.ClearPosition(position);
+            _lowGrid?.RollbackPosition(position);
+            _highGrid?.RollbackPosition(position);
+
+            if (_gridPositionType == GridTypePosition.Low && (_lowGrid == null || !_lowGrid.HasPositions))
+            {
+                _gridPositionType = GridTypePosition.None;
+                _volumeManager.Clear();
+            }
+            else if (_gridPositionType == GridTypePosition.High && (_highGrid == null || !_highGrid.HasPositions))
+            {
+                _gridPositionType = GridTypePosition.None;
+                _volumeManager.Clear();
+            }
         }
 
         private void _tab_PositionStartOpeningSuccessEvent(Position obj)
         {
             if (_gridPositionType == GridTypePosition.Low)
             {
-                _lowGrid.Deal(_zScoreLow.LastValue, obj);
+                if (_lowGrid.Deal(_zScoreLow.LastValue, obj) == false)
+                {
+                    SendNewLogMessage($"MeanReversionZScore: failed to bind opening long position #{obj?.Number} to low grid. ZScore={_zScoreLow.LastValue:F6}", Logging.LogMessageType.Error);
+                }
             }
             else if (_gridPositionType == GridTypePosition.High)
             {
-                _highGrid.Deal(_zScoreHigh.LastValue, obj);
+                if (_highGrid.Deal(_zScoreHigh.LastValue, obj) == false)
+                {
+                    SendNewLogMessage($"MeanReversionZScore: failed to bind opening short position #{obj?.Number} to high grid. ZScore={_zScoreHigh.LastValue:F6}", Logging.LogMessageType.Error);
+                }
             }
         }
 
@@ -387,6 +405,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private decimal _spread = 0.5m;
         private List<ZScoreLevel> _levels = new List<ZScoreLevel>();
         private BotTabSimple _tab;
+        private Dictionary<Position, List<ZScoreLevel>> _reservedLevelsByPosition = new Dictionary<Position, List<ZScoreLevel>>();
+        private List<int> _lastCheckedLevelIndexes = new List<int>();
         public ZScoreGrid(decimal spread, decimal zScoreReference, BotTabSimple tab)
         {
             if (spread == 0) throw new ArgumentException("Шаг z score не может быть равен 0");
@@ -406,21 +426,45 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         public bool CheckDeal(decimal currentZScore)
         {
-            IEnumerable<ZScoreLevel> levels = _levels.Where(l => !l.IsDealed && l.CheckDeal(currentZScore));
+            List<ZScoreLevel> levels = GetAvailableLevels(currentZScore);
+            _lastCheckedLevelIndexes = levels.Select(l => l.Index).ToList();
             return levels.Any();
         }
 
-        public void Deal(decimal currentZScore, Position position)
+        public bool Deal(decimal currentZScore, Position position)
         {
-            IEnumerable<ZScoreLevel> levels = _levels.Where(l => !l.IsDealed && l.CheckDeal(currentZScore));
-            int maxIndex = levels.Max(l => l.Index);
-            ZScoreLevel maxLevel = levels.Where(l => l.Index == maxIndex).Single();
+            if (position == null)
+            {
+                _tab.SetNewLogMessage("MeanReversionZScore: grid deal called with null position", Logging.LogMessageType.Error);
+                _lastCheckedLevelIndexes.Clear();
+                return false;
+            }
+
+            List<ZScoreLevel> levels = GetAvailableLevels(currentZScore);
+
+            if (levels.Count == 0 && _lastCheckedLevelIndexes.Count != 0)
+            {
+                levels = _levels.Where(l => !l.IsDealed && _lastCheckedLevelIndexes.Contains(l.Index)).ToList();
+            }
+
+            if (levels.Count == 0)
+            {
+                _tab.SetNewLogMessage($"MeanReversionZScore: no free grid levels for position #{position.Number}. ZScore={currentZScore:F6}", Logging.LogMessageType.Error);
+                _lastCheckedLevelIndexes.Clear();
+                return false;
+            }
+
+            ZScoreLevel maxLevel = levels.OrderBy(l => l.Index).Last();
             maxLevel.Deal(position);
             foreach (ZScoreLevel level in levels)
             {
                 if (level == maxLevel) continue;
                 level.Deal();
             }
+
+            _reservedLevelsByPosition[position] = levels;
+            _lastCheckedLevelIndexes.Clear();
+            return true;
         }
 
         /// <summary>
@@ -428,6 +472,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         /// </summary>
         public void Clear()
         {
+            _reservedLevelsByPosition.Clear();
+            _lastCheckedLevelIndexes.Clear();
+
             foreach (ZScoreLevel level in _levels)
             {
                 level.Clear();
@@ -436,6 +483,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         public void Reset()
         {
+            _reservedLevelsByPosition.Clear();
+            _lastCheckedLevelIndexes.Clear();
+
             foreach (ZScoreLevel level in _levels)
             {
                 level.Reset();
@@ -451,13 +501,34 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         }
 
 
-        internal void ClearPosition(Position position)
+        internal void RollbackPosition(Position position)
         {
+            if (position == null)
+            {
+                return;
+            }
+
+            if (_reservedLevelsByPosition.TryGetValue(position, out List<ZScoreLevel> reservedLevels))
+            {
+                for (int i = 0; i < reservedLevels.Count; i++)
+                {
+                    reservedLevels[i]?.Reset();
+                }
+
+                _reservedLevelsByPosition.Remove(position);
+                return;
+            }
+
             ZScoreLevel level = _levels.Where(l => l.Position == position).FirstOrDefault();
             if (level != null)
             {
-                level.Clear();
+                level.Reset();
             }
+        }
+
+        private List<ZScoreLevel> GetAvailableLevels(decimal currentZScore)
+        {
+            return _levels.Where(l => !l.IsDealed && l.CheckDeal(currentZScore)).ToList();
         }
 
         class ZScoreLevel

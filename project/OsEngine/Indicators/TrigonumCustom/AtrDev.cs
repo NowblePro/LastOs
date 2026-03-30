@@ -20,9 +20,9 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public decimal AtrMultDev { get; set; }
 
-        private decimal SmaLast => Sma.DataSeries[0].Values.Last();
+        private decimal SmaLast => Sma?.DataSeries?[0]?.Values?.LastOrDefault() ?? 0;
         public bool PercentView { get; set; } = false;
-        public decimal LastValue => _series.Values.Last();
+        public decimal LastValue => _series?.Values?.LastOrDefault() ?? 0;
 
         /// <summary>
         /// Индикатор не имеет отрицательных значений, берётся модуль
@@ -31,6 +31,23 @@ namespace OsEngine.Indicators.TrigonumCustom
 
         public override void OnProcess(List<Candle> source, int index)
         {
+            if (source == null ||
+                source.Count == 0 ||
+                index < 0 ||
+                index >= source.Count ||
+                Sma == null ||
+                Sma.DataSeries == null ||
+                Sma.DataSeries.Count == 0 ||
+                Sma.DataSeries[0] == null ||
+                Sma.DataSeries[0].Values == null ||
+                Sma.DataSeries[0].Values.Count <= index ||
+                Atr == null ||
+                Atr.AtrValues == null ||
+                Atr.AtrValues.Count <= index)
+            {
+                return;
+            }
+
             Candle last = source[index];
             decimal sma = Sma.DataSeries[0].Values[index];
             decimal price = GetMaxDeviationPrice(new List<decimal>() { last.Close, last.Low, last.High }, sma);

@@ -1082,6 +1082,12 @@ colum10.HeaderText = "Action";
             {
                 row.Cells[3].Value = bot.TabsSimple[0].Security.Name;
             }
+            else if (bot.TabsSimple.Count != 0 &&
+                bot.TabsSimple[0].Connector != null &&
+                string.IsNullOrEmpty(bot.TabsSimple[0].Connector.SecurityName) == false)
+            {
+                row.Cells[3].Value = bot.TabsSimple[0].Connector.SecurityName;
+            }
 
             row.Cells.Add(new DataGridViewTextBoxCell());
             row.Cells[4].Value = bot.PositionsCount.ToString() + "/" + bot.AllPositionsCount.ToString();

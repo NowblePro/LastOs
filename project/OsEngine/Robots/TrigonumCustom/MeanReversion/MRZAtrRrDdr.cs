@@ -39,6 +39,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         // Grid
         private MeanReverseGrid _currentGrid = null;
+        private int _nextGridKeyToFill = -1;
+        private decimal? _pendingFirstGridAtrDev;
 
         // Volatile stop
         private bool _volatileStopActive = false;
@@ -65,6 +67,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private Change24Decoration _change24;
 
         private CanEnterByEmaDecoration _canEnterByEma;
+        protected override bool UseTesterParityMode => true;
 
         public MRZAtrRrDdr(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -244,13 +247,17 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void _tab_PositionOpeningSuccesEvent(Position obj)
         {
-            decimal atrDev = _atrDev.LastValue;
+            decimal atrDev = UseTesterParityModeInLive && _pendingFirstGridAtrDev.HasValue
+                ? _pendingFirstGridAtrDev.Value
+                : _atrDev.LastValue;
             if (_currentGrid == null)
             {
                 decimal step = Spread;
                 _currentGrid = new MeanReverseGrid(atrDev, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
                 _volumeManager.Clear();
+                _pendingFirstGridAtrDev = null;
+                _nextGridKeyToFill = -1;
 
                 if (_debugLogging != null && _debugLogging.ValueBool)
                 {
@@ -270,17 +277,39 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     Dictionary<int, Position> positions = _currentGrid.GetPositions();
 
                     // Уровни которые меньше текущего atrDev и не занятые позициями
-                    var goodLevels = grid.Where(l => l.Value <= atrDev).Where(l => !positions.Keys.Contains(l.Key));
+                    List<KeyValuePair<int, decimal>> goodLevels = grid
+                        .Where(l => l.Value <= atrDev)
+                        .Where(l => !positions.Keys.Contains(l.Key))
+                        .ToList();
 
-                    if (!goodLevels.Any())
+                    KeyValuePair<int, decimal> maxLevel;
+
+                    if (_nextGridKeyToFill != -1 &&
+                        grid.ContainsKey(_nextGridKeyToFill) &&
+                        !positions.ContainsKey(_nextGridKeyToFill))
                     {
-                        return;
+                        maxLevel = new KeyValuePair<int, decimal>(_nextGridKeyToFill, grid[_nextGridKeyToFill]);
+                    }
+                    else
+                    {
+                        if (!goodLevels.Any())
+                        {
+                            return;
+                        }
+
+                        var maxValue = goodLevels.Max(l => l.Value);
+                        maxLevel = goodLevels.Where(l => l.Value == maxValue).FirstOrDefault();
                     }
 
-                    var maxValue = goodLevels.Max(l => l.Value);
-                    var maxLevel = goodLevels.Where(l => l.Value == maxValue).FirstOrDefault();
                     _currentGrid.SetPosition(maxLevel.Key, obj);
+
+                    if (!goodLevels.Any(l => l.Key == maxLevel.Key))
+                    {
+                        goodLevels.Add(maxLevel);
+                    }
+
                     var otherLevels = goodLevels.Except(new List<KeyValuePair<int, decimal>>() { maxLevel }).ToList();
+                    DateTime signalCandleTime = GetLatestFinishedCandleTime();
                     foreach (var level in otherLevels)
                     {
                         if (_multipleCandlePositions.ValueBool)
@@ -288,11 +317,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             Position position = null;
                             if (obj.Direction == Side.Buy)
                             {
-                                position = _tab.BuyAtLimit(GetVolume(), obj.EntryPrice);
+                                position = OpenPlannedLimit(Side.Buy, GetVolume(), level.Value, signalCandleTime);
                             }
                             else if (obj.Direction == Side.Sell)
                             {
-                                position = _tab.SellAtLimit(GetVolume(), obj.EntryPrice);
+                                position = OpenPlannedLimit(Side.Sell, GetVolume(), level.Value, signalCandleTime);
                             }
                             _currentGrid.SetPosition(level.Key, position);
                         }
@@ -301,6 +330,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                             _currentGrid.DeleteByKey(level.Key);
                         }
                     }
+                    _nextGridKeyToFill = -1;
                 }
                 catch (Exception ex)
                 {
@@ -580,6 +610,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
                     if (!atrCandidates.Any()) return false;
                     if (positions.Where(p => p.Value.EntryPrice < currentPrice).Any()) return false;
+
+                    var target = atrCandidates.OrderByDescending(p => p.Value).First();
+                    _nextGridKeyToFill = target.Key;
                     return true;
                 }
                 catch (Exception ex)
@@ -684,6 +717,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     var atrCandidates = emptyLevels.Where(p => atrDev >= p.Value).ToList();
                     if (!atrCandidates.Any()) return false;
                     if (positions.Where(p => p.Value.EntryPrice > currentPrice).Any()) return false;
+
+                    var target = atrCandidates.OrderByDescending(p => p.Value).First();
+                    _nextGridKeyToFill = target.Key;
                     return true;
                 }
                 catch (Exception ex)
@@ -706,6 +742,16 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         protected override decimal GetVolume(bool getRounded = true)
         {
             return _volumeManager.GetNextVolume(getRounded);
+        }
+
+        protected override void OnBeforeBaseEntryOrder(List<Candle> candles, Side side, OrderType orderType, decimal plannedPrice, decimal volume)
+        {
+            if (!UseTesterParityModeInLive || _currentGrid != null)
+            {
+                return;
+            }
+
+            _pendingFirstGridAtrDev = _atrDev.LastValue;
         }
 
         protected override void ParametersChangedByUser()
