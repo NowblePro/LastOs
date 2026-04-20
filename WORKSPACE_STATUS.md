@@ -50,13 +50,15 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-20 15:35:32
+- Updated: 2026-04-20 17:54:14
 - Branch: `dev`
-- HEAD before push: `a7e150b`
+- HEAD before push: `8756652`
 - Pending changes before auto-log:
 
 `	ext
- M README.md
+ M .gitignore
+ M WORKSPACE_STATUS.md
+ M update_osengine_robots_light_from_github.bat
 `"
     "
     
@@ -68,10 +70,14 @@
 - [F] LICENSE
 - [F] License_ru.pdf
 - [F] nuget.exe
+- [F] push_dev_with_log.bat
 - [F] push_git_with_log.bat
 - [F] push_git_with_log.ps1
+- [F] push_main_from_dev.bat
+- [F] push_main_from_dev.ps1
 - [F] README.md
 - [F] update_osengine_robots_light_from_github.bat
+- [F] update_osengine_robots_light_from_github.log
 - [F] WORKSPACE_STATUS.md
 - [F] читаем_маст_рид.txt
 
@@ -119,6 +125,15 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-20 17:54:14 | branch `dev` | message: `Узнал, что пушил лишь дев, а на мейне торговая, переношу`
+  Files before commit:
+  -  M .gitignore
+  -  M WORKSPACE_STATUS.md
+  -  M update_osengine_robots_light_from_github.bat
+- 2026-04-20 17:52:42 | branch `dev` | message: `n `
+  Files before commit:
+  -  M .gitignore
+  -  M update_osengine_robots_light_from_github.bat
 - 2026-04-20 15:35:32 | branch `dev` | message: `Обновление readme`
   Files before commit:
   -  M README.md
@@ -166,6 +181,8 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
+
 
 
 
