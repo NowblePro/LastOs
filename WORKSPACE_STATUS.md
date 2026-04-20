@@ -50,30 +50,13 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-20 15:26:56
+- Updated: 2026-04-20 15:35:32
 - Branch: `dev`
-- HEAD before push: `6c8d0d1`
+- HEAD before push: `a7e150b`
 - Pending changes before auto-log:
 
 `	ext
- M .gitignore
- M project/OsEngine/Charts/CandleChart/WinFormsChartPainter.cs
- M project/OsEngine/Charts/ClusterChart/ChartClusterPainter.cs
- M project/OsEngine/Common/CanEnterByEmaDecoration.cs
- M project/OsEngine/Common/Change24Decoration.cs
- M project/OsEngine/Common/VolatileStopDecoration.cs
- M project/OsEngine/Market/Connectors/ConnectorCandles.cs
- M project/OsEngine/Market/Servers/Tester/TesterServerUi.xaml.cs
- M project/OsEngine/OsEngine.csproj
- M project/OsEngine/OsTrader/Gui/BotTabsPainter.cs
- M project/OsEngine/OsTrader/OsTraderMaster.cs
- M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
- M project/OsEngine/bin/Debug/OsEngine.exe
-?? WORKSPACE_STATUS.md
-?? project/OsEngine/Charts/SafeWinFormsChart.cs
-?? project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
-?? project/OsEngine/bin/Debug_hotfix/
-?? update_osengine_robots_light_from_github.bat
+ M README.md
 `"
     "
     
@@ -136,6 +119,9 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-20 15:35:32 | branch `dev` | message: `Обновление readme`
+  Files before commit:
+  -  M README.md
 - 2026-04-20 15:26:56 | branch `dev` | message: `Workspace update 2026-04-20 15:26:56`
   Files before commit:
   -  M .gitignore
@@ -180,6 +166,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 

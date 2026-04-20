@@ -1,208 +1,239 @@
-![image](https://github.com/AlexWan/OsEngine/assets/26077466/dd61c155-6d9b-46ff-864a-f902130f9e01)
+# OsNewGen
 
-# Open Source Algo Trading Platform
+Рабочая форка `OsEngine` под текущий процесс разработки, бектестов и запуска в реальную торговлю.
 
-[FAQ and instructions (More than 170 articles of study for free)](https://os-engine-eng.com/faq)
+Этот `README` описывает именно текущий репозиторий, а не апстрим-проект.
 
+## Назначение
 
-## What is OsEngine?
+В репозитории ведётся:
 
-This is a full range of programs required to automate trading on the stock exchange.
+- разработка и доработка роботов под `Tester Light` и `Bot Station Light`;
+- выравнивание логики `tester/live`;
+- поддержка пользовательских mean reversion стратегий;
+- подготовка обновлений для сервера через `git`.
 
-![algotasks](https://github.com/AlexWan/OsEngine/assets/26077466/0590b1e3-ecf2-4027-a3ac-4967916f0289)
+## Основные пути
 
-It includes:
+Ниже указаны ключевые пути внутри репозитория и типовые рабочие пути на локальной машине.
 
-The layer for creating robots is similar to the Wealth-Lab script and Ninja Script. It's simple. We do not change it with every release and support backward compatibility.
+### Локальный репозиторий
 
-*Data* - program to download historical data. With the program you can get candles, market depths and trades from a variety of sources.
+- Корень репозитория: `C:\Users\user\Desktop\OsNewGen`
+- Основной проект: `C:\Users\user\Desktop\OsNewGen\project\OsEngine`
+- Основной exe после сборки: `C:\Users\user\Desktop\OsNewGen\project\OsEngine\bin\Debug\OsEngine.exe`
 
-*Optimizer* - the program to select the optimal parameters for the strategy.
+### Важные runtime-папки
 
-*Tester* - exchange emulator. The program for testing on the history of many strategies at the same time, with a single portfolio. Supports translation of multiple timeframes and multiple instruments at the same time.
+- Состояние ботов, настройки, контроллеры сделок: `project\OsEngine\bin\Debug\Engine`
+- Исторические данные для тестов: `project\OsEngine\bin\Debug\Data`
+- Логи: `project\OsEngine\bin\Debug\Engine\Log`
+- Временный hotfix-билд: `project\OsEngine\bin\Debug_hotfix`
 
-*Miner* - the program to search for profitable formations on the chart. Both manual and automatic. Work with Bigdata on your computer. Patterns found with the help of this program can be launched into trading.
+### Важные исходники
 
-*Bot station* -the program to run the robots in the trade.
+- Роботы: `project\OsEngine\Robots`
+- Пользовательские mean reversion роботы: `project\OsEngine\Robots\TrigonumCustom\MeanReversion`
+- Коннекторы и серверы: `project\OsEngine\Market`
+- UI и управление ботами: `project\OsEngine\OsTrader`
+- Графики: `project\OsEngine\Charts`
+- Общие декораторы/фильтры: `project\OsEngine\Common`
 
-*Available connections for cryptocurrency exchanges*
+### Сопутствующие файлы в корне
 
-| ________ logo ________                                                                                                                                                                                                |_______ name _______ | _______ support _______                                                                                            |   discount for our users                                                                                                                                                                                                                                                     |
-|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------:|:------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| [![ByBit](https://user-images.githubusercontent.com/26077466/239529845-3f0e24d4-16d5-4ec1-add8-d835cbbc3d67.png)](https://partner.bybit.com/b/osengine)                                                               | ByBit               | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 20% discount!](https://user-images.githubusercontent.com/26077466/239537321-b47e697c-468b-41e8-956e-033e66dca8ac.png)](https://partner.bybit.com/b/osengine)                                                                 |
-| [![Binance](https://user-images.githubusercontent.com/26077466/239530178-79f2b6e7-1886-4851-9236-71037130cb40.png)](https://accounts.binance.com/register?ref=K3L7BLL1)                                               | Binance             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 20% discount!](https://user-images.githubusercontent.com/26077466/239537321-b47e697c-468b-41e8-956e-033e66dca8ac.png)](https://accounts.binance.com/register?ref=K3L7BLL1)                                                   |
-| [![Binance Futures](https://user-images.githubusercontent.com/26077466/239529542-da06360a-1354-419d-92fa-807eaf893d49.png)](https://accounts.binance.com/register?ref=K3L7BLL1)                                       | Binance Futures     | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 10% discount!](https://user-images.githubusercontent.com/26077466/239537247-b91835cb-4285-40a7-b66f-1fb29ca7822d.png)](https://accounts.binance.com/register?ref=K3L7BLL1)                                                   |
-| [![BitGet](https://user-images.githubusercontent.com/26077466/239529626-69d43a71-f81c-4f1f-9936-6bd0e24f05f0.png)](https://partner.bitget.com/bg/txme90901684140842016)                                               | BitGet              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 20% discount!](https://user-images.githubusercontent.com/26077466/239537321-b47e697c-468b-41e8-956e-033e66dca8ac.png)](https://partner.bitget.com/bg/txme90901684140842016)                                                  |
-| [![KuCoin](https://github.com/AlexWan/OsEngine/assets/26077466/0d6a7ec2-f9b5-4e6b-b626-9bc4f3a599bf)](https://www.kucoin.com/r/af/QBSQUGP7)                                                                           | KuCoin              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 20% discount!](https://user-images.githubusercontent.com/26077466/239537321-b47e697c-468b-41e8-956e-033e66dca8ac.png)](https://www.kucoin.com/r/af/QBSQUGP7)                                                                 |
-| [![BingX](https://github.com/AlexWan/OsEngine/assets/26077466/91c0509f-f794-4d37-836b-365358c089bb)](https://bingx.com/invite/OQLHEXTU)                                                                               | BingX               | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://bingx.com/invite/OQLHEXTU)                                                                    |
-| [![XT](https://github.com/AlexWan/OsEngine/assets/26077466/1e1c2e65-d72d-4aa5-9c01-d846430707df)](https://www.xt.com/ru/accounts/register?ref=QA3TMX)                                                                 | XT                  | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://www.xt.com/ru/accounts/register?ref=QA3TMX)                                                   |
-| [![OKX](https://user-images.githubusercontent.com/26077466/239530076-8b55f551-1a13-4ab5-8b42-8aebb7a34dc1.png)](https://www.okx.com/join/52450928)                                                                    | OKX                 | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 15% discount!](https://user-images.githubusercontent.com/26077466/239537290-7e7376fb-692e-48d7-b24f-a0cbe42b641f.png)](https://www.okx.com/join/52450928)                                                                    |
-| [![Huobi](https://github.com/AlexWan/OsEngine/assets/26077466/b35a203c-bf4f-47b0-b6cb-dc5fd111bb3a)](https://www.htx.com/ru-ru/v/register/double-invite/web/?inviter_id=11345710&invite_code=jxbn7223)                | HTX (Huobi)         | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://www.htx.com/ru-ru/v/register/double-invite/web/?inviter_id=11345710&invite_code=jxbn7223)     |
-| [![Gate IO](https://user-images.githubusercontent.com/26077466/239529937-4ebf0078-bb13-48e0-9962-be05d907f62d.png)](https://www.gate.io/signup/BFlMU19Z?ref_type=103)                                                 | Gate IO             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://www.gate.io/signup/BFlMU19Z?ref_type=103)                                                     |
-| [![Deribit](https://github.com/AlexWan/OsEngine/assets/26077466/14b781db-c06b-4f7e-9e23-9fd284dc6145)](https://www.deribit.com/?reg=18571.8844)                                                                       | Deribit             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 10% discount!](https://user-images.githubusercontent.com/26077466/239537247-b91835cb-4285-40a7-b66f-1fb29ca7822d.png)](https://www.deribit.com/?reg=18571.8844)                                                              |
-| [![Askend](https://user-images.githubusercontent.com/26077466/239529277-970b73a2-9f39-4af8-94e9-cb74b9744275.png)](https://ascendex.com/register?inviteCode=BPEFZZW8Q)                                                | Askend              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 25% discount!](https://user-images.githubusercontent.com/26077466/239537379-f2ab0ed6-5977-4e06-b37d-f838fa48c723.png)](https://ascendex.com/register?inviteCode=BPEFZZW8Q)                                                   |
-| [![Pionex](https://github.com/AlexWan/OsEngine/assets/26077466/e2042a82-2bd3-49b5-934c-0da9a9a720ce)](https://www.pionex.com/ru/signUp?r=0z11LpNQfus)                                                                 | Pionex              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 10% discount!](https://user-images.githubusercontent.com/26077466/239537247-b91835cb-4285-40a7-b66f-1fb29ca7822d.png)](https://www.pionex.com/ru/signUp?r=0z11LpNQfus)                                                       |
-| [![Woo](https://github.com/AlexWan/OsEngine/assets/26077466/7e2c42f3-6046-4644-a300-8ff93a0381c0)](https://x.woo.org/register?ref=QMXPT8MR)                                                                           | WooX                | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 5% discount!](https://github.com/AlexWan/OsEngine/assets/26077466/414d7f7e-6f59-4d84-bd79-35da2e310692)](https://x.woo.org/register?ref=QMXPT8MR)                                                                            |
-| [![BitMart](https://github.com/user-attachments/assets/bdf7be5e-74b0-4fe9-889b-ec83d6b388e0)](https://www.bitmart.com/invite/cNtynY/en)                                                                               | BitMart             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://www.bitmart.com/invite/cNtynY/en)                                                             |
-| [![BitMex](https://user-images.githubusercontent.com/26077466/239529700-4371874c-e619-4302-a6d4-4f9373e88c0e.png)](https://www.bitmex.com)                                                                            | BitMex              | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![Bitstamp](https://user-images.githubusercontent.com/26077466/239529765-3f035413-8b5c-4991-ad1a-510c1c6794a6.png)](https://partner.bitget.com/bg/txme90901684140842016)                                             | Bitstamp            | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![Exmo](https://user-images.githubusercontent.com/26077466/239529888-69d8f5a3-1cce-4f67-b630-25e0a8dc9ff3.png)](https://partner.bitget.com/bg/txme90901684140842016)                                                 | Exmo                | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![HitBtc](https://user-images.githubusercontent.com/26077466/239529991-09128262-b125-4307-b69e-106a43e0381d.png)](https://partner.bitget.com/bg/txme90901684140842016)                                               | HitBtc              | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![Kraken](https://user-images.githubusercontent.com/26077466/239530042-5b45e459-3991-44e1-b5e2-ede94d724421.png)](https://partner.bitget.com/bg/txme90901684140842016)                                               | Kraken              | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![ZB](https://user-images.githubusercontent.com/26077466/239530136-9cab79ad-6f60-4dc4-bd6c-8dd9d90bd782.png)](https://partner.bitget.com/bg/txme90901684140842016)                                                   | ZB                  | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
+- [WORKSPACE_STATUS.md](C:/Users/user/Desktop/OsNewGen/WORKSPACE_STATUS.md) — карта структуры и журнал локальных пушей
+- [push_git_with_log.bat](C:/Users/user/Desktop/OsNewGen/push_git_with_log.bat) — локальный bat для коммита и пуша
+- [push_git_with_log.ps1](C:/Users/user/Desktop/OsNewGen/push_git_with_log.ps1) — логика bat-скрипта
+- [update_osengine_robots_light_from_github.bat](C:/Users/user/Desktop/OsNewGen/update_osengine_robots_light_from_github.bat) — серверный update helper
 
+## Структура репозитория
 
-*Available connections for MOEX*
+- `project/`
+  - основной исходный код и проект `OsEngine`
+- `doc/`
+  - документы и вспомогательные материалы
+- `related projects/`
+  - связанные проекты и внешние артефакты
+- `.gitignore`
+  - правила исключения локальных и runtime-файлов
 
-| ________ logo ________                                                                                                                                  |_______ name _________ | _______ support _______                                                                                            |   discount for our users                                                                                                                                   |
-|:-------------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------:|:------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| [![ALOR OPEN API](https://github.com/AlexWan/OsEngine/assets/26077466/0ec1e32a-9936-4063-966e-f61fce56bfff)](https://www.alorbroker.ru/open?pr=L0745)   | ALOR OPEN API         | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)](https://www.alorbroker.ru/open?pr=L0745) |
-| ![Moex FixFastSpot](https://github.com/AlexWan/OsEngine/assets/26077466/d8e145de-cd5f-4e77-91f9-cccdb1610866)                                           | MOEX FixFast Spot     | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Moex FixFastSpot](https://github.com/AlexWan/OsEngine/assets/26077466/d8e145de-cd5f-4e77-91f9-cccdb1610866)                                           | MOEX FixFast Currency | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Moex FixFastSpot](https://github.com/AlexWan/OsEngine/assets/26077466/d8e145de-cd5f-4e77-91f9-cccdb1610866)                                           | MOEX FixFast Forts    | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Quik DDE](https://user-images.githubusercontent.com/26077466/239535136-051c4d6e-980a-456b-996c-93024d72fa8b.png)                                      | Quik DDE              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Transaq](https://user-images.githubusercontent.com/26077466/239535313-b948d50e-1d7d-4cff-b994-c2c711bb1688.png)                                       | Transaq               | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Tinkoff Api](https://user-images.githubusercontent.com/26077466/239535245-83ac09ac-586c-4021-a96b-9b9685e5ffc4.png)                                   | Tinkoff Api           | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Quik LUA](https://user-images.githubusercontent.com/26077466/239535058-d5ac0db1-8b0f-4602-a6c1-abcbe6fc7cb6.png)                                      | Quik LUA              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Plaza 2](https://user-images.githubusercontent.com/26077466/239535000-fb36abb2-4e29-4ae1-ae3f-9952c4211485.png)                                       | Plaza 2               | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Algopack](https://github.com/user-attachments/assets/cd1bc7e3-d9fa-4173-85c5-c6c5c1a5e3cf)                                                            | Algopack Data         | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Finam](https://github.com/user-attachments/assets/e6a1ec89-b537-4977-b88f-08e1a21b2087)                                                               | Finam Data            | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![MFD](https://github.com/user-attachments/assets/e865d1c4-42f8-4e27-a432-dcbe68b43a95)                                                                 | MFD Data              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![MOEX ISS](https://github.com/user-attachments/assets/60457850-4153-4077-9a90-7ada7783ebe0)                                                            | MOEX ISS Data         | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Asts Bridge](https://user-images.githubusercontent.com/26077466/239534827-4d9bfa5a-2a20-4bca-92ac-63ef62aace77.png)                                   | Asts Bridge           | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
+## Установка и первый запуск
 
+### 1. Клонирование
 
+```powershell
+git clone git@github.com:NowblePro/OsNewGen.git
+cd OsNewGen
+```
 
-*Available international connections*
+### 2. Сборка
 
-| ________ logo ________                                                                                                                                                                   |_______ name _______ |  _______ support _______                                                                                           | discount for our users                                                                                                                                                                                                           
-|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------:|:------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------:|
-| [![Interactive Brokers](https://user-images.githubusercontent.com/26077466/239535591-8420295f-7405-4bf2-9e18-c5112b4b2582.png)](https://www.interactivebrokers.com/en/home.php)          | Interactive Brokers | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![Tradernet](https://github.com/user-attachments/assets/b5f5144a-6a37-4376-b7a7-003d935bf5f4)                                                                                            | TraderNet           | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![Atp](https://github.com/user-attachments/assets/7b70fc75-1cb1-4c5a-85fa-7197080be97b)                                                                                                  | Atp                 | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![KiteConnect](https://github.com/user-attachments/assets/b6411106-f25a-4422-bda4-6a2df23fbe4a)                                                                                          | Kite Connect        | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![Yahoo](https://github.com/user-attachments/assets/621e783b-d327-4f23-a228-2d016ef069d3)                                                                                                | Yahoo Data          | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![Polygon](https://github.com/user-attachments/assets/695a154c-e140-4a19-be2e-c414853bcab7)                                                                                              | Polygon Io Data     | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| [![Ninja Trader](https://user-images.githubusercontent.com/26077466/239535631-bb4596f4-160f-4506-bcdd-4832d1deb188.png)](https://ninjatrader.com)                                        | Ninja Trader        | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| [![LMAX](https://user-images.githubusercontent.com/26077466/239535509-2336139b-b648-4a66-b2a6-cb6d2b3e91b6.png)](https://www.lmax.com)                                                   | LMAX                | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
+Через Visual Studio или через `MSBuild`.
 
+Пример для PowerShell:
 
-*Included with OsEngine is more than 300 built-in robots*
+```powershell
+msbuild .\project\OsEngine\OsEngine.csproj /p:Configuration=Debug
+```
 
-1) Сlassic trend robots like moving average crossing, bill Williams strategy or Jesse Livermore trend strategy.
+### 3. Запуск
 
-2) Counter-trend systems on Bollinger bands, balance lines and even some market-making strategies.
+Запускать:
 
-3) Arbitrage strategies for trading divergences of correlating instruments, including one-legged arbitrage.
+```text
+project\OsEngine\bin\Debug\OsEngine.exe
+```
 
-Until August 2023, the project was distributed under the Apache 2 licence. Since September 2023 it is distributed under a commercial licence. All rights belong to Wang Technologies Ltd.
+### 4. Что важно не перетирать
 
-By downloading Os Engine, you agree that if a critical error occurs, information about it will be sent to the developer. Instructions on how to disable this functionality: https://os-engine-eng.com/posts/crash-reception-server.html
+При обновлении рабочей/серверной версии нельзя бездумно затирать:
 
+- `project\OsEngine\bin\Debug\Engine`
+- `project\OsEngine\bin\Debug\Data`
 
+Именно там живут runtime-состояние, настройки ботов, журналы, тестовые наборы и история.
 
-![oslogo250](https://user-images.githubusercontent.com/26077466/264690708-54b9eca1-09ef-4e6c-b9cf-442e4c1b7dc3.png)
+## Git workflow
 
-## Что такое OsEngine?
+Текущий процесс:
 
-Это полный комплекс программ необходимых для автоматизации торговли на бирже. 
+- рабочая ветка разработки: `dev`
+- стабильная ветка для сервера: `main`
 
-[Сайт разработчиков](http://o-s-a.net)
+### Рекомендуемый цикл
 
-[FAQ. Огромный гайд по работе с проектом из более чем 170 постов](https://o-s-a.net/os-engine-faq)
+1. Вносить изменения в `dev`
+2. Проверять локально
+3. Пушить в `dev`
+4. После проверки переносить в `main`
+5. На сервере делать `git pull` по `main`
 
-![default](https://user-images.githubusercontent.com/26077466/243121761-25fe883f-d567-4ed0-bdd6-7f28c7ff667b.jpg)
+### Быстрый локальный пуш
 
-В него входят:
+Для локального пуша есть:
 
-Слой создания роботов похожий на Wealth-Lab script и Ninja script. Он очень прост. Мы не изменяем его с каждым релизом и поддерживаем в нём обратную совместимость.
+- [push_git_with_log.bat](C:/Users/user/Desktop/OsNewGen/push_git_with_log.bat)
 
-*OData* - программа для загрузки исторических данных, с помощью которой Вы можете получать свечи, стаканы и тики из самых различных источников.
+Он:
 
-*Optimizer* - программа для подбора оптимальных параметров для стратегии.
+1. Обновляет [WORKSPACE_STATUS.md](C:/Users/user/Desktop/OsNewGen/WORKSPACE_STATUS.md)
+2. Показывает `git status`
+3. Просит сообщение коммита
+4. Делает `commit`
+5. Делает `push` в текущую ветку
 
-*Tester* - эмулятор биржи. Программа для тестирования на истории множества стратегий одновременно, с единым портфелем.  Поддерживает трансляцию нескольких таймфреймов и нескольких инструментов одновременно.
+Важно:
 
-*Miner* - программа для поиска прибыльных формаций на графике. Как в ручном, так и в автоматическом режиме. Работа с БигДатой у Вас на компьютере. Паттерны найденные при помощи этой программы можно запускать в торговлю.
+- сам `push_git_with_log.bat` и `push_git_with_log.ps1` не должны пушиться в репозиторий;
+- это уже настроено через `.gitignore`.
 
-*Bot station* - программа для запуска роботов в торговлю.
+## Обновление сервера
 
+Рекомендуемая схема:
 
-*Доступные подключения для бирж криптовалют*
+1. Остановить `OsEngine`
+2. Обновить код из `main`
+3. Не трогать `Engine` и `Data`
+4. Запустить новую сборку
 
-| ________ Лого ________                                                                                                                                                                                                |_______ Имя _______  | _______ Поддержка _______                                                                                          |   Скидка пользователям OsEngine                                                                                                                                                                                                                                              |
-|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------:|:------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| [![ByBit](https://user-images.githubusercontent.com/26077466/239529845-3f0e24d4-16d5-4ec1-add8-d835cbbc3d67.png)](https://partner.bybit.com/b/osengine)                                                               | ByBit               | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 20% discount!](https://user-images.githubusercontent.com/26077466/239537321-b47e697c-468b-41e8-956e-033e66dca8ac.png)](https://partner.bybit.com/b/osengine)                                                                 |
-| [![Binance](https://user-images.githubusercontent.com/26077466/239530178-79f2b6e7-1886-4851-9236-71037130cb40.png)](https://accounts.binance.com/register?ref=K3L7BLL1)                                               | Binance             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 20% discount!](https://user-images.githubusercontent.com/26077466/239537321-b47e697c-468b-41e8-956e-033e66dca8ac.png)](https://accounts.binance.com/register?ref=K3L7BLL1)                                                   |
-| [![Binance Futures](https://user-images.githubusercontent.com/26077466/239529542-da06360a-1354-419d-92fa-807eaf893d49.png)](https://accounts.binance.com/register?ref=K3L7BLL1)                                       | Binance Futures     | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 10% discount!](https://user-images.githubusercontent.com/26077466/239537247-b91835cb-4285-40a7-b66f-1fb29ca7822d.png)](https://accounts.binance.com/register?ref=K3L7BLL1)                                                   |
-| [![BitGet](https://user-images.githubusercontent.com/26077466/239529626-69d43a71-f81c-4f1f-9936-6bd0e24f05f0.png)](https://partner.bitget.com/bg/txme90901684140842016)                                               | BitGet              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 20% discount!](https://user-images.githubusercontent.com/26077466/239537321-b47e697c-468b-41e8-956e-033e66dca8ac.png)](https://partner.bitget.com/bg/txme90901684140842016)                                                  |
-| [![KuCoin](https://github.com/AlexWan/OsEngine/assets/26077466/0d6a7ec2-f9b5-4e6b-b626-9bc4f3a599bf)](https://www.kucoin.com/r/af/QBSQUGP7)                                                                           | KuCoin              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 20% discount!](https://user-images.githubusercontent.com/26077466/239537321-b47e697c-468b-41e8-956e-033e66dca8ac.png)](https://www.kucoin.com/r/af/QBSQUGP7)                                                                 |
-| [![BingX](https://github.com/AlexWan/OsEngine/assets/26077466/91c0509f-f794-4d37-836b-365358c089bb)](https://bingx.com/invite/OQLHEXTU)                                                                               | BingX               | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://bingx.com/invite/OQLHEXTU)                                                                    |
-| [![XT](https://github.com/AlexWan/OsEngine/assets/26077466/1e1c2e65-d72d-4aa5-9c01-d846430707df)](https://www.xt.com/ru/accounts/register?ref=QA3TMX)                                                                 | XT                  | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://www.xt.com/ru/accounts/register?ref=QA3TMX)                                                   |
-| [![OKX](https://user-images.githubusercontent.com/26077466/239530076-8b55f551-1a13-4ab5-8b42-8aebb7a34dc1.png)](https://www.okx.com/join/52450928)                                                                    | OKX                 | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 15% discount!](https://user-images.githubusercontent.com/26077466/239537290-7e7376fb-692e-48d7-b24f-a0cbe42b641f.png)](https://www.okx.com/join/52450928)                                                                    |
-| [![Huobi](https://github.com/AlexWan/OsEngine/assets/26077466/b35a203c-bf4f-47b0-b6cb-dc5fd111bb3a)](https://www.htx.com/ru-ru/v/register/double-invite/web/?inviter_id=11345710&invite_code=jxbn7223)                | HTX (Huobi)         | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://www.htx.com/ru-ru/v/register/double-invite/web/?inviter_id=11345710&invite_code=jxbn7223)     |
-| [![Gate IO](https://user-images.githubusercontent.com/26077466/239529937-4ebf0078-bb13-48e0-9962-be05d907f62d.png)](https://www.gate.io/signup/BFlMU19Z?ref_type=103)                                                 | Gate IO             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://www.gate.io/signup/BFlMU19Z?ref_type=103)                                                     |
-| [![Deribit](https://github.com/AlexWan/OsEngine/assets/26077466/14b781db-c06b-4f7e-9e23-9fd284dc6145)](https://www.deribit.com/?reg=18571.8844)                                                                       | Deribit             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 10% discount!](https://user-images.githubusercontent.com/26077466/239537247-b91835cb-4285-40a7-b66f-1fb29ca7822d.png)](https://www.deribit.com/?reg=18571.8844)                                                              |
-| [![Askend](https://user-images.githubusercontent.com/26077466/239529277-970b73a2-9f39-4af8-94e9-cb74b9744275.png)](https://ascendex.com/register?inviteCode=BPEFZZW8Q)                                                | Askend              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 25% discount!](https://user-images.githubusercontent.com/26077466/239537379-f2ab0ed6-5977-4e06-b37d-f838fa48c723.png)](https://ascendex.com/register?inviteCode=BPEFZZW8Q)                                                   |
-| [![Pionex](https://github.com/AlexWan/OsEngine/assets/26077466/e2042a82-2bd3-49b5-934c-0da9a9a720ce)](https://www.pionex.com/ru/signUp?r=0z11LpNQfus)                                                                 | Pionex              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 10% discount!](https://user-images.githubusercontent.com/26077466/239537247-b91835cb-4285-40a7-b66f-1fb29ca7822d.png)](https://www.pionex.com/ru/signUp?r=0z11LpNQfus)                                                       |
-| [![Woo](https://github.com/AlexWan/OsEngine/assets/26077466/7e2c42f3-6046-4644-a300-8ff93a0381c0)](https://x.woo.org/register?ref=QMXPT8MR)                                                                           | WooX                | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 5% discount!](https://github.com/AlexWan/OsEngine/assets/26077466/414d7f7e-6f59-4d84-bd79-35da2e310692)](https://x.woo.org/register?ref=QMXPT8MR)                                                                            |
-| [![BitMart](https://github.com/user-attachments/assets/bdf7be5e-74b0-4fe9-889b-ec83d6b388e0)](https://www.bitmart.com/invite/cNtynY/en)                                                                               | BitMart             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![Sign up using OsEngine's referral link for a 30% discount!](https://user-images.githubusercontent.com/26077466/239537442-de38f220-aea7-4a4a-81e4-a4b901082fdd.png)](https://www.bitmart.com/invite/cNtynY/en)                                                             |
-| [![BitMex](https://user-images.githubusercontent.com/26077466/239529700-4371874c-e619-4302-a6d4-4f9373e88c0e.png)](https://www.bitmex.com)                                                                            | BitMex              | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![Bitstamp](https://user-images.githubusercontent.com/26077466/239529765-3f035413-8b5c-4991-ad1a-510c1c6794a6.png)](https://partner.bitget.com/bg/txme90901684140842016)                                             | Bitstamp            | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![Exmo](https://user-images.githubusercontent.com/26077466/239529888-69d8f5a3-1cce-4f67-b630-25e0a8dc9ff3.png)](https://partner.bitget.com/bg/txme90901684140842016)                                                 | Exmo                | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![HitBtc](https://user-images.githubusercontent.com/26077466/239529991-09128262-b125-4307-b69e-106a43e0381d.png)](https://partner.bitget.com/bg/txme90901684140842016)                                               | HitBtc              | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![Kraken](https://user-images.githubusercontent.com/26077466/239530042-5b45e459-3991-44e1-b5e2-ede94d724421.png)](https://partner.bitget.com/bg/txme90901684140842016)                                               | Kraken              | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
-| [![ZB](https://user-images.githubusercontent.com/26077466/239530136-9cab79ad-6f60-4dc4-bd6c-8dd9d90bd782.png)](https://partner.bitget.com/bg/txme90901684140842016)                                                   | ZB                  | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                                                                                                                                                 |
+Если сервер работает из git-папки:
 
+```powershell
+git checkout main
+git pull --ff-only origin main
+```
 
-*Доступные подключения для MOEX*
+Рекомендуемый серверный путь для git-версии:
 
-| ________ Лого ________                                                                                                                                  |_______ Имя _______   |  _______ Поддержка _______                                                                                         | Скидка пользователям OsEngine                                                                                                                                                                                                         
-|:-------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------:|:------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| [![ALOR OPEN API](https://github.com/AlexWan/OsEngine/assets/26077466/0ec1e32a-9936-4063-966e-f61fce56bfff)](https://www.alorbroker.ru/open?pr=L0745)   | ALOR OPEN API        | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | [![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)](https://www.alorbroker.ru/open?pr=L0745) |
-| ![Quik DDE](https://user-images.githubusercontent.com/26077466/239535136-051c4d6e-980a-456b-996c-93024d72fa8b.png)                                      | Quik DDE             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Moex FixFastSpot](https://github.com/AlexWan/OsEngine/assets/26077466/d8e145de-cd5f-4e77-91f9-cccdb1610866)                                           | MOEX FixFast Spot    | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Moex FixFastSpot](https://github.com/AlexWan/OsEngine/assets/26077466/d8e145de-cd5f-4e77-91f9-cccdb1610866)                                           | MOEX FixFast Currency| ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Moex FixFastSpot](https://github.com/AlexWan/OsEngine/assets/26077466/d8e145de-cd5f-4e77-91f9-cccdb1610866)                                           | MOEX FixFast Forts   | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Transaq](https://user-images.githubusercontent.com/26077466/239535313-b948d50e-1d7d-4cff-b994-c2c711bb1688.png)                                       | Transaq              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Tinkoff Api](https://user-images.githubusercontent.com/26077466/239535245-83ac09ac-586c-4021-a96b-9b9685e5ffc4.png)                                   | Tinkoff Api          | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Quik LUA](https://user-images.githubusercontent.com/26077466/239535058-d5ac0db1-8b0f-4602-a6c1-abcbe6fc7cb6.png)                                      | Quik LUA             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Plaza 2](https://user-images.githubusercontent.com/26077466/239535000-fb36abb2-4e29-4ae1-ae3f-9952c4211485.png)                                       | Plaza 2              | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Algopack](https://github.com/user-attachments/assets/cd1bc7e3-d9fa-4173-85c5-c6c5c1a5e3cf)                                                            | Algopack Data        | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Finam](https://github.com/user-attachments/assets/e6a1ec89-b537-4977-b88f-08e1a21b2087)                                                               | Finam Data           | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![MFD](https://github.com/user-attachments/assets/e865d1c4-42f8-4e27-a432-dcbe68b43a95)                                                                 | MFD Data             | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![MOEX ISS](https://github.com/user-attachments/assets/60457850-4153-4077-9a90-7ada7783ebe0)                                                            | MOEX ISS Data        | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
-| ![Asts Bridge](https://user-images.githubusercontent.com/26077466/239534827-4d9bfa5a-2a20-4bca-92ac-63ef62aace77.png)                                   | Asts Bridge          | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)                                               |
+- `C:\Users\Administrator\Desktop\OsNewGenGit`
 
+Если старая ручная папка ещё существует, её лучше держать отдельно как backup.
 
-*Доступные международные подключения*
+## Ключевые рабочие сценарии
 
-| ________ Лого ________                                                                                                                                                                   |_______ Имя _______  |  _______ Поддержка _______                                                                                         | Скидка пользователям OsEngine                                                                                                                                                                                                         
-|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------:|:------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------:|
-| [![Interactive Brokers](https://user-images.githubusercontent.com/26077466/239535591-8420295f-7405-4bf2-9e18-c5112b4b2582.png)](https://www.interactivebrokers.com/en/home.php)          | Interactive Brokers | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![Tradernet](https://github.com/user-attachments/assets/b5f5144a-6a37-4376-b7a7-003d935bf5f4)                                                                                            | TraderNet           | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![Atp](https://github.com/user-attachments/assets/7b70fc75-1cb1-4c5a-85fa-7197080be97b)                                                                                                  | Atp                 | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![KiteConnect](https://github.com/user-attachments/assets/b6411106-f25a-4422-bda4-6a2df23fbe4a)                                                                                          | Kite Connect        | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![Yahoo](https://github.com/user-attachments/assets/621e783b-d327-4f23-a228-2d016ef069d3)                                                                                                | Yahoo Data          | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| ![Polygon](https://github.com/user-attachments/assets/695a154c-e140-4a19-be2e-c414853bcab7)                                                                                              | Polygon Io Data     | ![prime](https://user-images.githubusercontent.com/26077466/239537776-71b68997-e4f9-4c06-9a9c-770b6e54b32d.png)    | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| [![Ninja Trader](https://user-images.githubusercontent.com/26077466/239535631-bb4596f4-160f-4506-bcdd-4832d1deb188.png)](https://ninjatrader.com)                                        | Ninja Trader        | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
-| [![LMAX](https://user-images.githubusercontent.com/26077466/239535509-2336139b-b648-4a66-b2a6-cb6d2b3e91b6.png)](https://www.lmax.com)                                                   | LMAX                | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)       | ![no](https://user-images.githubusercontent.com/26077466/239537736-63d17a8f-7bdf-4209-8455-a2994c137fed.png)   |
+### Tester Light
 
+Используется для:
 
-*В комплекте с OsEngine идёт более 300 встроенных роботов*
+- одиночного прогона роботов;
+- сверки поведения новых фильтров и сеток;
+- сравнения с `Bot Station Light`.
 
-1) классические трендовые роботы, вроде пересечения машек, стратегии Билла Вильямса или трендовой стратегии Джесси Ливермора.
+### Bot Station Light
 
-2) контрТрендовые системы на боллинжере, линиях баланса и даже некоторые маркет-мэйкерские стратегии.
+Используется для:
 
-3) арбитражные стратегии для торговли расхождения коррелирующих инструментов, в том числе одноногие арбитражи.
+- реальной торговли;
+- проверки того, насколько логика live близка к `Tester Light`;
+- переноса настроенных ботов в `Tester Light`.
 
-FAQ: https://o-s-a.net/os-engine-faq
+## Что уже сделано в этой форке
 
-Телеграмм группа поддержки: https://t.me/osengine_official_support
+Ниже не история апстрима, а список того, что было сделано в рамках этой ветки и рабочего чата.
 
-До августа 2023 года проект распространялся под лицензией Apache 2. С сентября 2023 года распространяется под коммерческой лицензией. Все права принадлежат ООО "Ван Технологии". 
+### Инфраструктура и workflow
 
-Разьяснения относительно лицензионного соглашения: https://o-s-a.net/os-engine-license-about 
+- [x] Репозиторий переведён на GitHub как основной remote
+- [x] Настроена схема `dev -> main -> server pull`
+- [x] Добавлен локальный push helper с автологом в `WORKSPACE_STATUS.md`
+- [x] Добавлен root-документ [WORKSPACE_STATUS.md](C:/Users/user/Desktop/OsNewGen/WORKSPACE_STATUS.md)
+- [x] Подготовлен bat для серверного обновления `robots light`
 
-Загружая Os Engine, Вы соглашаетесь с тем что в случае возникновения критической ошибки, информация об этом будет выслана разработчику. Инструкция о том как отключить данный функционал: https://o-s-a.net/posts/crash-server.html
+### Tester Light / Bot Station Light
+
+- [x] Добавлена кнопка переноса ботов из `Bot Station Light` в `Tester Light`
+- [x] Исправлено подтягивание бумаг в `Tester Light` без активного коннекта к бирже
+- [x] Исправлена привязка tester-бумаг к локальным `.txt` датасетам
+- [x] Исправлен сценарий, когда после перезапуска тестера нужно было заново выбирать бумагу
+- [x] Добавлена маленькая кнопка `Копия` у каждого бота
+- [x] Реализовано создание копии бота с новым именем
+
+### UI и стабильность
+
+- [x] Исправлен краш WinForms Chart при движении мыши по графику через `SafeWinFormsChart`
+- [x] Исправлены `NullReference` при ранней инициализации `ZScore`-индикаторов
+- [x] Улучшена устойчивость тестового runtime-кэша после пересборок
+
+### Mean Reversion и старые боты
+
+- [x] Исправлена логика rollback уровней в `MeanReversionZScore`
+- [x] Закрыт сценарий `Sequence contains no elements` в `ZScoreGrid.Deal`
+- [x] Исправлены источники расхождения live/tester в старых mean reversion роботах
+- [x] Перенастроена логика открытия/сетки в части `MeanReversionSma2`, `MeanReversion1Fix`, `MRZScoreAtrRR`, `MRZAtrRrDdr`
+
+### Новый робот MRZScoreNatrGrid
+
+- [x] Создан новый робот [MRZScoreNatrGrid.cs](C:/Users/user/Desktop/OsNewGen/project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs)
+- [x] Реализована NATR-сетка с порогом по `z-score`
+- [x] Добавлена поддержка `Limit`
+- [x] Добавлена поддержка `Market`
+- [x] Добавлен `EMA filter`
+- [x] Добавлен `Ema Filter Reverse`
+- [x] Добавлен `EMA Stop`
+- [x] Добавлен `Change24`
+- [x] Добавлен `DDR`
+- [x] Добавлен `Volatile Stop`
+- [x] Добавлен `ZScore Channel TP`
+- [x] Разделены `ATR SL`, `RR` и абсолютный `Stop Loss Limit Percent`
+- [x] Исправлены проблемы привязки открытия позиции к уровню грида
+- [x] Улучшено поведение `Volatile Stop` ближе к live-логике отмен
+
+## Что ещё нужно добить
+
+- [ ] Финально сверить parity `Tester Light` vs `Bot Station Light` на одном и том же отрезке истории
+- [ ] Дожать финальную модель поведения `Volatile Stop` в live/tester parity
+- [ ] Подготовить отдельный release-flow для сервера без ручных шагов
+- [ ] Зафиксировать финальные пресеты параметров для `MRZScoreNatrGrid`
+
+## Практические замечания
+
+- Если после изменений кажется, что бот “не подтянул новую логику”, сначала перезапусти `OsEngine`.
+- Для чистой проверки логики нового робота лучше тестировать его отдельно.
+- Если цель — parity с реальной торговлей, любые механики массовой отмены ордеров нужно проверять отдельно.
+
+## Лицензия
+
+Смотри:
+
+- [LICENSE](C:/Users/user/Desktop/OsNewGen/LICENSE)
+- [License_ru.pdf](C:/Users/user/Desktop/OsNewGen/License_ru.pdf)
