@@ -44,6 +44,7 @@ namespace OsEngine.Market.Connectors
             {
                 _canSave = true;
                 Load();
+                TryRestoreMissingTesterTimeFrameBuilder();
                 ServerMaster.RevokeOrderToEmulatorEvent += ServerMaster_RevokeOrderToEmulatorEvent;
             }
 
@@ -67,6 +68,100 @@ namespace OsEngine.Market.Connectors
             if (StartProgram == StartProgram.IsTester)
             {
                 PortfolioName = "GodMode";
+            }
+        }
+
+        private void TryRestoreMissingTesterTimeFrameBuilder()
+        {
+            if (StartProgram != StartProgram.IsTester ||
+                TimeFrameBuilder == null ||
+                string.IsNullOrWhiteSpace(SecurityName))
+            {
+                return;
+            }
+
+            string timeFrameBuilderPath = @"Engine\" + _name + @"TimeFrameBuilder.txt";
+
+            if (File.Exists(timeFrameBuilderPath))
+            {
+                return;
+            }
+
+            try
+            {
+                string activeSetPath = GetTesterActiveSetPath();
+
+                if (string.IsNullOrWhiteSpace(activeSetPath))
+                {
+                    return;
+                }
+
+                if (!Path.IsPathRooted(activeSetPath))
+                {
+                    activeSetPath = Path.GetFullPath(activeSetPath);
+                }
+
+                if (!Directory.Exists(activeSetPath))
+                {
+                    return;
+                }
+
+                string securityFolderName = Path.GetFileNameWithoutExtension(SecurityName);
+
+                if (string.IsNullOrWhiteSpace(securityFolderName))
+                {
+                    return;
+                }
+
+                string securityFolderPath = Path.Combine(activeSetPath, securityFolderName);
+
+                if (!Directory.Exists(securityFolderPath))
+                {
+                    return;
+                }
+
+                string[] timeFrameDirectories = Directory.GetDirectories(securityFolderPath);
+
+                if (timeFrameDirectories == null || timeFrameDirectories.Length != 1)
+                {
+                    return;
+                }
+
+                string inferredTimeFrameName = Path.GetFileName(timeFrameDirectories[0]);
+
+                if (!Enum.TryParse(inferredTimeFrameName, true, out TimeFrame inferredTimeFrame))
+                {
+                    return;
+                }
+
+                TimeFrameBuilder.TimeFrame = inferredTimeFrame;
+                TimeFrameBuilder.Save();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private string GetTesterActiveSetPath()
+        {
+            string testerSettingsPath = @"Engine\TestServer.txt";
+
+            if (!File.Exists(testerSettingsPath))
+            {
+                return null;
+            }
+
+            try
+            {
+                using (StreamReader reader = new StreamReader(testerSettingsPath))
+                {
+                    return reader.ReadLine();
+                }
+            }
+            catch
+            {
+                return null;
             }
         }
 

@@ -575,7 +575,7 @@ namespace OsEngine.Charts.CandleChart
                     return;
                 }
 
-                _chart = new Chart();
+                _chart = new SafeWinFormsChart();
                 _chart.SuppressExceptions = true;
 
                 _chart.Series.Clear();

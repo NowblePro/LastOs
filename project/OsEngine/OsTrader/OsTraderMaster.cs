@@ -228,95 +228,240 @@ namespace OsEngine.OsTrader
         /// </summary>
         private void Load()
         {
-            if (!File.Exists(@"Engine\Settings" + _typeWorkKeeper + "Keeper.txt"))
+            string keeperPath = @"Engine\Settings" + _typeWorkKeeper + "Keeper.txt";
+
+            if (!File.Exists(keeperPath))
             { 
                 // if there is no file we need. Just go out
                 return;
             }
 
+            List<string> savedBots = new List<string>();
 
-            int botCount = 0;
-            using (StreamReader reader = new StreamReader(@"Engine\Settings" + _typeWorkKeeper + "Keeper.txt"))
+            using (StreamReader reader = new StreamReader(keeperPath))
             {
                 while (!reader.EndOfStream)
                 {
-                    if (!string.IsNullOrWhiteSpace(reader.ReadLine()))
+                    string line = reader.ReadLine();
+
+                    if (!string.IsNullOrWhiteSpace(line))
                     {
-                        botCount++;
+                        savedBots.Add(line);
                     }
                 }
             }
 
-            if (botCount == 0)
+            if (savedBots.Count == 0)
             {
                 return;
             }
 
+            TryResetTesterPersistentStateForUpdatedBuild(savedBots);
+
             PanelsArray = new List<BotPanel>();
 
             int botIterator = 0;
-            using (StreamReader reader = new StreamReader(@"Engine\Settings" + _typeWorkKeeper + "Keeper.txt"))
+            for (int lineIndex = 0; lineIndex < savedBots.Count; lineIndex++)
             {
-                while (!reader.EndOfStream)
+                string[] names = savedBots[lineIndex].Split('@');
+
+                BotPanel bot = null;
+
+                if (names.Length > 2)
                 {
-                    string[] names = reader.ReadLine().Split('@');
-
-                    BotPanel bot = null;
-
-                    if (names.Length > 2)
+                    try
                     {
-                        try
-                        {
-                            bot = BotFactory.GetStrategyForName(names[1], names[0], _startProgram, Convert.ToBoolean(names[2]));
-                        }
-                        catch (Exception e)
-                        {
-                            MessageBox.Show(" Error on bot creation. Bot Name: " + names[1] + " \n" + e.ToString());
-                            continue;
-                        }
+                        bot = BotFactory.GetStrategyForName(names[1], names[0], _startProgram, Convert.ToBoolean(names[2]));
                     }
-                    else
+                    catch (Exception e)
                     {
-                        bot = BotFactory.GetStrategyForName(names[1], names[0], _startProgram, false);
+                        MessageBox.Show(" Error on bot creation. Bot Name: " + names[1] + " \n" + e.ToString());
+                        continue;
                     }
+                }
+                else
+                {
+                    bot = BotFactory.GetStrategyForName(names[1], names[0], _startProgram, false);
+                }
 
-                    if(names.Length >= 4)
+                if(names.Length >= 4)
+                {
+                    if(string.IsNullOrEmpty(names[3]) == false)
                     {
-                        if(string.IsNullOrEmpty(names[3]) == false)
-                        {
-                            bot.PublicName = names[3];
-                        }
+                        bot.PublicName = names[3];
                     }
+                }
 
-                    if (bot != null)
+                if (bot != null)
+                {
+                    PanelsArray.Add(bot);
+
+                    if (BotCreateEvent != null)
                     {
-                        PanelsArray.Add(bot);
-
-                        if (BotCreateEvent != null)
-                        {
-                            BotCreateEvent(bot);
-                        }
-
-                        if (_tabBotNames != null)
-                        {
-                            _tabBotNames.Items.Add(" " + PanelsArray[botIterator].NameStrategyUniq + " ");
-                            SendNewLogMessage(OsLocalization.Trader.Label2 + PanelsArray[botIterator].NameStrategyUniq,
-                                LogMessageType.System);
-                        }
-
-                        botIterator++;
-
-                        bot.NewTabCreateEvent += () =>
-                        {
-                            ReloadRiskJournals();
-                        };
+                        BotCreateEvent(bot);
                     }
+
+                    if (_tabBotNames != null)
+                    {
+                        _tabBotNames.Items.Add(" " + PanelsArray[botIterator].NameStrategyUniq + " ");
+                        SendNewLogMessage(OsLocalization.Trader.Label2 + PanelsArray[botIterator].NameStrategyUniq,
+                            LogMessageType.System);
+                    }
+
+                    botIterator++;
+
+                    bot.NewTabCreateEvent += () =>
+                    {
+                        ReloadRiskJournals();
+                    };
                 }
             }
             if (PanelsArray.Count != 0)
             {
                 ReloadActivBot(PanelsArray[0]);
             }
+        }
+
+        private void TryResetTesterPersistentStateForUpdatedBuild(List<string> savedBots)
+        {
+            if (_startProgram != StartProgram.IsTester ||
+                savedBots == null ||
+                savedBots.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                string enginePath = GetEnginePathForSync();
+                string markerPath = System.IO.Path.Combine(enginePath, "TesterRuntimeBuildStamp.txt");
+                string currentBuildStamp = GetCurrentBuildStamp();
+                string savedBuildStamp = File.Exists(markerPath)
+                    ? File.ReadAllText(markerPath).Trim()
+                    : string.Empty;
+
+                if (savedBuildStamp == currentBuildStamp)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < savedBots.Count; i++)
+                {
+                    if (string.IsNullOrWhiteSpace(savedBots[i]))
+                    {
+                        continue;
+                    }
+
+                    string[] names = savedBots[i].Split('@');
+
+                    if (names.Length < 2 ||
+                        string.IsNullOrWhiteSpace(names[0]))
+                    {
+                        continue;
+                    }
+
+                    ClearTesterPersistentRuntimeFiles(enginePath, names[0]);
+                }
+
+                File.WriteAllText(markerPath, currentBuildStamp);
+                SendNewLogMessage("Tester Light runtime cache reset after build update", LogMessageType.System);
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private string GetCurrentBuildStamp()
+        {
+            try
+            {
+                string assemblyPath = typeof(OsTraderMaster).Assembly.Location;
+
+                if (!string.IsNullOrWhiteSpace(assemblyPath) &&
+                    File.Exists(assemblyPath))
+                {
+                    return File.GetLastWriteTimeUtc(assemblyPath).Ticks.ToString();
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+
+            return DateTime.UtcNow.Ticks.ToString();
+        }
+
+        private void ClearTesterPersistentRuntimeFiles(string enginePath, string botName)
+        {
+            if (string.IsNullOrWhiteSpace(enginePath) ||
+                string.IsNullOrWhiteSpace(botName) ||
+                Directory.Exists(enginePath) == false)
+            {
+                return;
+            }
+
+            string[] files = Directory.GetFiles(enginePath, botName + "*", SearchOption.TopDirectoryOnly);
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                string filePath = files[i];
+                string fileName = System.IO.Path.GetFileName(filePath);
+
+                if (ShouldPreserveTesterPersistentFile(fileName, botName))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    File.Delete(filePath);
+                }
+                catch (Exception error)
+                {
+                    SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                }
+            }
+        }
+
+        private bool ShouldPreserveTesterPersistentFile(string fileName, string botName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName) ||
+                string.IsNullOrWhiteSpace(botName) ||
+                fileName.Length < botName.Length)
+            {
+                return false;
+            }
+
+            string suffix = fileName.Substring(botName.Length);
+
+            if (suffix.Equals("Parametrs.txt", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (suffix.IndexOf("Connector", StringComparison.OrdinalIgnoreCase) > -1 &&
+                suffix.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (suffix.EndsWith("TimeFrameBuilder.txt", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (suffix.EndsWith("DealController.txt", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (suffix.EndsWith("StrategSettings.txt", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -1990,6 +2135,226 @@ namespace OsEngine.OsTrader
             {
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
+        }
+
+        public void DuplicateBot(int index)
+        {
+            try
+            {
+                if (PanelsArray == null ||
+                    index < 0 ||
+                    index >= PanelsArray.Count)
+                {
+                    return;
+                }
+
+                BotPanel sourceBot = PanelsArray[index];
+
+                if (sourceBot == null)
+                {
+                    return;
+                }
+
+                SaveBotStateForDuplicate(sourceBot);
+
+                string newBotName = GetUniqueDuplicateBotName(sourceBot.NameStrategyUniq);
+                CopyBotFilesForDuplicate(sourceBot.NameStrategyUniq, newBotName);
+
+                string strategyName = sourceBot.IsScript
+                    ? sourceBot.FileName
+                    : sourceBot.GetNameStrategyType();
+
+                BotPanel newRobot = BotFactory.GetStrategyForName(strategyName, newBotName, _startProgram, sourceBot.IsScript);
+
+                if (newRobot == null)
+                {
+                    SendNewLogMessage("Bot duplicate failed: robot was not created", LogMessageType.Error);
+                    return;
+                }
+
+                newRobot.PublicName = GetDuplicatePublicName(sourceBot, newBotName);
+                newRobot.NewTabCreateEvent += () =>
+                {
+                    ReloadRiskJournals();
+                };
+
+                PanelsArray.Add(newRobot);
+
+                if (BotCreateEvent != null)
+                {
+                    BotCreateEvent(newRobot);
+                }
+
+                SendNewLogMessage($"Bot copied: {sourceBot.NameStrategyUniq} -> {newRobot.NameStrategyUniq}", LogMessageType.System);
+
+                ReloadActivBot(newRobot);
+                Save();
+                ReloadRiskJournals();
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private void SaveBotStateForDuplicate(BotPanel bot)
+        {
+            if (bot == null)
+            {
+                return;
+            }
+
+            bot.SaveParametrs();
+
+            List<IIBotTab> tabs = bot.GetTabs();
+
+            for (int i = 0; tabs != null && i < tabs.Count; i++)
+            {
+                SaveBotTabState(tabs[i]);
+            }
+        }
+
+        private void CopyBotFilesForDuplicate(string sourceBotName, string targetBotName)
+        {
+            if (string.IsNullOrWhiteSpace(sourceBotName) ||
+                string.IsNullOrWhiteSpace(targetBotName))
+            {
+                return;
+            }
+
+            string enginePath = GetEnginePathForSync();
+
+            if (Directory.Exists(enginePath) == false)
+            {
+                return;
+            }
+
+            string[] files = Directory.GetFiles(enginePath, sourceBotName + "*");
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                try
+                {
+                    string fileName = System.IO.Path.GetFileName(files[i]);
+
+                    if (ShouldSkipFileForDuplicate(fileName, sourceBotName))
+                    {
+                        continue;
+                    }
+
+                    string suffix = fileName.Substring(sourceBotName.Length);
+                    string targetFile = System.IO.Path.Combine(enginePath, targetBotName + suffix);
+                    File.Copy(files[i], targetFile, true);
+                }
+                catch (Exception error)
+                {
+                    SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                }
+            }
+        }
+
+        private bool ShouldSkipFileForDuplicate(string fileName, string botName)
+        {
+            return ShouldSkipFileForTesterClone(fileName, botName);
+        }
+
+        private string GetUniqueDuplicateBotName(string sourceBotName)
+        {
+            string baseName = sourceBotName + "_copy";
+            string candidateName = baseName;
+            int copyIndex = 1;
+
+            while (IsBotNameExists(candidateName))
+            {
+                candidateName = baseName + copyIndex;
+                copyIndex++;
+            }
+
+            return candidateName;
+        }
+
+        private string GetDuplicatePublicName(BotPanel sourceBot, string newBotName)
+        {
+            if (sourceBot == null)
+            {
+                return newBotName;
+            }
+
+            string basePublicName = string.IsNullOrWhiteSpace(sourceBot.PublicName)
+                ? sourceBot.NameStrategyUniq
+                : sourceBot.PublicName;
+
+            string duplicatePublicName = basePublicName + " Copy";
+            int copyIndex = 1;
+
+            while (IsPublicNameExists(duplicatePublicName))
+            {
+                duplicatePublicName = basePublicName + " Copy " + copyIndex;
+                copyIndex++;
+            }
+
+            return duplicatePublicName;
+        }
+
+        private bool IsBotNameExists(string botName)
+        {
+            if (string.IsNullOrWhiteSpace(botName))
+            {
+                return true;
+            }
+
+            if (PanelsArray != null &&
+                PanelsArray.Any(bot => bot != null && bot.NameStrategyUniq.Equals(botName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            return IsBotNameInKeeper(@"Engine\SettingsRealKeeper.txt", botName) ||
+                   IsBotNameInKeeper(@"Engine\SettingsTesterKeeper.txt", botName);
+        }
+
+        private bool IsPublicNameExists(string publicName)
+        {
+            if (string.IsNullOrWhiteSpace(publicName) || PanelsArray == null)
+            {
+                return false;
+            }
+
+            return PanelsArray.Any(bot =>
+                bot != null &&
+                string.IsNullOrWhiteSpace(bot.PublicName) == false &&
+                bot.PublicName.Equals(publicName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private bool IsBotNameInKeeper(string keeperPath, string botName)
+        {
+            if (File.Exists(keeperPath) == false)
+            {
+                return false;
+            }
+
+            using (StreamReader reader = new StreamReader(keeperPath))
+            {
+                while (!reader.EndOfStream)
+                {
+                    string line = reader.ReadLine();
+
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        continue;
+                    }
+
+                    string[] parts = line.Split('@');
+
+                    if (parts.Length > 0 &&
+                        parts[0].Equals(botName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

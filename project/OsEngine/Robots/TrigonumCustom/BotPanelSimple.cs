@@ -274,6 +274,24 @@ namespace OsEngine.Robots.TrigonumCustom
             return position;
         }
 
+        protected Position OpenPlannedMarket(Side side, decimal volume, decimal plannedPrice, DateTime signalCandleTime)
+        {
+            Position position = null;
+
+            if (side == Side.Buy)
+            {
+                position = _tab.BuyAtMarket(volume);
+            }
+            else if (side == Side.Sell)
+            {
+                position = _tab.SellAtMarket(volume);
+            }
+
+            RememberPlannedEntry(position, plannedPrice, signalCandleTime);
+
+            return position;
+        }
+
         private void QueueDeferredParityEntry(Side side, decimal volume, DateTime signalCandleTime)
         {
             if (_deferredParityEntries.Any(entry =>

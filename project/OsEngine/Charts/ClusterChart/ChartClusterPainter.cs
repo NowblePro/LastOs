@@ -433,7 +433,7 @@ namespace OsEngine.Charts.ClusterChart
                     return;
                 }
 
-                _chart = new Chart();
+                _chart = new SafeWinFormsChart();
                 _chart.SuppressExceptions = true;
 
                 _chart.Series.Clear();

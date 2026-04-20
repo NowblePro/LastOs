@@ -15,7 +15,7 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 namespace OsEngine.Common
 {
     /// <summary>
-    /// Декоратор, показывающий изменение цены в процентах, относительно цены 24 часа назад. Жёстко задан для 15-минутных свечей, для изменения добавить параметр
+    /// Декоратор, показывающий изменение цены в процентах, относительно цены 24 часа назад.
     /// </summary>
     public class Change24Decoration
     {
@@ -45,10 +45,17 @@ namespace OsEngine.Common
 
         private void _tab_CandleFinishedEvent(List<Candle> candles)
         {
-            if (candles.Count < _period) return;
-            int prevIndex = candles.Count - _period;
+            int period = GetPeriod();
+            int lastIndex = candles.Count - 1;
+            int prevIndex = lastIndex - period;
+
+            if (prevIndex < 0) return;
+
             decimal prevPrice = candles[prevIndex].Close;
-            decimal curPrice = candles.Last().Close;
+
+            if (prevPrice <= 0) return;
+
+            decimal curPrice = candles[lastIndex].Close;
             Change = (curPrice - prevPrice) / prevPrice * 100;
         }
 
@@ -59,6 +66,18 @@ namespace OsEngine.Common
         private void Bot_ParametrsChangeByUser()
         {
 
+        }
+
+        private int GetPeriod()
+        {
+            TimeSpan timeFrame = _tab?.TimeFrame ?? TimeSpan.Zero;
+
+            if (timeFrame <= TimeSpan.Zero || timeFrame.TotalMinutes <= 0)
+            {
+                return _period;
+            }
+
+            return Math.Max(1, (int)Math.Ceiling(TimeSpan.FromHours(24).TotalMinutes / timeFrame.TotalMinutes));
         }
     }
 }

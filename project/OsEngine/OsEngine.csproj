@@ -434,6 +434,7 @@
     </Compile>
     <Compile Include="Charts\ClusterChart\ChartClusterMaster.cs" />
     <Compile Include="Charts\ClusterChart\ChartClusterPainter.cs" />
+    <Compile Include="Charts\SafeWinFormsChart.cs" />
     <Compile Include="Charts\CandleChart\WinFormsChartPainter.cs" />
     <Compile Include="Charts\ColorKeeper\ChartMasterColorKeeper.cs" />
     <Compile Include="Charts\CandleChart\ChartCandleMaster.cs" />
@@ -1438,6 +1439,7 @@
     <Compile Include="Robots\TrigonumCustom\MeanReversion\MRZAtrRrDdr.cs" />
     <Compile Include="Robots\TrigonumCustom\MeanReversion\MRZScoreAtrRR.cs" />
     <Compile Include="Robots\TrigonumCustom\MeanReversion\MRZScoreAtrTakeSMA.cs" />
+    <Compile Include="Robots\TrigonumCustom\MeanReversion\MRZScoreNatrGrid.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\NextLevelBot.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\CoinGlass\BreakHighLowByAdxRsiCG.cs" />
     <Compile Include="Robots\TrigonumCustom\Base\DivergenceRsi.cs" />

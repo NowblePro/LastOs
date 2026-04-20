@@ -198,6 +198,10 @@ BundleArtifacts/
 Package.StoreAssociation.xml
 _pkginfo.txt
 
+# Local helper scripts for manual push workflow
+push_git_with_log.bat
+push_git_with_log.ps1
+
 # Visual Studio cache files
 # files ending in .cache can be ignored
 *.[Cc]ache

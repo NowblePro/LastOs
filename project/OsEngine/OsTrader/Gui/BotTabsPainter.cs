@@ -140,6 +140,11 @@ namespace OsEngine.OsTrader.Gui
             colum11.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             newGrid.Columns.Add(colum11);
 
+            DataGridViewButtonColumn colum12 = new DataGridViewButtonColumn();
+            colum12.ReadOnly = true;
+            colum12.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            newGrid.Columns.Add(colum12);
+
             _grid = newGrid;
             _host.Child = _grid;
 
@@ -282,6 +287,11 @@ namespace OsEngine.OsTrader.Gui
         rowIndex < botsCount)
                 { // вызываем окно удаление робота
                     _master.DeleteByNum(rowIndex);
+                }
+                else if (coluIndex == 10 &&
+        rowIndex < botsCount)
+                {
+                    _master.DuplicateBot(rowIndex);
                 }
 
                 if (coluIndex == 8 &&
@@ -562,8 +572,11 @@ namespace OsEngine.OsTrader.Gui
                 items.Add(new MenuItem(OsLocalization.Trader.Label417));
                 items[7].Click += BotTabsPainter_MoveDown_Click;
 
+                items.Add(new MenuItem("Копия"));
+                items[8].Click += BotTabsPainter_Duplicate_Click;
+
                 items.Add(new MenuItem(OsLocalization.Trader.Label39));
-                items[8].Click += BotTabsPainter_Delete_Click;
+                items[9].Click += BotTabsPainter_Delete_Click;
 
                 ContextMenu menu = new ContextMenu(items.ToArray());
 
@@ -843,6 +856,39 @@ namespace OsEngine.OsTrader.Gui
             }
         }
 
+        private void BotTabsPainter_Duplicate_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_master.PanelsArray == null)
+                {
+                    return;
+                }
+
+                int rowIndex = -1;
+
+                for (int i = 0; i < _master.PanelsArray.Count; i++)
+                {
+                    if (_master.PanelsArray[i].NameStrategyUniq == _lastSelectedBot.NameStrategyUniq)
+                    {
+                        rowIndex = i;
+                        break;
+                    }
+                }
+
+                if (rowIndex == -1)
+                {
+                    return;
+                }
+
+                _master.DuplicateBot(rowIndex);
+            }
+            catch (Exception ex)
+            {
+                _master.SendNewLogMessage(ex.ToString(), Logging.LogMessageType.Error);
+            }
+        }
+
         #endregion
 
         #region работа с чек-боксами включений и отключений
@@ -1107,6 +1153,9 @@ colum10.HeaderText = "Action";
             row.Cells.Add(new DataGridViewButtonCell());
             row.Cells[9].Value = OsLocalization.Trader.Label39;//"Delete";
 
+            row.Cells.Add(new DataGridViewButtonCell());
+            row.Cells[10].Value = "Копия";
+
             if (num % 2 == 0)
             {
                 for (int i = 0; i < row.Cells.Count; i++)
@@ -1149,6 +1198,7 @@ colum9.HeaderText = "Journal";
             row.Cells.Add(new DataGridViewButtonCell());
             row.Cells.Add(new DataGridViewButtonCell());
             row.Cells.Add(new DataGridViewButtonCell());
+            row.Cells.Add(new DataGridViewButtonCell());
 
             return row;
         }
@@ -1175,6 +1225,8 @@ colum9.HeaderText = "Journal";
             row.Cells[8].Value = OsLocalization.Trader.Label40; //"Journal";
             row.Cells.Add(new DataGridViewButtonCell());
             row.Cells[9].Value = OsLocalization.Trader.Label38; //"Add New...";
+            row.Cells.Add(new DataGridViewButtonCell());
+            row.Cells[10].Value = "";
 
             return row;
         }
@@ -1201,6 +1253,8 @@ colum9.HeaderText = "Journal";
             row.Cells[8].Value = "Лонг";
             row.Cells.Add(new DataGridViewButtonCell());
             row.Cells[9].Value = "Шорт";
+            row.Cells.Add(new DataGridViewButtonCell());
+            row.Cells[10].Value = "";
 
             return row;
         }

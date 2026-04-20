@@ -82,10 +82,22 @@ namespace OsEngine.Common
 
             _profitsLast = _profits.Skip(skip).Take(take).ToList();
 
+            if (_profitsLast.Count < _periodLossFilter.ValueInt)
+            {
+                return;
+            }
+
             take = _lossCandlesCount.ValueInt;
             skip = _profitsLast.Count - take;
 
-            decimal minProfit = _profitsLast.Skip(skip).Take(take).Min();
+            List<decimal> latestProfits = _profitsLast.Skip(skip).Take(take).ToList();
+
+            if (latestProfits.Count < _lossCandlesCount.ValueInt)
+            {
+                return;
+            }
+
+            decimal minProfit = latestProfits.Min();
             _currentQuantile = (int)((float)_profitsLast.Where(v => v <= minProfit).Count() / ((float)_periodLossFilter.ValueInt) * 100);
             if (_currentQuantile >= _quantile.ValueInt)
             {
@@ -96,6 +108,11 @@ namespace OsEngine.Common
 
         private decimal GetCandleProfit(Candle candle)
         {
+            if (candle == null || candle.Low <= 0)
+            {
+                return 0;
+            }
+
             return (candle.High - candle.Low) / candle.Low;
         }
     }

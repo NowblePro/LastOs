@@ -741,7 +741,7 @@ namespace OsEngine.Market.Servers.Tester
                 return;
             }
 
-            _chartReport = new Chart();
+            _chartReport = new SafeWinFormsChart();
             HostPortfolio.Child = _chartReport;
             HostPortfolio.Child.Show();
 
