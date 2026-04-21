@@ -11,6 +11,7 @@ set "SSH_KEY="
 set "SSH_KEY_GIT="
 set "BRANCH=main"
 set "OSENGINE_EXE=%REPO_DIR%\project\OsEngine\bin\Debug\OsEngine.exe"
+set "OSENGINE_DIR=%REPO_DIR%\project\OsEngine\bin\Debug"
 set "OSENGINE_ARG=-robotslight"
 set "LOG_FILE=%REPO_DIR%\update_osengine_robots_light_from_github.log"
 set "SELF_NAME=%~nx0"
@@ -55,8 +56,8 @@ if not errorlevel 1 (
     call :log "OsEngine.exe is running."
     call :log "This script no longer stops OsEngine automatically."
     call :log "Close only the instance that uses this repo before update if needed."
-    set /p "CONTINUE_ANYWAY=Continue with git update anyway? [Y/N]: "
-    if /i not "%CONTINUE_ANYWAY%"=="Y" if /i not "%CONTINUE_ANYWAY%"=="YES" (
+    choice /c YN /n /m "Continue with git update anyway? [Y/N]: "
+    if errorlevel 2 (
         call :log "Update cancelled by user."
         goto :cancel
     )
@@ -129,7 +130,12 @@ if not exist "%OSENGINE_EXE%" (
     goto :fail
 )
 
-start "" "%OSENGINE_EXE%" "%OSENGINE_ARG%"
+if not exist "%OSENGINE_DIR%" (
+    call :log "OsEngine working dir not found: %OSENGINE_DIR%"
+    goto :fail
+)
+
+start "" /d "%OSENGINE_DIR%" "%OSENGINE_EXE%" "%OSENGINE_ARG%"
 call :log "Update completed successfully."
 pause
 exit /b 0
