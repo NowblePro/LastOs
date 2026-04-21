@@ -13,6 +13,7 @@ set "BRANCH=main"
 set "OSENGINE_EXE=%REPO_DIR%\project\OsEngine\bin\Debug\OsEngine.exe"
 set "OSENGINE_ARG=-robotslight"
 set "LOG_FILE=%REPO_DIR%\update_osengine_robots_light_from_github.log"
+set "SELF_NAME=%~nx0"
 
 break > "%LOG_FILE%"
 call :log "Running update helper from: %REPO_DIR%"
@@ -85,6 +86,24 @@ goto :fail
 
 if defined SSH_KEY_GIT (
     set "GIT_SSH_COMMAND=ssh -i %SSH_KEY_GIT% -o IdentitiesOnly=yes"
+)
+
+set "SELF_STATUS="
+for /f "delims=" %%S in ('"%GIT_EXE%" status --porcelain --untracked-files=all -- "%SELF_NAME%" 2^>nul') do (
+    set "SELF_STATUS=%%S"
+)
+
+if defined SELF_STATUS (
+    if "%SELF_STATUS:~0,2%"=="??" (
+        "%GIT_EXE%" fetch origin "%BRANCH%" >> "%LOG_FILE%" 2>&1
+        "%GIT_EXE%" ls-tree -r --name-only "origin/%BRANCH%" | findstr /i /x "%SELF_NAME%" >nul
+        if not errorlevel 1 (
+            call :log "Local untracked file %SELF_NAME% conflicts with tracked file in origin/%BRANCH%."
+            call :log "Rename or delete this local file once, then rerun the update."
+            popd
+            goto :fail
+        )
+    )
 )
 
 call :log "Checking out branch %BRANCH%..."

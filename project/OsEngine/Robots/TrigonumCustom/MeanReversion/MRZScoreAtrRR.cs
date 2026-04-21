@@ -63,7 +63,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             // Параметры
             _periodSma = CreateParameter("Sma Period", 50, 10, 500, 10, "Robot");
             _zEnterBase = CreateParameter("Z Enter Base", 3m, 1m, 5m, 0.5m, "Robot");
-            _gridSize = CreateParameter("Grid Size", 7, 3, 20, 1, "Robot");
+            _gridSize = CreateParameter("Grid Size", 7, 1, 20, 1, "Robot");
             _spread = CreateParameter("Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
             _atrMultDev = CreateParameter("Atr Mult Setka", 1m, 0.1m, 5m, 0.1m, "ATR");
             _debugLogging = CreateParameter("Debug Logging", false, "Debug");
@@ -161,7 +161,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (_currentGrid == null)
             {
                 decimal step = _spread.ValueDecimal;
-                _currentGrid = new MeanReverseGrid(atrDev, step, _gridSize.ValueInt, Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
+                _currentGrid = new MeanReverseGrid(atrDev, step, GetAdditionalGridLevels(), Side.Sell, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
                 _volumeManager.Clear();
                 _pendingFirstGridAtrDev = null;
@@ -557,6 +557,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         protected override decimal GetVolume(bool getRounded = true)
         {
             return _volumeManager.GetNextVolume(getRounded);
+        }
+
+        private int GetAdditionalGridLevels()
+        {
+            return Math.Max(0, _gridSize.ValueInt - 1);
         }
 
         protected override void OnBeforeBaseEntryOrder(List<Candle> candles, Side side, OrderType orderType, decimal plannedPrice, decimal volume)

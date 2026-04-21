@@ -24,12 +24,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _zEnterBaseShort;
         private StrategyParameterInt _emaLength;
         private StrategyParameterDecimal _spread;
+        private StrategyParameterInt _gridSize;
         private StrategyParameterBool _emaReverseLogic;
         private StrategyParameterDecimal _atrMultSpread;
         private StrategyParameterDecimal _r;
 
         private MeanReverseGrid _currentGrid = null;
-        private int _gridSize = 7;
 
         // Ключ уровня, который мы собираемся заполнить при следующем успешном открытии позиции.
         // -1 означает "не задан".
@@ -70,6 +70,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _zEnterBaseLong = CreateParameter("Z Enter Base Long", -2m, -3m, -1m, 0.1m, "Robot");
             _zEnterBaseShort = CreateParameter("Z Enter Base Short", 2m, 1m, 3m, 0.1m, "Robot");
+            _gridSize = CreateParameter("Grid Size", 7, 1, 20, 1, "Robot");
 
             _spread = CreateParameter("Spread", 1m, 0.1m, 1m, 0.1m, "Robot");
 
@@ -124,7 +125,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     : obj.EntryPrice;
                 decimal step = _spread.ValueDecimal + atr * _atrMultSpread.ValueDecimal;
 
-                _currentGrid = new MeanReverseGrid(centerPrice, step, _gridSize, obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
+                _currentGrid = new MeanReverseGrid(centerPrice, step, GetAdditionalGridLevels(), obj.Direction, _tab.GetChartMaster().Candles.Count - 1);
                 _currentGrid.SetPosition(0, obj);
                 _nextGridKeyToFill = -1;
                 _pendingFirstEntryAtr = null;
@@ -659,6 +660,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         protected override decimal GetVolume(bool getRounded = true)
         {
             return _volumeManager.GetNextVolume(getRounded);
+        }
+
+        private int GetAdditionalGridLevels()
+        {
+            return Math.Max(0, _gridSize.ValueInt - 1);
         }
 
         protected override void ParametersChangedByUser()

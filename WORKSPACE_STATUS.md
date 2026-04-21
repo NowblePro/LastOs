@@ -50,14 +50,19 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-20 17:54:14
+- Updated: 2026-04-21 14:01:20
 - Branch: `dev`
-- HEAD before push: `8756652`
+- HEAD before push: `5f8289b`
 - Pending changes before auto-log:
 
 `	ext
- M .gitignore
- M WORKSPACE_STATUS.md
+ M project/OsEngine/Common/MeanReverseGrid.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/LrZZAtrTakeSmaEntr.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZAtrRrDdr.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrRR.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrTakeSMA.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MeanReversion1Fix.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MeanReversionZScore.cs
  M update_osengine_robots_light_from_github.bat
 `"
     "
@@ -125,6 +130,16 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-21 14:01:20 | branch `dev` | message: `Изменение грида на всех MR`
+  Files before commit:
+  -  M project/OsEngine/Common/MeanReverseGrid.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/LrZZAtrTakeSmaEntr.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZAtrRrDdr.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrRR.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrTakeSMA.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MeanReversion1Fix.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MeanReversionZScore.cs
+  -  M update_osengine_robots_light_from_github.bat
 - 2026-04-20 17:54:14 | branch `dev` | message: `Узнал, что пушил лишь дев, а на мейне торговая, переношу`
   Files before commit:
   -  M .gitignore
@@ -181,6 +196,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 

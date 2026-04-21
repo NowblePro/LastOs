@@ -17,7 +17,7 @@ namespace OsEngine.Common
 
         public MeanReverseGrid(decimal gridValue, decimal delta, int levelsCount, Side side, int index)
         {
-            if (levelsCount < 2) throw new Exception("Уровней должно быть хотя бы 2");
+            if (levelsCount < 0) throw new Exception("Количество уровней не может быть отрицательным");
             _side = side;
             _step = delta;
             _index = index;

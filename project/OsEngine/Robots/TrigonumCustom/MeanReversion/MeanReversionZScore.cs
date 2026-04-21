@@ -23,6 +23,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private ZScoreChannel _channel;
 
         private StrategyParameterInt _periodSma;
+        private StrategyParameterInt _gridSize;
         private StrategyParameterDecimal _spread;
         /// <summary>
         /// Базовый уровень Z Score (который отрисовывается и который является последним уровнем)
@@ -30,6 +31,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _zScoreRef;
         private decimal _spreadPrev = 0;
         private decimal _zScoreRefPrev = 0;
+        private int _gridSizePrev = 0;
 
         private ZScoreGrid _highGrid;
         private ZScoreGrid _lowGrid;
@@ -54,6 +56,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _sma = IndicatorsFactory.CreateIndicatorByName("Sma", name + "Sma", false);
             _sma = (Aindicator)_tab.CreateCandleIndicator(_sma, "Prime");
             _periodSma = CreateParameter("Sma Period", 50, 50, 500, 50, "Robot");
+            _gridSize = CreateParameter("Grid Size", 7, 1, 20, 1, "Robot");
             _spread = CreateParameter("Spread", 0.5m, 0.5m, 1.5m, 0.5m, "Robot");
             _zScoreRef = CreateParameter("Channel Size", 3m, 2m, 5m, 1m, "Robot");
 
@@ -374,15 +377,18 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 _lowGrid.Clear();
             }
 
-            if (_spread.ValueDecimal == _spreadPrev && _zScoreRef.ValueDecimal == _zScoreRefPrev)
+            if (_spread.ValueDecimal == _spreadPrev &&
+                _zScoreRef.ValueDecimal == _zScoreRefPrev &&
+                _gridSize.ValueInt == _gridSizePrev)
             {
                 return;
             }
 
             _spreadPrev = _spread.ValueDecimal;
             _zScoreRefPrev = _zScoreRef.ValueDecimal;
-            _highGrid = new ZScoreGrid(_spread.ValueDecimal, _zScoreRef.ValueDecimal, _tab);
-            _lowGrid = new ZScoreGrid(_spread.ValueDecimal, _zScoreRef.ValueDecimal, _tab);
+            _gridSizePrev = _gridSize.ValueInt;
+            _highGrid = new ZScoreGrid(_spread.ValueDecimal, _zScoreRef.ValueDecimal, _gridSize.ValueInt, _tab);
+            _lowGrid = new ZScoreGrid(_spread.ValueDecimal, _zScoreRef.ValueDecimal, _gridSize.ValueInt, _tab);
         }
 
         private void SetZScoreChannelReference()
@@ -407,12 +413,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private BotTabSimple _tab;
         private Dictionary<Position, List<ZScoreLevel>> _reservedLevelsByPosition = new Dictionary<Position, List<ZScoreLevel>>();
         private List<int> _lastCheckedLevelIndexes = new List<int>();
-        public ZScoreGrid(decimal spread, decimal zScoreReference, BotTabSimple tab)
+        public ZScoreGrid(decimal spread, decimal zScoreReference, int gridSize, BotTabSimple tab)
         {
             if (spread == 0) throw new ArgumentException("Шаг z score не может быть равен 0");
             _spread = spread;
             int levelCount = (int)(zScoreReference / _spread);
             if (levelCount == 0) levelCount = 1;
+            levelCount = Math.Min(levelCount, Math.Max(1, gridSize));
             for (int i = 0; i < levelCount; i++)
             {
                 _levels.Add(new ZScoreLevel(spread * (i + 1), i, tab));
