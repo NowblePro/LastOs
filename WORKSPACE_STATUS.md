@@ -50,15 +50,13 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-22 16:02:08
+- Updated: 2026-04-22 16:26:36
 - Branch: `dev`
-- HEAD before push: `817d0ac`
+- HEAD before push: `fc9baea`
 - Pending changes before auto-log:
 
 `	ext
- M update_osengine_robots_light_from_github.bat
-?? update_osengine_robots_light_from_github_dev.bat
-?? update_osengine_robots_light_from_github_main.bat
+ M project/OsEngine/bin/Debug/OsEngine.exe
 `"
     "
     
@@ -127,6 +125,9 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-22 16:26:36 | branch `dev` | message: `Наконец-то добавление грида для всех роботов`
+  Files before commit:
+  -  M project/OsEngine/bin/Debug/OsEngine.exe
 - 2026-04-22 16:02:08 | branch `dev` | message: `добавил батники`
   Files before commit:
   -  M update_osengine_robots_light_from_github.bat
@@ -204,6 +205,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 
