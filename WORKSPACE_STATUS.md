@@ -50,13 +50,15 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-21 17:21:04
+- Updated: 2026-04-22 16:02:08
 - Branch: `dev`
-- HEAD before push: `5b89b07`
+- HEAD before push: `817d0ac`
 - Pending changes before auto-log:
 
 `	ext
-working tree clean
+ M update_osengine_robots_light_from_github.bat
+?? update_osengine_robots_light_from_github_dev.bat
+?? update_osengine_robots_light_from_github_main.bat
 `"
     "
     
@@ -76,6 +78,8 @@ working tree clean
 - [F] README.md
 - [F] update_osengine_robots_light_from_github.bat
 - [F] update_osengine_robots_light_from_github.log
+- [F] update_osengine_robots_light_from_github_dev.bat
+- [F] update_osengine_robots_light_from_github_main.bat
 - [F] WORKSPACE_STATUS.md
 - [F] читаем_маст_рид.txt
 
@@ -123,6 +127,11 @@ working tree clean
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-22 16:02:08 | branch `dev` | message: `добавил батники`
+  Files before commit:
+  -  M update_osengine_robots_light_from_github.bat
+  - ?? update_osengine_robots_light_from_github_dev.bat
+  - ?? update_osengine_robots_light_from_github_main.bat
 - 2026-04-21 17:21:04 | branch `dev` | message: `Workspace update 2026-04-21 17:21:04`
   Files before commit:
   - no pending changes before auto-log update
@@ -195,6 +204,7 @@ working tree clean
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 

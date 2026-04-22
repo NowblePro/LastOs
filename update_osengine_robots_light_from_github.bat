@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 
-rem Update OsEngine from GitHub, restart Robots Light, and write a local log.
+rem Update OsEngine from GitHub and write a local log.
 
 set "REPO_DIR=%~dp0"
 if "%REPO_DIR:~-1%"=="\" set "REPO_DIR=%REPO_DIR:~0,-1%"
@@ -9,10 +9,7 @@ if "%REPO_DIR:~-1%"=="\" set "REPO_DIR=%REPO_DIR:~0,-1%"
 set "GIT_EXE=C:\Program Files\Git\cmd\git.exe"
 set "SSH_KEY="
 set "SSH_KEY_GIT="
-set "BRANCH=main"
-set "OSENGINE_EXE=%REPO_DIR%\project\OsEngine\bin\Debug\OsEngine.exe"
-set "OSENGINE_DIR=%REPO_DIR%\project\OsEngine\bin\Debug"
-set "OSENGINE_ARG=-robotslight"
+if not defined BRANCH set "BRANCH=main"
 set "LOG_FILE=%REPO_DIR%\update_osengine_robots_light_from_github.log"
 set "SELF_NAME=%~nx0"
 
@@ -124,19 +121,9 @@ if errorlevel 1 (
 )
 popd
 
-call :log "[6/6] Starting OsEngine..."
-if not exist "%OSENGINE_EXE%" (
-    call :log "OsEngine.exe not found: %OSENGINE_EXE%"
-    goto :fail
-)
-
-if not exist "%OSENGINE_DIR%" (
-    call :log "OsEngine working dir not found: %OSENGINE_DIR%"
-    goto :fail
-)
-
-start "" /d "%OSENGINE_DIR%" "%OSENGINE_EXE%" "%OSENGINE_ARG%"
+call :log "[6/6] Finishing..."
 call :log "Update completed successfully."
+call :log "OsEngine was not started automatically."
 pause
 exit /b 0
 
