@@ -914,6 +914,11 @@ namespace OsEngine.OsTrader
                 return true;
             }
 
+            if (suffix.EndsWith("ChartMaster.txt", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
             return false;
         }
 

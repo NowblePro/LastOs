@@ -1789,7 +1789,9 @@ namespace OsEngine.Charts.CandleChart
                 // очищаем временные отметки сделок, если они не совпадают со свечками
                 if (_timePoints != null && _timePoints.Count > 0)
                 {
-                    TimeAxisXPoint firstChartTP = _timePoints.Find(tp => tp.PositionXPoint > 0);
+                    _timePoints.RemoveAll(tp => tp == null);
+
+                    TimeAxisXPoint firstChartTP = _timePoints.Find(tp => tp != null && tp.PositionXPoint > 0);
 
                     if (_myCandles != null && _myCandles.Count > 1 && firstChartTP != null &&
                         (firstChartTP.PositionXPoint > _myCandles.Count - 1
@@ -5207,6 +5209,8 @@ namespace OsEngine.Charts.CandleChart
             }
             if (area.AxisY2.CustomLabels != null)
             {
+                RemoveNullCustomLabels(area.AxisY2);
+
                 // delete the label if it was already on schedule.
                 // удаляем лэйбл если он уже был на графике
                 ChartYLabels oldlabel = _labels.Find(labels => labels.AreaName == nameArea && labels.SeriesName == name);
@@ -5220,18 +5224,7 @@ namespace OsEngine.Charts.CandleChart
                     {
                         if (area.AxisY2.CustomLabels[i] == null)
                         {
-                            try
-                            {
-                                area.AxisY2.CustomLabels[i] = new CustomLabel(min, max, label, 0, LabelMarkStyle.LineSideMark);
-                                area.AxisY2.CustomLabels.RemoveAt(i);
-                                i--;
-                                continue;
-                            }
-                            catch
-                            {
-                                continue;
-                                // ignore
-                            }
+                            continue;
                         }
 
                         if (area.AxisY2.CustomLabels[i].Text == positon)
@@ -5262,7 +5255,7 @@ namespace OsEngine.Charts.CandleChart
             labelNew.GridTicks = GridTickTypes.None;
             labelNew.MarkColor = color;
 
-            area.AxisY2.CustomLabels.Add(labelNew);
+            TryAddCustomLabel(area.AxisY2, labelNew);
         }
 
         private void ClearLabelOnY2(string name, string nameArea, Color color)
@@ -5297,6 +5290,8 @@ namespace OsEngine.Charts.CandleChart
             {
                 return;
             }
+
+            RemoveNullCustomLabels(area.AxisY2);
 
             ChartYLabels oldlabel = _labels.Find(labels => labels.AreaName == nameArea && labels.SeriesName == name);
 
@@ -6429,36 +6424,25 @@ namespace OsEngine.Charts.CandleChart
 
             for (int i = 0; chartSeries != null && i < chartSeries.Count; i++)
             {
-                if (chartSeries[i] == null)
+                Series chartSeriesItem = null;
+
+                try
                 {
-                    List<Series> noNullSeries = new List<Series>();
-
-                    for(int j = 0;j < chartSeries.Count;j++)
-                    {
-                        if (chartSeries[j] == null)
-                        {
-                            continue;
-                        }
-                        else
-                        {
-                            noNullSeries.Add(chartSeries[j]);
-                        }
-                    }
-
-                    _chart.Series.Clear();
-                    i--;
-
-                    for (int j = 0; j < noNullSeries.Count; j++)
-                    {
-                        _chart.Series.Add(noNullSeries[j]);
-                    }
-
+                    chartSeriesItem = chartSeries[i];
+                }
+                catch
+                {
                     continue;
                 }
 
-                if (chartSeries[i].ChartArea == areaName)
+                if (chartSeriesItem == null)
                 {
-                    seriesOnArea.Add(chartSeries[i]);
+                    continue;
+                }
+
+                if (chartSeriesItem.ChartArea == areaName)
+                {
+                    seriesOnArea.Add(chartSeriesItem);
                 }
             }
 
@@ -7295,7 +7279,13 @@ namespace OsEngine.Charts.CandleChart
             {
                 return;
             }
-            ChartArea area = _chart.ChartAreas[0];
+            ChartArea area = FindAreaByNameSafe("Prime");
+
+            if (area == null ||
+                area.AxisX == null)
+            {
+                return;
+            }
 
             double values = 0;
 
@@ -7309,6 +7299,11 @@ namespace OsEngine.Charts.CandleChart
             {
                 values = (int)_chart.ChartAreas[0].AxisX.ScaleView.Size;
                 firstPos = (int) _chart.ChartAreas[0].AxisX.ScaleView.Position;
+            }
+
+            if (values <= 0)
+            {
+                values = _myCandles.Count;
             }
 
             if (firstPos < 0 ||
@@ -7331,13 +7326,9 @@ namespace OsEngine.Charts.CandleChart
 
             area.AxisX.Interval = values/ labelCount;
 
-            while(area.AxisX.CustomLabels.Count < labelCount)
+            if (!TrySyncCustomLabelCount(area.AxisX, labelCount))
             {
-                area.AxisX.CustomLabels.Add(new CustomLabel());
-            }
-            while (area.AxisX.CustomLabels.Count > labelCount)
-            {
-                area.AxisX.CustomLabels.RemoveAt(0);
+                return;
             }
 
             double value = firstPos + area.AxisX.Interval;
@@ -7354,9 +7345,20 @@ namespace OsEngine.Charts.CandleChart
                     continue;
                 }
 
+                int candleIndex = (int)Math.Round(value);
+
+                if (candleIndex < 0)
+                {
+                    candleIndex = 0;
+                }
+                else if (candleIndex >= _myCandles.Count)
+                {
+                    candleIndex = _myCandles.Count - 1;
+                }
+
                 area.AxisX.CustomLabels[i].FromPosition = value - area.AxisX.Interval * 0.7;
                 area.AxisX.CustomLabels[i].ToPosition = value + area.AxisX.Interval * 0.7;
-                area.AxisX.CustomLabels[i].Text = _myCandles[(int)value].TimeStart.ToString(_cultureInterfaces);
+                area.AxisX.CustomLabels[i].Text = _myCandles[candleIndex].TimeStart.ToString(_cultureInterfaces);
                 
                 value += area.AxisX.Interval;
 
@@ -7366,6 +7368,80 @@ namespace OsEngine.Charts.CandleChart
                 }
             }
 
+        }
+
+        private void RemoveNullCustomLabels(Axis axis)
+        {
+            if (axis?.CustomLabels == null)
+            {
+                return;
+            }
+
+            try
+            {
+                for (int i = axis.CustomLabels.Count - 1; i >= 0; i--)
+                {
+                    if (axis.CustomLabels[i] == null)
+                    {
+                        axis.CustomLabels.RemoveAt(i);
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                SendLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        private bool TrySyncCustomLabelCount(Axis axis, int labelCount)
+        {
+            if (axis?.CustomLabels == null || labelCount < 0)
+            {
+                return false;
+            }
+
+            RemoveNullCustomLabels(axis);
+
+            try
+            {
+                while (axis.CustomLabels.Count < labelCount)
+                {
+                    axis.CustomLabels.Add(new CustomLabel());
+                }
+
+                while (axis.CustomLabels.Count > labelCount)
+                {
+                    axis.CustomLabels.RemoveAt(0);
+                }
+
+                return true;
+            }
+            catch (Exception error)
+            {
+                SendLogMessage(error.ToString(), LogMessageType.Error);
+                return false;
+            }
+        }
+
+        private bool TryAddCustomLabel(Axis axis, CustomLabel label)
+        {
+            if (axis?.CustomLabels == null || label == null)
+            {
+                return false;
+            }
+
+            RemoveNullCustomLabels(axis);
+
+            try
+            {
+                axis.CustomLabels.Add(label);
+                return true;
+            }
+            catch (Exception error)
+            {
+                SendLogMessage(error.ToString(), LogMessageType.Error);
+                return false;
+            }
         }
 
         /// <summary>

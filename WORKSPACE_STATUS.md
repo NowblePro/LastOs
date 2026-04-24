@@ -50,18 +50,26 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-22 16:26:36
+- Updated: 2026-04-24 13:33:02
 - Branch: `dev`
-- HEAD before push: `fc9baea`
+- HEAD before push: `b01cce4`
 - Pending changes before auto-log:
 
 `	ext
+ M project/OsEngine/Charts/CandleChart/WinFormsChartPainter.cs
+ M project/OsEngine/Entity/StrategyParemetrsUi.xaml
+ M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
+ M project/OsEngine/Language/EntityLocal.cs
+ M project/OsEngine/OsTrader/OsTraderMaster.cs
  M project/OsEngine/bin/Debug/OsEngine.exe
+?? REGRESSION_TEST_RUNBOOK.md
+?? project/OsEngine/obj_build/
 `"
     "
     
 - [D] .git
 - [D] doc
+- [D] Engine
 - [D] project
 - [D] related projects
 - [F] .gitignore
@@ -74,6 +82,7 @@
 - [F] push_main_from_dev.bat
 - [F] push_main_from_dev.ps1
 - [F] README.md
+- [F] REGRESSION_TEST_RUNBOOK.md
 - [F] update_osengine_robots_light_from_github.bat
 - [F] update_osengine_robots_light_from_github.log
 - [F] update_osengine_robots_light_from_github_dev.bat
@@ -102,6 +111,7 @@
 - [D] project/OsEngine/lua
 - [D] project/OsEngine/Market
 - [D] project/OsEngine/obj
+- [D] project/OsEngine/obj_build
 - [D] project/OsEngine/OsConverter
 - [D] project/OsEngine/OsData
 - [D] project/OsEngine/OsMiner
@@ -125,6 +135,16 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-24 13:33:02 | branch `dev` | message: `Настройки параметров, фикс мелких багов, фикс копий.`
+  Files before commit:
+  -  M project/OsEngine/Charts/CandleChart/WinFormsChartPainter.cs
+  -  M project/OsEngine/Entity/StrategyParemetrsUi.xaml
+  -  M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
+  -  M project/OsEngine/Language/EntityLocal.cs
+  -  M project/OsEngine/OsTrader/OsTraderMaster.cs
+  -  M project/OsEngine/bin/Debug/OsEngine.exe
+  - ?? REGRESSION_TEST_RUNBOOK.md
+  - ?? project/OsEngine/obj_build/
 - 2026-04-22 16:26:36 | branch `dev` | message: `Наконец-то добавление грида для всех роботов`
   Files before commit:
   -  M project/OsEngine/bin/Debug/OsEngine.exe
@@ -205,6 +225,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 

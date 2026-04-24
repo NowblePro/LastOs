@@ -351,6 +351,18 @@ namespace OsEngine.Language
             "Eng:Current value_" +
             "Ru:Текущее значение_");
 
+        public string ButtonOpenAllParameters => OsLocalization.ConvertToLocString(
+            "Eng:Open all parameters_" +
+            "Ru:Открыть все параметры_");
+
+        public string ButtonShowParameterSections => OsLocalization.ConvertToLocString(
+            "Eng:Show sections_" +
+            "Ru:Показать разделы_");
+
+        public string ParametersAllTab => OsLocalization.ConvertToLocString(
+            "Eng:All parameters_" +
+            "Ru:Все параметры_");
+
         public string ColumnPortfolio1 => OsLocalization.ConvertToLocString(
             "Eng:Portfolio_" +
             "Ru:Портфель_");

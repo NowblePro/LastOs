@@ -38,6 +38,7 @@ namespace OsEngine.Entity
 
             ButtonAccept.Content = OsLocalization.Entity.ButtonAccept;
             ButtonUpdate.Content = OsLocalization.Entity.ButtonUpdate;
+            UpdateOpenAllParametersButton();
 
             if (string.IsNullOrEmpty(settings.Title))
             {
@@ -57,24 +58,7 @@ namespace OsEngine.Entity
                 Title += " / " + panel.NameStrategyUniq;
             }
 
-            List<List<IIStrategyParameter>> sorted = GetParamSortedByTabName();
-
-            for(int i = 0;i < sorted.Count;i++)
-            {
-                if(sorted[i][0].TabName == null)
-                {
-                    CreateTab(sorted[i], settings.FirstTabLabel);
-                }
-                else
-                {
-                    CreateTab(sorted[i], sorted[i][0].TabName);
-                }
-            }
-            
-            for(int i = 0;i < settings.CustomTabs.Count;i++)
-            {
-                CreateCustomTab(settings.CustomTabs[i]);
-            }
+            BuildTabsBySections();
 
             this.Closed += ParemetrsUi_Closed;
 
@@ -91,17 +75,8 @@ namespace OsEngine.Entity
                 this.Closed -= ParemetrsUi_Closed;
                 _parameters = null;
 
-                if (_tabs != null)
-                {
-                    for (int i = 0; i < _tabs.Count; i++)
-                    {
-                        _tabs[i].Dispose();
-                        _tabs[i].ErrorEvent -= Painter_ErrorEvent;
-                    }
-
-                    _tabs.Clear();
-                    _tabs = null;
-                }
+                ClearTabs();
+                _tabs = null;
 
                 _panel = null;
             }
@@ -114,6 +89,8 @@ namespace OsEngine.Entity
                 }
             }
         }
+
+        private bool _isAllParametersMode;
 
         List<List<IIStrategyParameter>> GetParamSortedByTabName()
         {
@@ -147,6 +124,69 @@ namespace OsEngine.Entity
             }
 
             return sorted;
+        }
+
+        private void BuildTabsBySections()
+        {
+            ClearTabs();
+
+            List<List<IIStrategyParameter>> sorted = GetParamSortedByTabName();
+
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                if (sorted[i][0].TabName == null)
+                {
+                    CreateTab(sorted[i], _settings.FirstTabLabel);
+                }
+                else
+                {
+                    CreateTab(sorted[i], sorted[i][0].TabName);
+                }
+            }
+
+            for (int i = 0; i < _settings.CustomTabs.Count; i++)
+            {
+                CreateCustomTab(_settings.CustomTabs[i]);
+            }
+
+            _isAllParametersMode = false;
+            UpdateOpenAllParametersButton();
+        }
+
+        private void BuildAllParametersTab()
+        {
+            ClearTabs();
+            CreateTab(_parameters, OsLocalization.Entity.ParametersAllTab);
+            _isAllParametersMode = true;
+            UpdateOpenAllParametersButton();
+        }
+
+        private void ClearTabs()
+        {
+            if (_tabs != null)
+            {
+                for (int i = 0; i < _tabs.Count; i++)
+                {
+                    _tabs[i].Dispose();
+                    _tabs[i].ErrorEvent -= Painter_ErrorEvent;
+                }
+
+                _tabs.Clear();
+            }
+
+            TabControlSettings.Items.Clear();
+        }
+
+        private void UpdateOpenAllParametersButton()
+        {
+            if (ButtonOpenAllParameters == null)
+            {
+                return;
+            }
+
+            ButtonOpenAllParameters.Content = _isAllParametersMode
+                ? OsLocalization.Entity.ButtonShowParameterSections
+                : OsLocalization.Entity.ButtonOpenAllParameters;
         }
 
         private void CreateCustomTab(CustomTabToParametersUi tab)
@@ -198,6 +238,30 @@ namespace OsEngine.Entity
                 for (int i = 0; i < _tabs.Count; i++)
                 {
                     _tabs[i].Save();
+                }
+            }
+            catch (Exception ex)
+            {
+                _panel?.SendNewLogMessage(ex.ToString(), Logging.LogMessageType.Error);
+            }
+        }
+
+        private void ButtonOpenAllParameters_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            try
+            {
+                for (int i = 0; i < _tabs.Count; i++)
+                {
+                    _tabs[i].Save();
+                }
+
+                if (_isAllParametersMode)
+                {
+                    BuildTabsBySections();
+                }
+                else
+                {
+                    BuildAllParametersTab();
                 }
             }
             catch (Exception ex)
