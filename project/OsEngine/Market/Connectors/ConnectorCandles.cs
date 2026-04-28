@@ -503,6 +503,20 @@ namespace OsEngine.Market.Connectors
         }
         private string _securityClass;
 
+        public void SetSecurity(string securityName, string securityClass)
+        {
+            if (securityName == _securityName &&
+                securityClass == _securityClass)
+            {
+                return;
+            }
+
+            _securityName = securityName;
+            _securityClass = securityClass;
+            Save();
+            Reconnect();
+        }
+
         /// <summary>
         /// connector's security object
         /// </summary>

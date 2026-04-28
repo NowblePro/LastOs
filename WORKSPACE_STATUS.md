@@ -50,20 +50,24 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-24 13:33:02
+- Updated: 2026-04-28 13:43:27
 - Branch: `dev`
-- HEAD before push: `b01cce4`
+- HEAD before push: `3a0e6ed`
 - Pending changes before auto-log:
 
 `	ext
- M project/OsEngine/Charts/CandleChart/WinFormsChartPainter.cs
- M project/OsEngine/Entity/StrategyParemetrsUi.xaml
- M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
- M project/OsEngine/Language/EntityLocal.cs
- M project/OsEngine/OsTrader/OsTraderMaster.cs
+ M project/OsEngine/Market/Connectors/ConnectorCandles.cs
+ M project/OsEngine/OsTrader/Gui/BotTabsPainter.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
  M project/OsEngine/bin/Debug/OsEngine.exe
-?? REGRESSION_TEST_RUNBOOK.md
-?? project/OsEngine/obj_build/
+ M project/OsEngine/obj_build/Debug/OsEngine.exe
+?? project/OsEngine/bin_temp/
+?? project/OsEngine/bin_temp_trace/
+?? project/OsEngine/obj_build_rebuild/
+?? project/OsEngine/obj_build_rebuild_select/
+?? project/OsEngine/obj_build_rebuild_select2/
+?? project/OsEngine/obj_build_temp/
+?? project/OsEngine/obj_build_temp_trace/
 `"
     "
     
@@ -98,6 +102,8 @@
 ### project/OsEngine Snapshot
 - [D] project/OsEngine/Alerts
 - [D] project/OsEngine/bin
+- [D] project/OsEngine/bin_temp
+- [D] project/OsEngine/bin_temp_trace
 - [D] project/OsEngine/Candles
 - [D] project/OsEngine/Charts
 - [D] project/OsEngine/Common
@@ -112,6 +118,11 @@
 - [D] project/OsEngine/Market
 - [D] project/OsEngine/obj
 - [D] project/OsEngine/obj_build
+- [D] project/OsEngine/obj_build_rebuild
+- [D] project/OsEngine/obj_build_rebuild_select
+- [D] project/OsEngine/obj_build_rebuild_select2
+- [D] project/OsEngine/obj_build_temp
+- [D] project/OsEngine/obj_build_temp_trace
 - [D] project/OsEngine/OsConverter
 - [D] project/OsEngine/OsData
 - [D] project/OsEngine/OsMiner
@@ -135,6 +146,20 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-28 13:43:27 | branch `dev` | message: `Большое обновление: селект бумаг, улучшение дебага, создание теста`
+  Files before commit:
+  -  M project/OsEngine/Market/Connectors/ConnectorCandles.cs
+  -  M project/OsEngine/OsTrader/Gui/BotTabsPainter.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+  -  M project/OsEngine/bin/Debug/OsEngine.exe
+  -  M project/OsEngine/obj_build/Debug/OsEngine.exe
+  - ?? project/OsEngine/bin_temp/
+  - ?? project/OsEngine/bin_temp_trace/
+  - ?? project/OsEngine/obj_build_rebuild/
+  - ?? project/OsEngine/obj_build_rebuild_select/
+  - ?? project/OsEngine/obj_build_rebuild_select2/
+  - ?? project/OsEngine/obj_build_temp/
+  - ?? project/OsEngine/obj_build_temp_trace/
 - 2026-04-24 13:33:02 | branch `dev` | message: `Настройки параметров, фикс мелких багов, фикс копий.`
   Files before commit:
   -  M project/OsEngine/Charts/CandleChart/WinFormsChartPainter.cs
@@ -225,6 +250,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 

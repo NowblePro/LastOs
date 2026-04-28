@@ -17,6 +17,8 @@ using System.Linq;
 using System.Globalization;
 using System.Text;
 using OsEngine.Common.UI;
+using OsEngine.Market.Servers.Tester;
+using OsEngine.OsTrader.Panels.Tab;
 
 namespace OsEngine.OsTrader.Gui
 {
@@ -60,6 +62,7 @@ namespace OsEngine.OsTrader.Gui
              DataGridViewAutoSizeRowsMode.AllCells);
 
             newGrid.ScrollBars = ScrollBars.Vertical;
+            newGrid.EditMode = DataGridViewEditMode.EditOnEnter;
 
             newGrid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
@@ -89,7 +92,7 @@ namespace OsEngine.OsTrader.Gui
             DataGridViewColumn colum04 = new DataGridViewColumn();
             colum04.CellTemplate = cell0;
             colum04.HeaderText = OsLocalization.Trader.Label176;//"First Security";
-            colum04.ReadOnly = true;
+            colum04.ReadOnly = startProgram != StartProgram.IsTester;
             colum04.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             newGrid.Columns.Add(colum04);
 
@@ -149,16 +152,55 @@ namespace OsEngine.OsTrader.Gui
             _host.Child = _grid;
 
             _grid.Click += _grid_Click;
+            _grid.CellClick += _grid_CellClick;
             _grid.CellBeginEdit += _grid_CellBeginEdit;
             _grid.CellEndEdit += _grid_CellEndEdit;
+            _grid.EditingControlShowing += _grid_EditingControlShowing;
             _grid.MouseLeave += _grid_MouseLeave;
             _grid.CellMouseClick += _grid_CellMouseClick;
+            _grid.DataError += _grid_DataError;
+        }
+
+        private void _grid_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            try
+            {
+                if (e.RowIndex < 0 || e.ColumnIndex != 3)
+                {
+                    return;
+                }
+
+                if (_grid.Rows.Count <= e.RowIndex ||
+                    _grid.Rows[e.RowIndex].Cells.Count <= e.ColumnIndex ||
+                    !(_grid.Rows[e.RowIndex].Cells[e.ColumnIndex] is DataGridViewComboBoxCell))
+                {
+                    return;
+                }
+
+                _grid.CurrentCell = _grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                _grid.BeginEdit(true);
+
+                if (_grid.EditingControl is ComboBox comboBox)
+                {
+                    comboBox.DroppedDown = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _master.SendNewLogMessage(ex.ToString(), Logging.LogMessageType.Error);
+            }
         }
 
         private void _grid_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
             try
             {
+                if (e.ColumnIndex == 3)
+                {
+                    ApplyTesterBotSecurityChange(e.RowIndex);
+                    return;
+                }
+
                 if (e.ColumnIndex != 1)
                 {
                     return;
@@ -197,6 +239,36 @@ namespace OsEngine.OsTrader.Gui
 
                 _master.PanelsArray[rowIndex].PublicName = newName;
                 _master.Save();
+            }
+            catch (Exception ex)
+            {
+                _master.SendNewLogMessage(ex.ToString(), Logging.LogMessageType.Error);
+            }
+        }
+
+        private void _grid_DataError(object sender, DataGridViewDataErrorEventArgs e)
+        {
+            if (e != null)
+            {
+                e.Cancel = false;
+                e.ThrowException = false;
+            }
+        }
+
+        private void _grid_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
+        {
+            try
+            {
+                if (_grid.CurrentCell == null ||
+                    _grid.CurrentCell.ColumnIndex != 3)
+                {
+                    return;
+                }
+
+                if (e.Control is ComboBox comboBox)
+                {
+                    comboBox.DroppedDown = true;
+                }
             }
             catch (Exception ex)
             {
@@ -901,7 +973,8 @@ namespace OsEngine.OsTrader.Gui
         {
             try
             {
-                if(e.ColumnIndex < 3)
+                if (e.ColumnIndex != 5 &&
+                    e.ColumnIndex != 6)
                 {
                     return;
                 }
@@ -1121,19 +1194,7 @@ colum10.HeaderText = "Action";
             row.Cells.Add(new DataGridViewTextBoxCell());
             row.Cells[2].Value = bot.GetType().Name;
 
-            row.Cells.Add(new DataGridViewTextBoxCell());
-
-            if(bot.TabsSimple.Count != 0 &&
-                bot.TabsSimple[0].Security != null)
-            {
-                row.Cells[3].Value = bot.TabsSimple[0].Security.Name;
-            }
-            else if (bot.TabsSimple.Count != 0 &&
-                bot.TabsSimple[0].Connector != null &&
-                string.IsNullOrEmpty(bot.TabsSimple[0].Connector.SecurityName) == false)
-            {
-                row.Cells[3].Value = bot.TabsSimple[0].Connector.SecurityName;
-            }
+            row.Cells.Add(CreatePrimarySecurityCell(bot));
 
             row.Cells.Add(new DataGridViewTextBoxCell());
             row.Cells[4].Value = bot.PositionsCount.ToString() + "/" + bot.AllPositionsCount.ToString();
@@ -1165,6 +1226,181 @@ colum10.HeaderText = "Action";
             }
 
             return row;
+        }
+
+        private DataGridViewCell CreatePrimarySecurityCell(BotPanel bot)
+        {
+            string currentSecurityName = GetPrimarySecurityName(bot);
+
+            if (!CanEditPrimarySecurity(bot))
+            {
+                DataGridViewTextBoxCell textCell = new DataGridViewTextBoxCell();
+                textCell.Value = currentSecurityName;
+                return textCell;
+            }
+
+            List<string> testerSecurities = GetTesterSecurityNames();
+
+            if (testerSecurities.Count == 0)
+            {
+                DataGridViewTextBoxCell textCell = new DataGridViewTextBoxCell();
+                textCell.Value = currentSecurityName;
+                return textCell;
+            }
+
+            DataGridViewComboBoxCell comboCell = new DataGridViewComboBoxCell();
+            comboCell.DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox;
+            comboCell.DisplayStyleForCurrentCellOnly = false;
+            comboCell.FlatStyle = FlatStyle.Popup;
+            comboCell.MaxDropDownItems = 20;
+
+            for (int i = 0; i < testerSecurities.Count; i++)
+            {
+                comboCell.Items.Add(testerSecurities[i]);
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentSecurityName) &&
+                comboCell.Items.Contains(currentSecurityName) == false)
+            {
+                comboCell.Items.Add(currentSecurityName);
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentSecurityName))
+            {
+                comboCell.Value = currentSecurityName;
+            }
+
+            return comboCell;
+        }
+
+        private string GetPrimarySecurityName(BotPanel bot)
+        {
+            BotTabSimple tab = GetPrimarySimpleTab(bot);
+
+            if (tab == null)
+            {
+                return null;
+            }
+
+            if (tab.Security != null)
+            {
+                return tab.Security.Name;
+            }
+
+            if (tab.Connector != null &&
+                string.IsNullOrWhiteSpace(tab.Connector.SecurityName) == false)
+            {
+                return tab.Connector.SecurityName;
+            }
+
+            return null;
+        }
+
+        private BotTabSimple GetPrimarySimpleTab(BotPanel bot)
+        {
+            if (bot == null ||
+                bot.TabsSimple == null ||
+                bot.TabsSimple.Count == 0)
+            {
+                return null;
+            }
+
+            return bot.TabsSimple[0];
+        }
+
+        private bool CanEditPrimarySecurity(BotPanel bot)
+        {
+            if (_master == null ||
+                _master._startProgram != StartProgram.IsTester)
+            {
+                return false;
+            }
+
+            BotTabSimple tab = GetPrimarySimpleTab(bot);
+
+            return tab != null && tab.Connector != null;
+        }
+
+        private List<string> GetTesterSecurityNames()
+        {
+            TesterServer testerServer = GetTesterServer();
+
+            if (testerServer == null ||
+                testerServer.Securities == null)
+            {
+                return new List<string>();
+            }
+
+            return testerServer.Securities
+                .Where(security => security != null && string.IsNullOrWhiteSpace(security.Name) == false)
+                .Select(security => security.Name)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name)
+                .ToList();
+        }
+
+        private TesterServer GetTesterServer()
+        {
+            if (ServerMaster.GetServers() == null)
+            {
+                return null;
+            }
+
+            return ServerMaster.GetServers()
+                .FirstOrDefault(server => server != null && server.ServerType == ServerType.Tester) as TesterServer;
+        }
+
+        private void ApplyTesterBotSecurityChange(int rowIndex)
+        {
+            if (_master == null ||
+                _master.PanelsArray == null ||
+                rowIndex < 0 ||
+                rowIndex >= _master.PanelsArray.Count)
+            {
+                return;
+            }
+
+            BotPanel bot = _master.PanelsArray[rowIndex];
+
+            if (!CanEditPrimarySecurity(bot))
+            {
+                return;
+            }
+
+            if (rowIndex >= _grid.Rows.Count ||
+                _grid.Rows[rowIndex].Cells.Count <= 3 ||
+                _grid.Rows[rowIndex].Cells[3].Value == null)
+            {
+                return;
+            }
+
+            string selectedSecurityName = _grid.Rows[rowIndex].Cells[3].Value.ToString();
+
+            if (string.IsNullOrWhiteSpace(selectedSecurityName))
+            {
+                return;
+            }
+
+            BotTabSimple tab = GetPrimarySimpleTab(bot);
+
+            if (tab == null ||
+                tab.Connector == null ||
+                string.Equals(tab.Connector.SecurityName, selectedSecurityName, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            TesterServer testerServer = GetTesterServer();
+            Security selectedSecurity = testerServer?.Securities?
+                .FirstOrDefault(security => security != null &&
+                                            string.Equals(security.Name, selectedSecurityName, StringComparison.OrdinalIgnoreCase));
+
+            if (selectedSecurity == null)
+            {
+                return;
+            }
+
+            tab.Connector.SetSecurity(selectedSecurity.Name, selectedSecurity.NameClass);
         }
 
         private DataGridViewRow GetNullRow()
@@ -1301,6 +1537,8 @@ colum9.HeaderText = "Journal";
 
                     BotPanel bot = _master.PanelsArray[i];
 
+                    RefreshPrimarySecurityCell(row, bot);
+
                     if (bot.TabsSimple.Count != 0 &&
                         bot.TabsSimple[0].Security != null)
                     {
@@ -1338,6 +1576,32 @@ colum9.HeaderText = "Journal";
             {
                 _master.SendNewLogMessage(error.ToString(), Logging.LogMessageType.Error);
             }
+        }
+
+        private void RefreshPrimarySecurityCell(DataGridViewRow row, BotPanel bot)
+        {
+            if (row == null ||
+                row.Cells == null ||
+                row.Cells.Count <= 3)
+            {
+                return;
+            }
+
+            DataGridViewCell currentCell = row.Cells[3];
+            bool shouldBeCombo = CanEditPrimarySecurity(bot) && GetTesterSecurityNames().Count > 0;
+            bool isCombo = currentCell is DataGridViewComboBoxCell;
+
+            if (shouldBeCombo == isCombo)
+            {
+                return;
+            }
+
+            DataGridViewCell newCell = CreatePrimarySecurityCell(bot);
+            newCell.Style.BackColor = currentCell.Style.BackColor;
+            newCell.Style.ForeColor = currentCell.Style.ForeColor;
+            newCell.Style.SelectionBackColor = currentCell.Style.SelectionBackColor;
+            newCell.Style.SelectionForeColor = currentCell.Style.SelectionForeColor;
+            row.Cells[3] = newCell;
         }
 
         #region подсветка робота по клику по позиции

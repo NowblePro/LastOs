@@ -76,6 +76,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private int _lastProcessedCandlesCount;
         private DateTime _lastProcessedCandleTime = DateTime.MinValue;
         private GridLevelState _levelAwaitingImmediateBinding;
+        private bool _debugSessionHeaderLogged;
 
         public MRZScoreNatrGrid(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -195,7 +196,19 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             level.Consumed = true;
             level.WaitingForReplacement = false;
             level.CancelRequested = false;
-            LogDebug($"Level filled: side={position.Direction}, index={level.Index}, deviation={level.DeviationPercent:F4}%, price={level.Price:F8}, volume={level.Volume:F8}");
+            decimal plannedPrice = GetPlannedEntryPrice(position, level.Price);
+            DateTime? signalTime = GetPlannedEntrySignalTime(position);
+            decimal actualEntry = position.EntryPrice;
+            decimal entryDelta = actualEntry - plannedPrice;
+            string signalLag = signalTime.HasValue && position.TimeOpen != DateTime.MinValue
+                ? (position.TimeOpen - signalTime.Value).ToString()
+                : "n/a";
+
+            LogDebug(
+                $"Level filled: side={position.Direction}, index={level.Index}, deviation={level.DeviationPercent:F4}%, " +
+                $"plannedPrice={plannedPrice:F8}, actualEntry={actualEntry:F8}, delta={entryDelta:F8}, " +
+                $"signalTime={FormatDateTime(signalTime)}, fillTime={FormatDateTime(position.TimeOpen)}, lag={signalLag}, " +
+                $"volume={level.Volume:F8}, position={position.Number}, state={position.State}, signalOpen={position.SignalTypeOpen}");
             UpdateDynamicStop(position);
             UpdateDynamicProfit(position);
         }
@@ -216,7 +229,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 ReopenPendingLevel(level, "DDR replacement after cancel/fail");
             }
-            LogDebug($"Level opening failed/cancelled: index={level.Index}, deviation={level.DeviationPercent:F4}%");
+            LogDebug(
+                $"Level opening failed/cancelled: index={level.Index}, deviation={level.DeviationPercent:F4}%, " +
+                $"plannedPrice={GetPlannedEntryPrice(position, level.Price):F8}, signalTime={FormatDateTime(GetPlannedEntrySignalTime(position))}, " +
+                $"position={position?.Number}, state={position?.State}");
         }
 
         private void _tab_PositionClosingSuccesEvent(Position position)
@@ -233,7 +249,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             level.Consumed = true;
             level.WaitingForReplacement = false;
             level.CancelRequested = false;
-            LogDebug($"Level position closed: index={level.Index}, deviation={level.DeviationPercent:F4}%");
+            LogDebug(
+                $"Level position closed: index={level.Index}, deviation={level.DeviationPercent:F4}%, " +
+                $"position={position.Number}, entry={position.EntryPrice:F8}, close={position.ClosePrice:F8}, volume={position.OpenVolume:F8}, " +
+                $"pnl={position.ProfitPortfolioPunkt:F8}, timeOpen={FormatDateTime(position.TimeOpen)}, timeClose={FormatDateTime(position.TimeClose)}, " +
+                $"signalClose={position.SignalTypeClose}");
         }
 
         private void _ddrDecoration_DDREvent(object sender, EventArgs e)
@@ -308,6 +328,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 return;
             }
 
+            LogDebugSessionHeader(last);
+
             if (NeedResetStateOnTesterRestart(candles, last))
             {
                 ResetRuntimeState("Tester restart detected");
@@ -322,35 +344,58 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (_gridSide != Side.None && IsMarketOrderMode())
             {
+                LogDebug($"Candle step: mode=MarketGrid, {GetCandleSnapshot(last)}, {GetGridStateSnapshot()}");
                 HandleMarketGrid(last);
             }
             else if (_gridSide != Side.None && HasConsumedLevels())
             {
+                LogDebug($"Candle step: mode=ActiveSeries, {GetCandleSnapshot(last)}, {GetGridStateSnapshot()}");
                 HandleActiveSeries(last);
                 return;
             }
             else if (_gridSide != Side.None)
             {
+                LogDebug($"Candle step: mode=PendingGrid, {GetCandleSnapshot(last)}, {GetGridStateSnapshot()}");
                 HandlePendingGrid(last);
             }
 
             if (_regime == BotRegime.Off)
             {
+                LogDebug($"Skip build: regime off, {GetCandleSnapshot(last)}");
                 return;
             }
 
             if (!IsTradingTime())
             {
+                LogDebug($"Skip build: outside trading time, time={last.TimeStart}, start={_startTradeTime.Value}, end={_endTradeTime.Value}");
                 return;
             }
 
             if (_gridSide != Side.None)
             {
+                LogDebug($"Skip build: existing grid remains active, {GetGridStateSnapshot()}");
+                return;
+            }
+
+            if (candles.Count <= Math.Max(_periodSma.ValueInt, _natrLength.ValueInt))
+            {
+                LogDebug(
+                    $"Skip build: insufficient candles, candles={candles.Count}, required>{Math.Max(_periodSma.ValueInt, _natrLength.ValueInt)}, " +
+                    $"{GetCandleSnapshot(last)}");
+                return;
+            }
+
+            if (!_zScoreLow.Ready || !_zScoreHigh.Ready)
+            {
+                LogDebug(
+                    $"Skip build: zscore indicators not ready, zLowReady={_zScoreLow.Ready}, zHighReady={_zScoreHigh.Ready}, " +
+                    $"{GetCandleSnapshot(last)}");
                 return;
             }
 
             if (GetCheckers().Any(checker => !checker(candles)))
             {
+                LogDebug($"Skip build: generic checker blocked, {GetCandleSnapshot(last)}");
                 return;
             }
 
@@ -435,6 +480,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (sma <= 0)
             {
+                LogDebug($"Skip grid build: SMA unavailable at candle={candles[lastIndex].TimeStart}");
                 return;
             }
 
@@ -443,17 +489,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (side == Side.None)
             {
+                LogDebug($"Skip grid build: close equals SMA, {GetDecisionSnapshot(last, side, sma)}");
                 return;
             }
 
             if ((_regime == BotRegime.OnlyLong && side != Side.Buy) ||
                 (_regime == BotRegime.OnlyShort && side != Side.Sell))
             {
+                LogDebug($"Skip grid build: regime/side mismatch, {GetDecisionSnapshot(last, side, sma)}");
                 return;
             }
 
             if (!CanCreateGridByFilters(side, last, sma))
             {
+                LogDebug($"Skip grid build: directional filters blocked, {GetDecisionSnapshot(last, side, sma)}");
                 return;
             }
 
@@ -461,6 +510,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (natrPercent < 0)
             {
+                LogDebug($"Skip grid build: NATR unavailable, {GetDecisionSnapshot(last, side, sma)}");
                 return;
             }
 
@@ -468,11 +518,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (thresholdPercent < 0)
             {
+                LogDebug($"Skip grid build: threshold unavailable, {GetDecisionSnapshot(last, side, sma, natrPercent)}");
                 return;
             }
 
             decimal currentDeviationPercent = GetDeviationPercent(side, sma, last.Close);
             decimal triggeredDeviationPercent = GetTriggeredDeviationPercent(side, sma, last);
+
+            LogDebug(
+                $"Grid build decision: {GetDecisionSnapshot(last, side, sma, natrPercent, thresholdPercent, currentDeviationPercent, triggeredDeviationPercent)}");
 
             List<GridLevelState> levels = CreateLevels(
                 side,
@@ -486,6 +540,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             if (levels.Count == 0)
             {
+                LogDebug(
+                    $"Skip grid build: no valid levels survived generation, " +
+                    $"{GetDecisionSnapshot(last, side, sma, natrPercent, thresholdPercent, currentDeviationPercent, triggeredDeviationPercent)}");
                 return;
             }
 
@@ -1362,6 +1419,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 if (HasPendingCancelRequests())
                 {
+                    LogDebug(
+                        $"Filter blocked by volatile stop pending cancels: side={side}, " +
+                        $"{GetDecisionSnapshot(last, side, sma)}");
                     return false;
                 }
 
@@ -1374,6 +1434,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     }
                     else
                     {
+                        LogDebug(
+                            $"Filter blocked by volatile stop latch: side=Buy, close={last.Close:F8}, sma={sma:F8}, " +
+                            $"{GetGridStateSnapshot()}");
                         return false;
                     }
                 }
@@ -1386,6 +1449,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     }
                     else
                     {
+                        LogDebug(
+                            $"Filter blocked by volatile stop latch: side=Sell, close={last.Close:F8}, sma={sma:F8}, " +
+                            $"{GetGridStateSnapshot()}");
                         return false;
                     }
                 }
@@ -1532,6 +1598,93 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 SendNewLogMessage(message, LogMessageType.System);
             }
+        }
+
+        private void LogDebugSessionHeader(Candle last)
+        {
+            if (!_debugLogging.ValueBool || _debugSessionHeaderLogged)
+            {
+                return;
+            }
+
+            _debugSessionHeaderLogged = true;
+
+            string securityName = _tab?.Security?.Name ?? _tab?.Connector?.SecurityName ?? "n/a";
+            string securityClass = _tab?.Security?.NameClass ?? _tab?.Connector?.SecurityClass ?? "n/a";
+            string timeFrame = _tab?.TimeFrame.ToString() ?? "n/a";
+
+            LogDebug(
+                $"Debug session context: program={StartProgram}, bot={NameStrategyUniq}, security={securityName}, class={securityClass}, timeframe={timeFrame}, " +
+                $"regime={_regime}, orderType={GetSelectedOrderType()}, volumeType={_volumeType.ValueString}, volumeParam={_volumeOnPosition.ValueDecimal:F8}, " +
+                $"gridSize={_gridSize.ValueInt}, smaPeriod={_periodSma.ValueInt}, emaPeriod={_emaLength.ValueInt}, zEnter={_zEnterBase.ValueDecimal:F4}, " +
+                $"fixPercent={_fixPercent.ValueDecimal:F4}, natrLength={_natrLength.ValueInt}, natrMultiplier={_natrMult.ValueDecimal:F4}, " +
+                $"r={_r.ValueDecimal:F4}, debugCandle={GetCandleSnapshot(last)}");
+        }
+
+        private string GetDecisionSnapshot(
+            Candle last,
+            Side side,
+            decimal sma,
+            decimal? natrPercent = null,
+            decimal? thresholdPercent = null,
+            decimal? currentDeviationPercent = null,
+            decimal? triggeredDeviationPercent = null)
+        {
+            string natr = natrPercent.HasValue ? natrPercent.Value.ToString("F4") : "n/a";
+            string threshold = thresholdPercent.HasValue ? thresholdPercent.Value.ToString("F4") : "n/a";
+            string currentDeviation = currentDeviationPercent.HasValue ? currentDeviationPercent.Value.ToString("F4") : "n/a";
+            string triggeredDeviation = triggeredDeviationPercent.HasValue ? triggeredDeviationPercent.Value.ToString("F4") : "n/a";
+
+            return
+                $"{GetCandleSnapshot(last)}, sideCandidate={side}, sma={sma:F8}, ema={GetCurrentEma():F8}, " +
+                $"change24={_change24?.Change:F4}, canBuy={_change24?.CanBuy}, canSell={_change24?.CanSell}, " +
+                $"emaCanBuy={_canEnterByEma?.CanBuy}, emaCanSell={_canEnterByEma?.CanSell}, " +
+                $"natr={natr}, threshold={threshold}, currentDeviation={currentDeviation}, triggeredDeviation={triggeredDeviation}, " +
+                $"{GetGridStateSnapshot()}";
+        }
+
+        private string GetCandleSnapshot(Candle candle)
+        {
+            if (candle == null)
+            {
+                return "candle=n/a";
+            }
+
+            return
+                $"candle={candle.TimeStart:yyyy-MM-dd HH:mm:ss}, o={candle.Open:F8}, h={candle.High:F8}, l={candle.Low:F8}, c={candle.Close:F8}";
+        }
+
+        private string GetGridStateSnapshot()
+        {
+            int totalLevels = _gridLevels?.Count ?? 0;
+            int consumedLevels = _gridLevels?.Count(level => level.Consumed) ?? 0;
+            int levelsAwaitingFill = _levelsAwaitingOpeningSuccess?.Count ?? 0;
+            int levelsWithPosition = _gridLevels?.Count(level => level.Position != null) ?? 0;
+            int pendingOpenOrders = _gridLevels?.Count(level =>
+                level.Position != null &&
+                level.Position.OpenVolume == 0 &&
+                level.Position.State != PositionStateType.Done &&
+                level.Position.State != PositionStateType.OpeningFail) ?? 0;
+            int activeFilledPositions = _gridLevels?.Count(level =>
+                level.Position != null &&
+                level.Position.OpenVolume > 0 &&
+                level.Position.State != PositionStateType.Done &&
+                level.Position.State != PositionStateType.OpeningFail) ?? 0;
+
+            return
+                $"gridSide={_gridSide}, gridSignal={FormatDateTime(_gridSignalTime)}, volatileStop={_volatileStopActive}/{_volatileStopDirection}, " +
+                $"levelsTotal={totalLevels}, consumed={consumedLevels}, withPosition={levelsWithPosition}, awaitingFill={levelsAwaitingFill}, " +
+                $"pendingOrders={pendingOpenOrders}, activeFilled={activeFilledPositions}";
+        }
+
+        private string FormatDateTime(DateTime? time)
+        {
+            if (!time.HasValue || time.Value == DateTime.MinValue)
+            {
+                return "n/a";
+            }
+
+            return time.Value.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
         private void VolatileStopHandler()
@@ -1837,6 +1990,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 _tab.CloseAtStop(position, stopPrice, orderPrice);
             }
+
+            bool changed = !position.StopOrderIsActiv || position.StopOrderPrice != stopPrice;
+
+            if (changed)
+            {
+                LogDebug(
+                    $"Protective stop placed: position={position.Number}, direction={position.Direction}, mode={GetSelectedOrderType()}, " +
+                    $"stopPrice={stopPrice:F8}, orderPrice={orderPrice:F8}, entry={position.EntryPrice:F8}, plannedEntry={GetPlannedEntryPrice(position, position.EntryPrice):F8}");
+            }
         }
 
         private void PlaceProfitOrder(Position position, decimal targetPrice)
@@ -1858,6 +2020,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             else
             {
                 _tab.CloseAtProfit(position, targetPrice, orderPrice);
+            }
+
+            bool changed = !position.ProfitOrderIsActiv || position.ProfitOrderPrice != targetPrice;
+
+            if (changed)
+            {
+                LogDebug(
+                    $"Protective profit placed: position={position.Number}, direction={position.Direction}, mode={GetSelectedOrderType()}, " +
+                    $"targetPrice={targetPrice:F8}, orderPrice={orderPrice:F8}, entry={position.EntryPrice:F8}, plannedEntry={GetPlannedEntryPrice(position, position.EntryPrice):F8}");
             }
         }
 
@@ -2119,6 +2290,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         protected override void ParametersChangedByUser()
         {
+            _debugSessionHeaderLogged = false;
             SetOrderType();
             SetSmaParameters();
             SetEmaParameters();
