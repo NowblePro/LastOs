@@ -50,13 +50,22 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-28 13:46:37
+- Updated: 2026-04-28 15:01:33
 - Branch: `dev`
-- HEAD before push: `9a372ac`
+- HEAD before push: `0651ec2`
 - Pending changes before auto-log:
 
 `	ext
-working tree clean
+ M project/OsEngine/Common/LogDecoration.cs
+ M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/LrZZAtrTakeSmaEntr.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZAtrRrDdr.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrRR.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrTakeSMA.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+ M project/OsEngine/bin/Debug/OsEngine.exe
+?? project/OsEngine/obj_build_debug_all/
+?? project/OsEngine/obj_build_debug_all2/
 `"
     "
     
@@ -107,6 +116,8 @@ working tree clean
 - [D] project/OsEngine/Market
 - [D] project/OsEngine/obj
 - [D] project/OsEngine/obj_build
+- [D] project/OsEngine/obj_build_debug_all
+- [D] project/OsEngine/obj_build_debug_all2
 - [D] project/OsEngine/obj_build_rebuild
 - [D] project/OsEngine/obj_build_rebuild_select
 - [D] project/OsEngine/obj_build_rebuild_select2
@@ -135,6 +146,18 @@ working tree clean
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-28 15:01:33 | branch `dev` | message: `Большое обновление: селект бумаг, улучшение дебага, создание теста`
+  Files before commit:
+  -  M project/OsEngine/Common/LogDecoration.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/LrZZAtrTakeSmaEntr.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZAtrRrDdr.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrRR.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrTakeSMA.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+  -  M project/OsEngine/bin/Debug/OsEngine.exe
+  - ?? project/OsEngine/obj_build_debug_all/
+  - ?? project/OsEngine/obj_build_debug_all2/
 - 2026-04-28 13:46:37 | branch `dev` | message: `Workspace update 2026-04-28 13:46:37`
   Files before commit:
   - no pending changes before auto-log update
@@ -242,6 +265,7 @@ working tree clean
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 

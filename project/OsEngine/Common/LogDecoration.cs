@@ -25,7 +25,14 @@ namespace OsEngine.Common
         {
             _bot = bot;
             _tab = bot.TabsSimple[0];
-            _debugLogging = bot.CreateParameter("Debug Logging", false, "Robot");
+            _debugLogging = bot.Parameters?
+                .FirstOrDefault(p => p.Name == "Debug Logging") as StrategyParameterBool;
+
+            if (_debugLogging == null)
+            {
+                _debugLogging = bot.CreateParameter("Debug Logging", false, "Debug");
+            }
+
             bot.ParametrsChangeByUser += Bot_ParametrsChangeByUser;
             string path = Path.Combine(AppContext.BaseDirectory, "Engine", "Log", "Robots");
             if (!Directory.Exists(path))

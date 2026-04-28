@@ -84,7 +84,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _zEnterBase = CreateParameter("Z Enter Base", 3m, 1m, 5m, 0.5m, "Robot");
             _gridSize = CreateParameter("Grid Size", 7, 1, 20, 1, "Robot");
             _spread = CreateParameter("Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
-            _debugLogging = CreateParameter("Debug Logging", false, "Debug");
+            _debugLogging = GetOrCreateDebugLoggingParameter();
             string[] centralLineTypes = Enum.GetNames(typeof(CentralLineType));
             _centralLine = CreateParameter("Central Line", CentralLineType.LR.ToString(), centralLineTypes, "Robot");
             _enterFirstPosition = CreateParameter("Enter First Position", true, "Robot");

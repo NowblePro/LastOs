@@ -90,7 +90,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _gridSize = CreateParameter("Grid Size", 7, 1, 20, 1, "Robot");
             _natrLength = CreateParameter("NATR Length", 14, 5, 200, 1, "Robot");
             _natrMult = CreateParameter("NATR Multiplier", 2m, 0m, 10m, 0.1m, "Robot");
-            _debugLogging = CreateParameter("Debug Logging", false, "Debug");
+            _debugLogging = GetOrCreateDebugLoggingParameter();
             _emaStopEnable = CreateParameter("EMA Stop Enable", false, "Ema Filter");
             _zScoreChannelTpEnable = CreateParameter("ZScore Channel TP Enable", false, "ATR");
 

@@ -81,7 +81,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _gridSize = CreateParameter("Grid Size", 7, 1, 20, 1, "Robot");
             _spread = CreateParameter("Spread", 0.2m, 0.01m, 5m, 0.01m, "Robot");
             _atrMultDev = CreateParameter("Atr Mult Setka", 1m, 0.1m, 5m, 0.1m, "ATR");
-            _debugLogging = CreateParameter("Debug Logging", false, "Debug");
+            _debugLogging = GetOrCreateDebugLoggingParameter();
             _enterFirstPosition = CreateParameter("Enter First Position", true, "Robot");
             _onlyOutsideChannel = CreateParameter("Only Outside The Channel", false, "Robot");
             _multipleCandlePositions = CreateParameter("Multiple Candle Position", false, "Robot");
