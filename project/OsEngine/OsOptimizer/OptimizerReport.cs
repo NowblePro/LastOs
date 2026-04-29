@@ -116,6 +116,13 @@ namespace OsEngine.OsOptimizer
                     return rep2.ProfitFactor.CompareTo(rep1.ProfitFactor);
                 });
             }
+            else if (sortType == SortBotsType.Stability)
+            {
+                reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
+                {
+                    return rep2.Stability.CompareTo(rep1.Stability);
+                });
+            }
             else if (sortType == SortBotsType.PayOffRatio)
             {
                 reports.Sort(delegate (OptimizerReport rep1, OptimizerReport rep2)
@@ -403,6 +410,7 @@ namespace OsEngine.OsOptimizer
                 tab.PayOffRatio = PositionStatisticGenerator.GetPayOffRatio(posesArray);
                 tab.SharpRatio = PositionStatisticGenerator.GetSharpRatio(posesArray,7);
                 tab.SmaDeviation = PositionStatisticGenerator.GetSmaDeviation(posesArray);
+                tab.Stability = PositionStatisticGenerator.GetStabilityScore(posesArray);
                 tab.TabType = bot.TabsSimple[i].GetType().Name;
             }
 
@@ -428,6 +436,7 @@ namespace OsEngine.OsOptimizer
                 PayOffRatio = TabsReports[0].PayOffRatio;
                 SharpRatio = TabsReports[0].SharpRatio;
                 SmaDeviation = TabsReports[0].SmaDeviation;
+                Stability = TabsReports[0].Stability;
                 ProfitDealCount = allPositionsForAllTabs.Count(p => p.ProfitPortfolioPunkt > 0);
                 RRProfit = PositionStatisticGenerator.GetAllMiddleProfitInProfitInPunktOnDeposit(posesArray) / Math.Max(Math.Abs(PositionStatisticGenerator.GetAllMiddleLossInLossInPunktOnDeposit(posesArray)), 0.01m);
                 WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
@@ -450,6 +459,7 @@ namespace OsEngine.OsOptimizer
                 PayOffRatio = PositionStatisticGenerator.GetPayOffRatio(posesArray);
                 SharpRatio = PositionStatisticGenerator.GetSharpRatio(posesArray, 7);
                 SmaDeviation = PositionStatisticGenerator.GetSmaDeviation(posesArray);
+                Stability = PositionStatisticGenerator.GetStabilityScore(posesArray);
                 ProfitDealCount = posesArray.Count(p => p.ProfitPortfolioPunkt > 0);
                 RRProfit = PositionStatisticGenerator.GetAllMiddleProfitInProfitInPunktOnDeposit(posesArray) / Math.Max(Math.Abs(PositionStatisticGenerator.GetAllMiddleLossInLossInPunktOnDeposit(posesArray)), 0.01m);
                 WinRate = PositionStatisticGenerator.CalculateWinRate(ProfitDealCount, PositionsCount);
@@ -470,6 +480,8 @@ namespace OsEngine.OsOptimizer
         public decimal AverageProfitPercentOneContract;
 
         public decimal ProfitFactor;
+
+        public decimal Stability;
 
         public decimal PayOffRatio;
 
@@ -568,6 +580,7 @@ namespace OsEngine.OsOptimizer
                 reportTabs += TabsReports[i].GetSaveString() + "&";
             }
             result += reportTabs + "@";
+            result += Stability + "@";
 
             return result;
         }
@@ -604,6 +617,12 @@ namespace OsEngine.OsOptimizer
                 faze.LoadFromSaveString(reportTabs[i]);
                 TabsReports.Add(faze);
             }
+
+            if (str.Length > 14 &&
+                string.IsNullOrWhiteSpace(str[14]) == false)
+            {
+                Stability = str[14].ToDecimal();
+            }
         }
     }
 
@@ -626,6 +645,8 @@ namespace OsEngine.OsOptimizer
         public decimal AverageProfitPercentOneContract;
 
         public decimal ProfitFactor;
+
+        public decimal Stability;
 
         public decimal PayOffRatio;
 
@@ -652,6 +673,7 @@ namespace OsEngine.OsOptimizer
             result += TotalProfitPersent + "*";
             result += SharpRatio + "*";
             result += SmaDeviation + "*";
+            result += Stability + "*";
 
             return result;
         }
@@ -679,6 +701,12 @@ namespace OsEngine.OsOptimizer
 
             SharpRatio = save[11].ToDecimal();
             SmaDeviation = save[12].ToDecimal();
+
+            if (save.Length > 13 &&
+                string.IsNullOrWhiteSpace(save[13]) == false)
+            {
+                Stability = save[13].ToDecimal();
+            }
         }
     }
 }

@@ -466,6 +466,94 @@ namespace OsEngine.Journal.Internal
             return Math.Round(sma_max_dev, 4);
         }
 
+        /// <summary>
+        /// Measure equity curve stability versus a straight line from the first point to the final pnl.
+        /// Higher value means the curve stayed closer to the diagonal during the run.
+        /// </summary>
+        public static decimal GetStabilityScore(Position[] deals, int sampleStep = 3)
+        {
+            if (deals == null ||
+                deals.Length < 2)
+            {
+                return 0;
+            }
+
+            if (sampleStep < 1)
+            {
+                sampleStep = 1;
+            }
+
+            List<decimal> samples = new List<decimal> { 0 };
+            decimal cumulativeProfit = 0;
+
+            for (int i = 0; i < deals.Length; i++)
+            {
+                cumulativeProfit += deals[i].ProfitPortfolioPunkt * (deals[i].MultToJournal / 100);
+
+                if ((i + 1) % sampleStep == 0 ||
+                    i == deals.Length - 1)
+                {
+                    samples.Add(cumulativeProfit);
+                }
+            }
+
+            if (samples.Count < 2)
+            {
+                return 0;
+            }
+
+            decimal totalProfit = samples[samples.Count - 1];
+
+            if (totalProfit <= 0)
+            {
+                return 0;
+            }
+
+            decimal totalProfitPercent = GetAllProfitPersent(deals);
+
+            if (totalProfitPercent <= 0)
+            {
+                return 0;
+            }
+
+            decimal scale = samples.Select(Math.Abs).DefaultIfEmpty(0).Max();
+            scale = Math.Max(scale, Math.Abs(totalProfit));
+
+            if (scale == 0)
+            {
+                return 0;
+            }
+
+            decimal squaredDeviationSum = 0;
+            decimal maxDeviation = 0;
+            int checkpoints = samples.Count - 1;
+
+            for (int i = 0; i < samples.Count; i++)
+            {
+                decimal expectedValue = totalProfit * i / checkpoints;
+                decimal deviation = samples[i] - expectedValue;
+                decimal absDeviation = Math.Abs(deviation);
+
+                squaredDeviationSum += deviation * deviation;
+
+                if (absDeviation > maxDeviation)
+                {
+                    maxDeviation = absDeviation;
+                }
+            }
+
+            decimal rmse = (decimal)Math.Sqrt((double)(squaredDeviationSum / samples.Count));
+            decimal normalizedRmse = rmse / scale;
+            decimal normalizedMaxDeviation = maxDeviation / scale;
+
+            decimal smoothnessScore = 100m / (1m + normalizedRmse * 4m + normalizedMaxDeviation * 2m);
+            decimal profitabilityWeight = Math.Min(1m, totalProfitPercent / 10m);
+
+            decimal finalScore = smoothnessScore * profitabilityWeight;
+
+            return Math.Round(finalScore, 2);
+        }
+
         private static decimal GetValueStandardDeviation(List<decimal> candles)
         {
             int length = candles.Count-1;

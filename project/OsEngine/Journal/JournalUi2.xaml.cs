@@ -2479,7 +2479,7 @@ namespace OsEngine.Journal
                 if(closePositions == null ||
                     closePositions.Count == 0)
                 {
-                    HostClosePosition.Child = _openPositionGrid;
+                    HostClosePosition.Child = _closePositionGrid;
                     return;
                 }
 
@@ -2502,7 +2502,7 @@ namespace OsEngine.Journal
             {
                 SendNewLogMessage(ex.ToString(),LogMessageType.Error);
             }
-            HostClosePosition.Child = _openPositionGrid;
+            HostClosePosition.Child = _closePositionGrid;
         }
 
         private List<Position> GetClosePositions()

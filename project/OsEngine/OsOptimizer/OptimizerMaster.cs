@@ -2367,7 +2367,7 @@ namespace OsEngine.OsOptimizer
             AwaitUi ui = new AwaitUi(_awaitUiMasterAloneTest);
             ui.ShowDialog();
 
-            Thread.Sleep(500);
+            Thread.Sleep(50);
            
             return _resultBotAloneTest;
         }
@@ -2386,7 +2386,7 @@ namespace OsEngine.OsOptimizer
 
         private async void RunAloneBotTest()
         {
-            await Task.Delay(2000);
+            await Task.Delay(100);
             _resultBotAloneTest = 
                 _optimizerExecutor.TestBot(_fazeToTestAloneTest, _reportToTestAloneTest, 
                 StartProgram.IsTester, _awaitUiMasterAloneTest, _captureData);

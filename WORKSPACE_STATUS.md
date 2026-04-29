@@ -50,22 +50,20 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-28 15:01:33
+- Updated: 2026-04-29 13:28:07
 - Branch: `dev`
-- HEAD before push: `0651ec2`
+- HEAD before push: `f5f38fa`
 - Pending changes before auto-log:
 
 `	ext
- M project/OsEngine/Common/LogDecoration.cs
- M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
- M project/OsEngine/Robots/TrigonumCustom/MeanReversion/LrZZAtrTakeSmaEntr.cs
- M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZAtrRrDdr.cs
- M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrRR.cs
- M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreAtrTakeSMA.cs
- M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+ M project/OsEngine/Journal/Internal/DealStatisticGenerator.cs
+ M project/OsEngine/Journal/JournalUi2.xaml.cs
+ M project/OsEngine/OsOptimizer/OptimizerMaster.cs
+ M project/OsEngine/OsOptimizer/OptimizerReport.cs
+ M project/OsEngine/OsOptimizer/OptimizerReportCharting.cs
+ M project/OsEngine/OsOptimizer/OptimizerReportUi.xaml.cs
+ M project/OsEngine/OsOptimizer/OptimizerUi.xaml.cs
  M project/OsEngine/bin/Debug/OsEngine.exe
-?? project/OsEngine/obj_build_debug_all/
-?? project/OsEngine/obj_build_debug_all2/
 `"
     "
     
@@ -146,6 +144,16 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-04-29 13:28:07 | branch `dev` | message: `Обновление оптимизатора - убраны колонки лишние, добавленна новая метрика стабильности pnl, оптимизированны открытие графиков, убрана лишняя кнопка. Исправлен баг в тестере с логами, изменены логи.`
+  Files before commit:
+  -  M project/OsEngine/Journal/Internal/DealStatisticGenerator.cs
+  -  M project/OsEngine/Journal/JournalUi2.xaml.cs
+  -  M project/OsEngine/OsOptimizer/OptimizerMaster.cs
+  -  M project/OsEngine/OsOptimizer/OptimizerReport.cs
+  -  M project/OsEngine/OsOptimizer/OptimizerReportCharting.cs
+  -  M project/OsEngine/OsOptimizer/OptimizerReportUi.xaml.cs
+  -  M project/OsEngine/OsOptimizer/OptimizerUi.xaml.cs
+  -  M project/OsEngine/bin/Debug/OsEngine.exe
 - 2026-04-28 15:01:33 | branch `dev` | message: `Большое обновление: селект бумаг, улучшение дебага, создание теста`
   Files before commit:
   -  M project/OsEngine/Common/LogDecoration.cs
@@ -265,6 +273,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 

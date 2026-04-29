@@ -402,52 +402,31 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column7 = new DataGridViewColumn();
             column7.CellTemplate = cell0;
-            column7.HeaderText = "Pay Off Ratio";
+            column7.HeaderText = "Stability";
             column7.ReadOnly = false;
             column7.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridResults.Columns.Add(column7);
 
             DataGridViewColumn column8 = new DataGridViewColumn();
             column8.CellTemplate = cell0;
-            column8.HeaderText = "Recovery";
+            column8.HeaderText = "SMA(20) Deviation";
             column8.ReadOnly = false;
             column8.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridResults.Columns.Add(column8);
 
-            DataGridViewColumn column9 = new DataGridViewColumn();
-            column9.CellTemplate = cell0;
-            column9.HeaderText = "Sharp Ratio";
-            column9.ReadOnly = false;
-            column9.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            DataGridViewButtonColumn column9 = new DataGridViewButtonColumn();
+            column9.CellTemplate = new DataGridViewButtonCell();
+            //column11.HeaderText = OsLocalization.Optimizer.Message40;
+            column9.ReadOnly = true;
+            column9.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
             _gridResults.Columns.Add(column9);
 
-            DataGridViewColumn column10 = new DataGridViewColumn();
-            column10.CellTemplate = cell0;
-            column10.HeaderText = "SMA(20) Deviation";
-            column10.ReadOnly = false;
-            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            _gridResults.Columns.Add(column10);
-
-            DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
-            column11.CellTemplate = new DataGridViewButtonCell();
-            //column11.HeaderText = OsLocalization.Optimizer.Message40;
-            column11.ReadOnly = true;
-            column11.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-            _gridResults.Columns.Add(column11);
-
-            DataGridViewButtonColumn column12 = new DataGridViewButtonColumn();
-            column12.CellTemplate = new DataGridViewButtonCell();
+            DataGridViewButtonColumn column10 = new DataGridViewButtonColumn();
+            column10.CellTemplate = new DataGridViewButtonCell();
            // column12.HeaderText = OsLocalization.Optimizer.Message42;
-            column12.ReadOnly = true;
-            column12.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-            _gridResults.Columns.Add(column12);
-
-            DataGridViewButtonColumn column13 = new DataGridViewButtonColumn();
-            column13.CellTemplate = new DataGridViewButtonCell();
-            //column11.HeaderText = OsLocalization.Optimizer.Message44;
-            column13.ReadOnly = true;
-            column13.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-            _gridResults.Columns.Add(column13);
+            column10.ReadOnly = true;
+            column10.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            _gridResults.Columns.Add(column10);
 
             _gridResults.Rows.Add(null, null);
 
@@ -502,29 +481,22 @@ namespace OsEngine.OsOptimizer
                 _gridResults.Columns[7].HeaderText += " vvv";
             }
 
-            _gridResults.Columns[8].HeaderText = "Pay Off Ratio";
-            if (_sortBotsType == SortBotsType.PayOffRatio)
+            _gridResults.Columns[8].HeaderText = "Stability";
+            if (_sortBotsType == SortBotsType.Stability)
             {
                 _gridResults.Columns[8].HeaderText += " vvv";
             }
 
-            _gridResults.Columns[9].HeaderText = "Recovery";
-            if (_sortBotsType == SortBotsType.Recovery)
+            _gridResults.Columns[9].HeaderText = "SMA(20) Deviation";
+            if (_sortBotsType == SortBotsType.SmaDeviation)
             {
                 _gridResults.Columns[9].HeaderText += " vvv";
             }
+        }
 
-            _gridResults.Columns[10].HeaderText = "Sharp Ratio";
-            if (_sortBotsType == SortBotsType.SharpRatio)
-            {
-                _gridResults.Columns[10].HeaderText += " vvv";
-            }
-
-            _gridResults.Columns[11].HeaderText = "SMA(20) Deviation";
-            if (_sortBotsType == SortBotsType.SmaDeviation)
-            {
-                _gridResults.Columns[11].HeaderText += " vvv";
-            }
+        private static string FormatMetric(decimal value)
+        {
+            return Math.Round(value, 2).ToStringWithNoEndZero();
         }
 
         /// <summary>
@@ -611,52 +583,40 @@ namespace OsEngine.OsOptimizer
                 row.Cells.Add(cell3);
 
                 DataGridViewTextBoxCell cell4 = new DataGridViewTextBoxCell();
-                cell4.Value = report.TotalProfit.ToStringWithNoEndZero() + " (" + report.TotalProfitPersent.ToStringWithNoEndZero() + "%)";
+                cell4.Value = FormatMetric(report.TotalProfit) + " (" + FormatMetric(report.TotalProfitPersent) + "%)";
                 row.Cells.Add(cell4);
 
                 DataGridViewTextBoxCell cell5 = new DataGridViewTextBoxCell();
-                cell5.Value = report.MaxDrowDawn.ToStringWithNoEndZero();
+                cell5.Value = FormatMetric(report.MaxDrowDawn);
                 row.Cells.Add(cell5);
 
                 DataGridViewTextBoxCell cell6 = new DataGridViewTextBoxCell();
-                cell6.Value = report.AverageProfit.ToStringWithNoEndZero();
+                cell6.Value = FormatMetric(report.AverageProfit);
                 row.Cells.Add(cell6);
 
                 DataGridViewTextBoxCell cell7 = new DataGridViewTextBoxCell();
-                cell7.Value = report.AverageProfitPercentOneContract.ToStringWithNoEndZero();
+                cell7.Value = FormatMetric(report.AverageProfitPercentOneContract);
                 row.Cells.Add(cell7);
 
                 DataGridViewTextBoxCell cell8 = new DataGridViewTextBoxCell();
-                cell8.Value = report.ProfitFactor.ToStringWithNoEndZero();
+                cell8.Value = FormatMetric(report.ProfitFactor);
                 row.Cells.Add(cell8);
 
                 DataGridViewTextBoxCell cell9 = new DataGridViewTextBoxCell();
-                cell9.Value = report.PayOffRatio.ToStringWithNoEndZero();
+                cell9.Value = FormatMetric(report.Stability);
                 row.Cells.Add(cell9);
 
                 DataGridViewTextBoxCell cell10 = new DataGridViewTextBoxCell();
-                cell10.Value = report.Recovery.ToStringWithNoEndZero();
+                cell10.Value = FormatMetric(report.SmaDeviation);
                 row.Cells.Add(cell10);
 
-                DataGridViewTextBoxCell cell11 = new DataGridViewTextBoxCell();
-                cell11.Value = report.SharpRatio.ToStringWithNoEndZero();
+                DataGridViewButtonCell cell11 = new DataGridViewButtonCell();
+                cell11.Value = OsLocalization.Optimizer.Message40;
                 row.Cells.Add(cell11);
 
-                DataGridViewTextBoxCell cell12 = new DataGridViewTextBoxCell();
-                cell12.Value = report.SmaDeviation.ToStringWithNoEndZero();
+                DataGridViewButtonCell cell12 = new DataGridViewButtonCell();
+                cell12.Value = OsLocalization.Optimizer.Message42;
                 row.Cells.Add(cell12);
-
-                DataGridViewButtonCell cell13 = new DataGridViewButtonCell();
-                cell13.Value = OsLocalization.Optimizer.Message40;
-                row.Cells.Add(cell13);
-
-                DataGridViewButtonCell cell14 = new DataGridViewButtonCell();
-                cell14.Value = OsLocalization.Optimizer.Message42;
-                row.Cells.Add(cell14);
-
-                DataGridViewButtonCell cell15 = new DataGridViewButtonCell();
-                cell15.Value = OsLocalization.Optimizer.Message44;
-                row.Cells.Add(cell15);
 
                 rows.Add(row);
             }
@@ -685,19 +645,14 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            if (e.ColumnIndex == 12)
+            if (e.ColumnIndex == 10)
             {
                 ShowBotChartDialog(e);
             }
 
-            if (e.ColumnIndex == 13)
+            if (e.ColumnIndex == 11)
             {
                 ShowParamsDialog(e);
-            }
-
-            if (e.ColumnIndex == 14)
-            {
-                ShowBotFullChartDialog(e);
             }
         }
 
@@ -883,17 +838,9 @@ namespace OsEngine.OsOptimizer
             }
             else if (columnSelect == 8)
             {
-                _sortBotsType = SortBotsType.PayOffRatio;
+                _sortBotsType = SortBotsType.Stability;
             }
             else if (columnSelect == 9)
-            {
-                _sortBotsType = SortBotsType.Recovery;
-            }
-            else if (columnSelect == 10)
-            {
-                _sortBotsType = SortBotsType.SharpRatio;
-            }
-            else if (columnSelect == 11)
             {
                 _sortBotsType = SortBotsType.SmaDeviation;
             }

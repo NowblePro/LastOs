@@ -59,9 +59,7 @@ namespace OsEngine.OsOptimizer
             boxTypeSort.Items.Add(SortBotsType.AverageProfit.ToString());
             boxTypeSort.Items.Add(SortBotsType.AverageProfitPercent.ToString());
             boxTypeSort.Items.Add(SortBotsType.ProfitFactor.ToString());
-            boxTypeSort.Items.Add(SortBotsType.PayOffRatio.ToString());
-            boxTypeSort.Items.Add(SortBotsType.Recovery.ToString());
-            boxTypeSort.Items.Add(SortBotsType.SharpRatio.ToString());
+            boxTypeSort.Items.Add(SortBotsType.Stability.ToString());
             boxTypeSort.Items.Add(SortBotsType.SmaDeviation.ToString());
 
             boxTypeSort.SelectedItem = SortBotsType.TotalProfit.ToString();
@@ -173,49 +171,12 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            int columnSelect = _boxTypeSort.SelectedIndex;
+            if (_boxTypeSort.SelectedItem == null)
+            {
+                return;
+            }
 
-            if (columnSelect == 0)
-            {
-                _sortBotsType = SortBotsType.PositionCount;
-            }
-            else if (columnSelect == 1)
-            {
-                _sortBotsType = SortBotsType.TotalProfit;
-            }
-            else if (columnSelect == 2)
-            {
-                _sortBotsType = SortBotsType.MaxDrowDawn;
-            }
-            else if (columnSelect == 3)
-            {
-                _sortBotsType = SortBotsType.AverageProfit;
-            }
-            else if (columnSelect == 4)
-            {
-                _sortBotsType = SortBotsType.AverageProfitPercent;
-            }
-            else if (columnSelect == 5)
-            {
-                _sortBotsType = SortBotsType.ProfitFactor;
-            }
-            else if (columnSelect == 6)
-            {
-                _sortBotsType = SortBotsType.PayOffRatio;
-            }
-            else if (columnSelect == 7)
-            {
-                _sortBotsType = SortBotsType.Recovery;
-            }
-            else if (columnSelect == 8)
-            {
-                _sortBotsType = SortBotsType.SharpRatio;
-            }
-            else if (columnSelect == 9)
-            {
-                _sortBotsType = SortBotsType.SmaDeviation;
-            }
-            else
+            if (!Enum.TryParse(_boxTypeSort.SelectedItem.ToString(), out _sortBotsType))
             {
                 return;
             }
@@ -423,7 +384,7 @@ namespace OsEngine.OsOptimizer
             gridStepsOfOptimization.Columns.Add(GetColumn("Profit", readOnly: false));
             gridStepsOfOptimization.Columns.Add(GetColumn("Average profit %", readOnly: false));
             gridStepsOfOptimization.Columns.Add(GetColumn("Position count", readOnly: false));
-            gridStepsOfOptimization.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
+            gridStepsOfOptimization.Columns.Add(GetColumn("Stability", readOnly: false));
             gridStepsOfOptimization.Columns.Add(GetColumn("SMA(20) Deviation", readOnly: false));
 
             DataGridViewButtonColumn column11 = new DataGridViewButtonColumn();
@@ -457,7 +418,7 @@ namespace OsEngine.OsOptimizer
             gridDynamicStepsTable.Columns.Add(GetColumn("Profit", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Average profit %", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Position count", readOnly: false));
-            gridDynamicStepsTable.Columns.Add(GetColumn("Sharp ratio", readOnly: false));
+            gridDynamicStepsTable.Columns.Add(GetColumn("Stability", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Max DrawDown", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("RR Profit", readOnly: false));
             gridDynamicStepsTable.Columns.Add(GetColumn("Win rate", readOnly: false));
@@ -776,6 +737,11 @@ namespace OsEngine.OsOptimizer
             return column;
         }
 
+        private static string FormatMetric(decimal value)
+        {
+            return Math.Round(value, 2).ToStringWithNoEndZero();
+        }
+
         private void UpdGridStepsOfOptimization(DataGridView gridStepsOfOptimization, int sortBotNumber)
         {
             if (gridStepsOfOptimization.InvokeRequired)
@@ -890,11 +856,11 @@ namespace OsEngine.OsOptimizer
                     row.Cells.Add(cell7);
 
                     DataGridViewTextBoxCell cell8 = new DataGridViewTextBoxCell();
-                    cell8.Value = Math.Round(reportToPaint.TotalProfit, 4).ToStringWithNoEndZero();
+                    cell8.Value = FormatMetric(reportToPaint.TotalProfit);
                     row.Cells.Add(cell8);
 
                     DataGridViewTextBoxCell cell9 = new DataGridViewTextBoxCell();
-                    cell9.Value = Math.Round(reportToPaint.AverageProfitPercentOneContract, 4).ToStringWithNoEndZero();
+                    cell9.Value = FormatMetric(reportToPaint.AverageProfitPercentOneContract);
                     row.Cells.Add(cell9);
 
                     DataGridViewTextBoxCell cell10 = new DataGridViewTextBoxCell();
@@ -902,11 +868,11 @@ namespace OsEngine.OsOptimizer
                     row.Cells.Add(cell10);
 
                     DataGridViewTextBoxCell cell11 = new DataGridViewTextBoxCell();
-                    cell11.Value = reportToPaint.SharpRatio.ToString();
+                    cell11.Value = FormatMetric(reportToPaint.Stability);
                     row.Cells.Add(cell11);
 
                     DataGridViewTextBoxCell cell12 = new DataGridViewTextBoxCell();
-                    cell12.Value = reportToPaint.SmaDeviation.ToString();
+                    cell12.Value = FormatMetric(reportToPaint.SmaDeviation);
                     row.Cells.Add(cell12);
 
                     DataGridViewButtonCell cell13 = new DataGridViewButtonCell();
@@ -992,6 +958,7 @@ namespace OsEngine.OsOptimizer
                     period.Report.Reports[0].PositionsCount = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].PositionsCount);
                     period.Report.Reports[0].MaxDrowDawn = group.Min(p => p.Report.Reports[_sortTypeDynamicTableNum].MaxDrowDawn);
                     period.Report.Reports[0].AverageProfit = group.Sum(p => p.Report.Reports[_sortTypeDynamicTableNum].AverageProfit) / group.Count();
+                    period.Report.Reports[0].Stability = group.Average(p => p.Report.Reports[_sortTypeDynamicTableNum].Stability);
                     period.Report.Reports[0].RRProfit = group.Max(p => p.Report.Reports[_sortTypeDynamicTableNum].RRProfit);
                     period.Report.Reports[0].WinRate = group.Average(p => p.Report.Reports[_sortTypeDynamicTableNum].WinRate);
                     period.Report.Reports[0].Eval = group.Average(p => p.Report.Reports[_sortTypeDynamicTableNum].Eval);
@@ -1025,12 +992,12 @@ namespace OsEngine.OsOptimizer
                         if (columnIndex == 5)
                         {
                             // Profit
-                            cellVAlue = $"{Math.Round(report.TotalProfit, 3)}";
+                            cellVAlue = FormatMetric(report.TotalProfit);
                         }
                         if (columnIndex == 6)
                         {
                             // Average Profit
-                            cellVAlue = $"{Math.Round(report.AverageProfit, 3)}";
+                            cellVAlue = FormatMetric(report.AverageProfit);
                         }
                         if (columnIndex == 7)
                         {
@@ -1039,38 +1006,38 @@ namespace OsEngine.OsOptimizer
                         }
                         if (columnIndex == 8)
                         {
-                            // Sharp Ratio
-                            cellVAlue = $"{Math.Round(report.SharpRatio, 3)}";
+                            // Stability
+                            cellVAlue = FormatMetric(report.Stability);
                         }
 
                         if (columnIndex == 9)
                         {
                             // Max DrawDown
-                            cellVAlue = $"{Math.Round(report.MaxDrowDawn, 3)}";
+                            cellVAlue = FormatMetric(report.MaxDrowDawn);
                         }
 
                         if (columnIndex == 10)
                         {
                             // rr
-                            cellVAlue = $"{Math.Round(report.RRProfit, 3)}";
+                            cellVAlue = FormatMetric(report.RRProfit);
                         }
 
                         if (columnIndex == 11)
                         {
                             // win rate
-                            cellVAlue = $"{Math.Round(report.WinRate, 3)}";
+                            cellVAlue = FormatMetric(report.WinRate);
                         }
 
                         if (columnIndex == 12)
                         {
                             // суммарный тотал профит за весь out of sample
-                            cellVAlue = $"{Math.Round(report.TotalOOSProfit, 3)}";
+                            cellVAlue = FormatMetric(report.TotalOOSProfit);
                         }
 
                         if (columnIndex == 13)
                         {
                             // eval
-                            cellVAlue = $"{Math.Round(report.Eval, 3)}";
+                            cellVAlue = FormatMetric(report.Eval);
                         }
 
                         if (columnIndex == 14)
@@ -2703,6 +2670,7 @@ namespace OsEngine.OsOptimizer
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.TotalProfit.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.MaxDrowDawn.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.AverageProfit.ToString());
+            _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.Stability.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.RRProfit.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.WinRate.ToString());
             _comboBoxSortResultsDynamicTable.Items.Add(SortBotsType.OOSProfit.ToString());
