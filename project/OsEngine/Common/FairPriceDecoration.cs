@@ -146,7 +146,7 @@ namespace OsEngine.Common
                 {
                     _tab.CloseAtStop(position, newStopPrice, newOrderPrice);
                 }
-                else if (orderType == OrderType.Market)
+                else if (orderType == OrderType.Market || orderType == OrderType.MarketNextOpen)
                 {
                     _tab.CloseAtStopMarket(position, newStopPrice);
                 }

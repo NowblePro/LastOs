@@ -92,6 +92,24 @@ namespace OsEngine.Entity
 
         private bool _isAllParametersMode;
 
+        private const string CategoryMain = "Main";
+        private const string CategoryEntry = "Entry";
+        private const string CategoryGrid = "Grid";
+        private const string CategoryExitRisk = "Exit / Risk";
+        private const string CategoryAdvanced = "Advanced";
+
+        private class ParameterUiCategoryGroup
+        {
+            public string CategoryName;
+            public List<ParameterUiSectionGroup> Sections = new List<ParameterUiSectionGroup>();
+        }
+
+        private class ParameterUiSectionGroup
+        {
+            public string SectionName;
+            public List<IIStrategyParameter> Parameters = new List<IIStrategyParameter>();
+        }
+
         List<List<IIStrategyParameter>> GetParamSortedByTabName()
         {
             List<List<IIStrategyParameter>> sorted = new List<List<IIStrategyParameter>>();
@@ -130,18 +148,11 @@ namespace OsEngine.Entity
         {
             ClearTabs();
 
-            List<List<IIStrategyParameter>> sorted = GetParamSortedByTabName();
+            List<ParameterUiCategoryGroup> categories = GetParamSortedByCategory();
 
-            for (int i = 0; i < sorted.Count; i++)
+            for (int i = 0; i < categories.Count; i++)
             {
-                if (sorted[i][0].TabName == null)
-                {
-                    CreateTab(sorted[i], _settings.FirstTabLabel);
-                }
-                else
-                {
-                    CreateTab(sorted[i], sorted[i][0].TabName);
-                }
+                CreateTab(BuildCategoryParameters(categories[i]), categories[i].CategoryName);
             }
 
             for (int i = 0; i < _settings.CustomTabs.Count; i++)
@@ -159,6 +170,180 @@ namespace OsEngine.Entity
             CreateTab(_parameters, OsLocalization.Entity.ParametersAllTab);
             _isAllParametersMode = true;
             UpdateOpenAllParametersButton();
+        }
+
+        private List<ParameterUiCategoryGroup> GetParamSortedByCategory()
+        {
+            List<List<IIStrategyParameter>> sortedBySection = GetParamSortedByTabName();
+            List<ParameterUiCategoryGroup> categories = new List<ParameterUiCategoryGroup>();
+
+            for (int i = 0; i < sortedBySection.Count; i++)
+            {
+                List<IIStrategyParameter> sectionParameters = sortedBySection[i];
+
+                if (sectionParameters == null ||
+                    sectionParameters.Count == 0)
+                {
+                    continue;
+                }
+
+                string categoryName = GetCategoryTabName(sectionParameters[0]);
+                ParameterUiCategoryGroup category = categories.Find(x => x.CategoryName == categoryName);
+
+                if (category == null)
+                {
+                    category = new ParameterUiCategoryGroup
+                    {
+                        CategoryName = categoryName
+                    };
+
+                    categories.Add(category);
+                }
+
+                category.Sections.Add(new ParameterUiSectionGroup
+                {
+                    SectionName = GetDisplaySectionName(sectionParameters[0].TabName),
+                    Parameters = sectionParameters
+                });
+            }
+
+            categories.Sort((x, y) => GetCategoryOrder(x.CategoryName).CompareTo(GetCategoryOrder(y.CategoryName)));
+
+            return categories;
+        }
+
+        private List<IIStrategyParameter> BuildCategoryParameters(ParameterUiCategoryGroup category)
+        {
+            List<IIStrategyParameter> parameters = new List<IIStrategyParameter>();
+
+            if (category == null)
+            {
+                return parameters;
+            }
+
+            bool needSectionHeaders = category.Sections.Count > 1;
+            int headerId = 0;
+
+            for (int i = 0; i < category.Sections.Count; i++)
+            {
+                ParameterUiSectionGroup section = category.Sections[i];
+
+                if (needSectionHeaders)
+                {
+                    string headerName = "__ui_section_" + category.CategoryName.Replace(" ", string.Empty) + "_" + headerId;
+                    headerId++;
+
+                    parameters.Add(new StrategyParameterLabel(
+                        headerName,
+                        section.SectionName,
+                        string.Empty,
+                        28,
+                        10,
+                        System.Drawing.Color.FromArgb(210, 210, 210),
+                        category.CategoryName));
+                }
+
+                parameters.AddRange(section.Parameters);
+            }
+
+            return parameters;
+        }
+
+        private string GetCategoryTabName(IIStrategyParameter parameter)
+        {
+            if (parameter == null)
+            {
+                return CategoryMain;
+            }
+
+            string tabName = parameter.TabName ?? string.Empty;
+            string normalized = tabName.Trim().ToLowerInvariant();
+
+            if (normalized.Length == 0 ||
+                normalized == "base")
+            {
+                return CategoryMain;
+            }
+
+            if (normalized.Contains("debug"))
+            {
+                return CategoryAdvanced;
+            }
+
+            if (normalized.Contains("grid") ||
+                normalized.Contains("ddr"))
+            {
+                return CategoryGrid;
+            }
+
+            if (normalized.Contains("stop") ||
+                normalized.Contains("take") ||
+                normalized.Contains("fairprice") ||
+                normalized.Contains("risk") ||
+                normalized.Contains("volatile"))
+            {
+                return CategoryExitRisk;
+            }
+
+            if (normalized.Contains("atr") ||
+                normalized.Contains("ema") ||
+                normalized.Contains("change24") ||
+                normalized.Contains("sma") ||
+                normalized.Contains("natr") ||
+                normalized.Contains("zscore") ||
+                normalized.Contains("filter") ||
+                normalized.Contains("rsi") ||
+                normalized.Contains("adx"))
+            {
+                return CategoryEntry;
+            }
+
+            return CategoryMain;
+        }
+
+        private string GetDisplaySectionName(string tabName)
+        {
+            if (string.IsNullOrWhiteSpace(tabName))
+            {
+                return string.IsNullOrWhiteSpace(_settings.FirstTabLabel) ? "General" : _settings.FirstTabLabel;
+            }
+
+            if (tabName.Equals("Base", StringComparison.OrdinalIgnoreCase))
+            {
+                return "General";
+            }
+
+            return tabName;
+        }
+
+        private int GetCategoryOrder(string categoryName)
+        {
+            if (categoryName == CategoryMain)
+            {
+                return 0;
+            }
+
+            if (categoryName == CategoryEntry)
+            {
+                return 1;
+            }
+
+            if (categoryName == CategoryGrid)
+            {
+                return 2;
+            }
+
+            if (categoryName == CategoryExitRisk)
+            {
+                return 3;
+            }
+
+            if (categoryName == CategoryAdvanced)
+            {
+                return 4;
+            }
+
+            return 100;
         }
 
         private void ClearTabs()

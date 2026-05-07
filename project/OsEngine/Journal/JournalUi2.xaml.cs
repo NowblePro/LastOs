@@ -2562,20 +2562,9 @@ namespace OsEngine.Journal
                 return null;
             }
 
-            for (int i = 0; i < closePositions.Count; i++)
-            {
-                for (int i2 = i; i2 < closePositions.Count; i2++)
-                {
-                    if (closePositions[i].TimeClose > closePositions[i2].TimeClose)
-                    {
-                        Position pos = closePositions[i2];
-                        closePositions[i2] = closePositions[i];
-                        closePositions[i] = pos;
-                    }
-                }
-            }
-
-            return closePositions;
+            return closePositions
+                .OrderBy(position => position.TimeClose)
+                .ToList();
         }
 
         private void CheckBoxShowDontOpenPoses_Click(object sender, RoutedEventArgs e)

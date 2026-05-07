@@ -19,6 +19,8 @@
   Правила исключения локальных/runtime-файлов из git.
 - `README.md`  
   Общая справка по репозиторию.
+- `UPDATE_HISTORY.md`  
+  Короткий журнал значимых обновлений по датам.
 - `WORKSPACE_STATUS.md`  
   Этот файл: карта проекта и журнал обновлений.
 
@@ -50,29 +52,44 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-04-29 13:28:07
+- Updated: 2026-05-07 14:31:58
 - Branch: `dev`
-- HEAD before push: `f5f38fa`
+- HEAD before push: `1293900`
 - Pending changes before auto-log:
 
 `	ext
- M project/OsEngine/Journal/Internal/DealStatisticGenerator.cs
+ M REGRESSION_TEST_RUNBOOK.md
+ M WORKSPACE_STATUS.md
+ M project/OsEngine/Common/CanEnterByEmaDecoration.cs
+ M project/OsEngine/Common/FairPriceDecoration.cs
+ M project/OsEngine/Common/MeanReverseVolumeManager.cs
+ M project/OsEngine/Common/OrderType.cs
+ M project/OsEngine/Common/StopLossDecoration.cs
+ M project/OsEngine/Common/TakeProfitDecoration.cs
+ M project/OsEngine/Common/TakeSmaDecoration.cs
+ M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
  M project/OsEngine/Journal/JournalUi2.xaml.cs
- M project/OsEngine/OsOptimizer/OptimizerMaster.cs
- M project/OsEngine/OsOptimizer/OptimizerReport.cs
- M project/OsEngine/OsOptimizer/OptimizerReportCharting.cs
- M project/OsEngine/OsOptimizer/OptimizerReportUi.xaml.cs
- M project/OsEngine/OsOptimizer/OptimizerUi.xaml.cs
+ M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
  M project/OsEngine/bin/Debug/OsEngine.exe
+?? .claude/
+?? 1.md
+?? UPDATE_HISTORY.md
+?? project/OsEngine/bin_marketnextopen_test/
+?? project/OsEngine/bin_marketohlc_test/
+?? project/OsEngine/obj_marketnextopen_test/
+?? project/OsEngine/obj_marketohlc_test/
 `"
     "
     
+- [D] .claude
 - [D] .git
 - [D] doc
 - [D] Engine
 - [D] project
 - [D] related projects
 - [F] .gitignore
+- [F] 1.md
 - [F] LICENSE
 - [F] License_ru.pdf
 - [F] nuget.exe
@@ -83,6 +100,7 @@
 - [F] push_main_from_dev.ps1
 - [F] README.md
 - [F] REGRESSION_TEST_RUNBOOK.md
+- [F] UPDATE_HISTORY.md
 - [F] update_osengine_robots_light_from_github.bat
 - [F] update_osengine_robots_light_from_github.log
 - [F] update_osengine_robots_light_from_github_dev.bat
@@ -98,6 +116,8 @@
 ### project/OsEngine Snapshot
 - [D] project/OsEngine/Alerts
 - [D] project/OsEngine/bin
+- [D] project/OsEngine/bin_marketnextopen_test
+- [D] project/OsEngine/bin_marketohlc_test
 - [D] project/OsEngine/bin_temp
 - [D] project/OsEngine/bin_temp_trace
 - [D] project/OsEngine/Candles
@@ -121,6 +141,8 @@
 - [D] project/OsEngine/obj_build_rebuild_select2
 - [D] project/OsEngine/obj_build_temp
 - [D] project/OsEngine/obj_build_temp_trace
+- [D] project/OsEngine/obj_marketnextopen_test
+- [D] project/OsEngine/obj_marketohlc_test
 - [D] project/OsEngine/OsConverter
 - [D] project/OsEngine/OsData
 - [D] project/OsEngine/OsMiner
@@ -144,6 +166,34 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-05-07 14:31:58 | branch `dev` | message: `Добавлена история обновлений в файлах. Добавлен новый параметр увеличение объема после убыточной сделки, параметр - флаг. Исправлен баг: логи в закрытых позициях, пропуск фильтра Ema в роботе NATR.`
+  Files before commit:
+  -  M REGRESSION_TEST_RUNBOOK.md
+  -  M WORKSPACE_STATUS.md
+  -  M project/OsEngine/Common/CanEnterByEmaDecoration.cs
+  -  M project/OsEngine/Common/FairPriceDecoration.cs
+  -  M project/OsEngine/Common/MeanReverseVolumeManager.cs
+  -  M project/OsEngine/Common/OrderType.cs
+  -  M project/OsEngine/Common/StopLossDecoration.cs
+  -  M project/OsEngine/Common/TakeProfitDecoration.cs
+  -  M project/OsEngine/Common/TakeSmaDecoration.cs
+  -  M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
+  -  M project/OsEngine/Journal/JournalUi2.xaml.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
+- 2026-05-06 13:54:42 | branch `dev` | message: `Начата и внедрена новая ветка backtest-режима для MRZScoreNatrGrid под live-parity. MarketOHLC снят с основной линии и заменён на MarketNextOpen для parity-backtest.`
+  Files before commit:
+  -  M REGRESSION_TEST_RUNBOOK.md
+  -  M WORKSPACE_STATUS.md
+  -  M project/OsEngine/Common/FairPriceDecoration.cs
+  -  M project/OsEngine/Common/OrderType.cs
+  -  M project/OsEngine/Common/StopLossDecoration.cs
+  -  M project/OsEngine/Common/TakeProfitDecoration.cs
+  -  M project/OsEngine/Common/TakeSmaDecoration.cs
+  -  M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
+  -  M project/OsEngine/Journal/JournalUi2.xaml.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+  -  M project/OsEngine/bin/Debug/OsEngine.exe
 - 2026-04-29 13:28:07 | branch `dev` | message: `Обновление оптимизатора - убраны колонки лишние, добавленна новая метрика стабильности pnl, оптимизированны открытие графиков, убрана лишняя кнопка. Исправлен баг в тестере с логами, изменены логи.`
   Files before commit:
   -  M project/OsEngine/Journal/Internal/DealStatisticGenerator.cs
@@ -273,6 +323,8 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
+
 
 
 

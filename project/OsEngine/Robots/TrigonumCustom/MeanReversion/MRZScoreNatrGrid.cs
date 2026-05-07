@@ -25,6 +25,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             public bool Consumed;
             public bool WaitingForReplacement;
             public bool CancelRequested;
+            public bool PendingNextOpenFill;
+            public DateTime PendingNextOpenSignalTime;
         }
 
         private Aindicator _sma;
@@ -55,6 +57,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _rr;
 
         private StrategyParameterDecimal _r;
+        private StrategyParameterBool _recoveryAfterLossEnable;
+        private StrategyParameterInt _recoveryAfterLossSeriesCount;
+        private StrategyParameterDecimal _recoveryAfterLossVolumeMultiplier;
         private MeanReverseVolumeManager _volumeManager;
         private DDRDecoration _ddrDecoration;
         private Change24Decoration _change24;
@@ -76,7 +81,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private int _lastProcessedCandlesCount;
         private DateTime _lastProcessedCandleTime = DateTime.MinValue;
         private GridLevelState _levelAwaitingImmediateBinding;
+        private const string LevelSignalPrefix = "MRNatrLevel:";
         private bool _debugSessionHeaderLogged;
+        private bool _marketNextOpenFallbackLogged;
+        private int _recoverySeriesRemaining;
+        private decimal _activeSeriesRealizedPnl;
+        private bool _currentGridRecoveryBoostActive;
 
         public MRZScoreNatrGrid(string name, StartProgram startProgram) : base(name, startProgram)
         {
@@ -146,6 +156,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _stopLoss.StopPriceFunc = GetAtrStopLoss;
 
             _r = CreateParameter("R, %", 1m, 0m, 15m, 0.1m, "Volume Manager");
+            _recoveryAfterLossEnable = CreateParameter("Recovery After Loss Enable", false, "Volume Manager");
+            _recoveryAfterLossSeriesCount = CreateParameter("Recovery Series Count", 1, 1, 20, 1, "Volume Manager");
+            _recoveryAfterLossVolumeMultiplier = CreateParameter("Recovery Volume Multiplier", 2m, 1m, 10m, 0.1m, "Volume Manager");
             _volumeManager = new MeanReverseVolumeManager();
             _volumeManager.GetVolumeFunc = base.GetVolume;
             _volumeManager.Rounding = GetRounded;
@@ -211,6 +224,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 $"volume={level.Volume:F8}, position={position.Number}, state={position.State}, signalOpen={position.SignalTypeOpen}");
             UpdateDynamicStop(position);
             UpdateDynamicProfit(position);
+            ConsumeRecoveryBoostOnFirstFill(position);
         }
 
         private void _tab_PositionOpeningFailEvent(Position position)
@@ -254,6 +268,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 $"position={position.Number}, entry={position.EntryPrice:F8}, close={position.ClosePrice:F8}, volume={position.OpenVolume:F8}, " +
                 $"pnl={position.ProfitPortfolioPunkt:F8}, timeOpen={FormatDateTime(position.TimeOpen)}, timeClose={FormatDateTime(position.TimeClose)}, " +
                 $"signalClose={position.SignalTypeClose}");
+            _activeSeriesRealizedPnl += position.ProfitPortfolioPunkt;
+            LogDebug($"Series realized PnL updated: currentSeriesPnl={_activeSeriesRealizedPnl:F8}, position={position.Number}");
         }
 
         private void _ddrDecoration_DDREvent(object sender, EventArgs e)
@@ -342,9 +358,10 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             TryReopenRepricedLevels();
             UpdateDynamicExitOrders();
 
-            if (_gridSide != Side.None && IsMarketOrderMode())
+            if (_gridSide != Side.None && UsesVirtualGridMode())
             {
-                LogDebug($"Candle step: mode=MarketGrid, {GetCandleSnapshot(last)}, {GetGridStateSnapshot()}");
+                string mode = IsEffectiveMarketNextOpenMode() ? "MarketNextOpenGrid" : "MarketGrid";
+                LogDebug($"Candle step: mode={mode}, {GetCandleSnapshot(last)}, {GetGridStateSnapshot()}");
                 HandleMarketGrid(last);
             }
             else if (_gridSide != Side.None && HasConsumedLevels())
@@ -439,6 +456,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void HandleMarketGrid(Candle last)
         {
+            WarnIfMarketNextOpenFallsBackToMarket();
+
+            if (IsEffectiveMarketNextOpenMode())
+            {
+                ExecutePendingNextOpenEntries(last);
+            }
+
             string invalidReason = GetPendingGridInvalidationReason(last);
 
             if (invalidReason != null)
@@ -463,7 +487,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 DiscardRemainingMarketLevels("Mean reversion touched SMA");
             }
 
-            TryActivateTriggeredMarketLevels(last);
+            if (IsEffectiveMarketNextOpenMode())
+            {
+                TryScheduleTriggeredMarketNextOpenLevels(last);
+            }
+            else
+            {
+                TryActivateTriggeredMarketLevels(last);
+            }
 
             if (!HasActiveFilledPositions() &&
                 !HasPendingOpeningOrders() &&
@@ -485,6 +516,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
 
             Candle last = candles[lastIndex];
+            TryReleaseVolatileStop(last, sma);
             Side side = last.Close < sma ? Side.Buy : last.Close > sma ? Side.Sell : Side.None;
 
             if (side == Side.None)
@@ -528,6 +560,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             LogDebug(
                 $"Grid build decision: {GetDecisionSnapshot(last, side, sma, natrPercent, thresholdPercent, currentDeviationPercent, triggeredDeviationPercent)}");
 
+            decimal seriesVolumeMultiplier = GetPendingSeriesVolumeMultiplier();
             List<GridLevelState> levels = CreateLevels(
                 side,
                 sma,
@@ -536,7 +569,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 currentDeviationPercent,
                 triggeredDeviationPercent,
                 natrPercent,
-                last.TimeStart);
+                last.TimeStart,
+                seriesVolumeMultiplier);
 
             if (levels.Count == 0)
             {
@@ -553,10 +587,43 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _gridThresholdPercent = thresholdPercent;
             _gridNatrPercent = natrPercent;
             _gridSignalTime = last.TimeStart;
+            _currentGridRecoveryBoostActive = seriesVolumeMultiplier > 1m;
 
             string levelsLog = string.Join("; ", _gridLevels.Select(l => $"[{l.Index}] {l.DeviationPercent:F4}% => {l.Price:F8}"));
             LogDebug(
-                $"Grid built: side={side}, sma={sma:F8}, threshold={thresholdPercent:F4}%, currentDeviation={currentDeviationPercent:F4}%, natr={natrPercent:F4}%, levels={levelsLog}");
+                $"Grid built: side={side}, sma={sma:F8}, threshold={thresholdPercent:F4}%, currentDeviation={currentDeviationPercent:F4}%, natr={natrPercent:F4}%, volumeMultiplier={seriesVolumeMultiplier:F4}, levels={levelsLog}");
+        }
+
+        private void TryReleaseVolatileStop(Candle last, decimal sma)
+        {
+            if (!_volatileStopActive ||
+                _volatileStopDirection == Side.None ||
+                last == null ||
+                sma <= 0)
+            {
+                return;
+            }
+
+            if (HasPendingCancelRequests())
+            {
+                LogDebug(
+                    $"Volatile stop release deferred: pending cancels, side={_volatileStopDirection}, close={last.Close:F8}, sma={sma:F8}, " +
+                    $"{GetGridStateSnapshot()}");
+                return;
+            }
+
+            if (_volatileStopDirection == Side.Buy && last.Close >= sma)
+            {
+                _volatileStopActive = false;
+                _volatileStopDirection = Side.None;
+                LogDebug($"Volatile stop cleared for Buy before signal evaluation: close={last.Close:F8}, sma={sma:F8}");
+            }
+            else if (_volatileStopDirection == Side.Sell && last.Close <= sma)
+            {
+                _volatileStopActive = false;
+                _volatileStopDirection = Side.None;
+                LogDebug($"Volatile stop cleared for Sell before signal evaluation: close={last.Close:F8}, sma={sma:F8}");
+            }
         }
 
         private List<GridLevelState> CreateLevels(
@@ -567,12 +634,15 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal currentDeviationPercent,
             decimal triggeredDeviationPercent,
             decimal natrPercent,
-            DateTime signalTime)
+            DateTime signalTime,
+            decimal seriesVolumeMultiplier)
         {
             List<GridLevelState> result = new List<GridLevelState>();
             _volumeManager.Clear();
+            _volumeManager.NextBaseVolumeMultiplier = seriesVolumeMultiplier > 0 ? seriesVolumeMultiplier : 1m;
             decimal stepPercent = GetStepPercent();
             bool limitOrderMode = IsLimitOrderMode();
+            bool marketNextOpenMode = IsEffectiveMarketNextOpenMode();
 
             for (int rawIndex = 1; result.Count < _gridSize.ValueInt; rawIndex++)
             {
@@ -597,8 +667,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
                 if ((side == Side.Buy && price >= sma) ||
                     (side == Side.Sell && price <= sma) ||
-                    (limitOrderMode && side == Side.Buy && price >= currentPrice) ||
-                    (limitOrderMode && side == Side.Sell && price <= currentPrice) ||
+                    ((limitOrderMode || marketNextOpenMode) && side == Side.Buy && price >= currentPrice) ||
+                    ((limitOrderMode || marketNextOpenMode) && side == Side.Sell && price <= currentPrice) ||
                     price <= 0)
                 {
                     if (price <= 0)
@@ -643,6 +713,24 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     }
 
                     result.Add(level);
+                    continue;
+                }
+                else if (marketNextOpenMode)
+                {
+                    if (deviationPercent <= currentDeviationPercent)
+                    {
+                        continue;
+                    }
+
+                    result.Add(new GridLevelState
+                    {
+                        Index = rawIndex,
+                        DeviationPercent = deviationPercent,
+                        Price = price,
+                        Volume = volume,
+                        Position = null,
+                        Consumed = false
+                    });
                     continue;
                 }
                 else if (deviationPercent <= triggeredDeviationPercent)
@@ -767,6 +855,14 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void ClearGrid(string reason)
         {
+            bool hadConsumedLevels = HasConsumedLevels();
+            decimal completedSeriesPnl = _activeSeriesRealizedPnl;
+
+            if (string.Equals(reason, "Series completed", StringComparison.Ordinal))
+            {
+                ArmRecoveryBoostAfterCompletedSeries(hadConsumedLevels, completedSeriesPnl);
+            }
+
             _gridLevels.Clear();
             _levelsAwaitingOpeningSuccess.Clear();
             _gridSide = Side.None;
@@ -776,6 +872,8 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _gridSignalTime = DateTime.MinValue;
             _volumeManager.Clear();
             _levelAwaitingImmediateBinding = null;
+            _activeSeriesRealizedPnl = 0;
+            _currentGridRecoveryBoostActive = false;
             LogDebug($"Grid cleared: reason={reason}");
         }
 
@@ -825,6 +923,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _lastProcessedCandlesCount = 0;
             _lastProcessedCandleTime = DateTime.MinValue;
             _levelAwaitingImmediateBinding = null;
+            _recoverySeriesRemaining = 0;
+            _activeSeriesRealizedPnl = 0;
+            _currentGridRecoveryBoostActive = false;
             _levelBindingsByReference.Clear();
             _levelBindingsByNumber.Clear();
             _levelBindingsByOrderUserNumber.Clear();
@@ -921,6 +1022,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             if (boundByOrder != null)
             {
                 return boundByOrder;
+            }
+
+            GridLevelState boundBySignalType = FindLevelBySignalType(position);
+
+            if (boundBySignalType != null)
+            {
+                return boundBySignalType;
             }
 
             GridLevelState fallbackLevel = FindFallbackLevel(position);
@@ -1425,39 +1533,44 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                     return false;
                 }
 
-                if (side == Side.Buy)
-                {
-                    if (last.Close >= sma)
-                    {
-                        _volatileStopActive = false;
-                        LogDebug("Volatile stop cleared for Buy");
-                    }
-                    else
-                    {
-                        LogDebug(
-                            $"Filter blocked by volatile stop latch: side=Buy, close={last.Close:F8}, sma={sma:F8}, " +
-                            $"{GetGridStateSnapshot()}");
-                        return false;
-                    }
-                }
-                else if (side == Side.Sell)
-                {
-                    if (last.Close <= sma)
-                    {
-                        _volatileStopActive = false;
-                        LogDebug("Volatile stop cleared for Sell");
-                    }
-                    else
-                    {
-                        LogDebug(
-                            $"Filter blocked by volatile stop latch: side=Sell, close={last.Close:F8}, sma={sma:F8}, " +
-                            $"{GetGridStateSnapshot()}");
-                        return false;
-                    }
-                }
+                LogDebug(
+                    $"Filter blocked by volatile stop latch: side={side}, close={last.Close:F8}, sma={sma:F8}, " +
+                    $"{GetGridStateSnapshot()}");
+                return false;
             }
 
             return true;
+        }
+
+        private GridLevelState FindLevelBySignalType(Position position)
+        {
+            if (position == null || string.IsNullOrWhiteSpace(position.SignalTypeOpen))
+            {
+                return null;
+            }
+
+            if (!position.SignalTypeOpen.StartsWith(LevelSignalPrefix, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            string[] parts = position.SignalTypeOpen.Split(':');
+
+            if (parts.Length < 2 || !int.TryParse(parts[1], out int levelIndex))
+            {
+                return null;
+            }
+
+            GridLevelState matchedLevel = GetKnownLevels()
+                .FirstOrDefault(level => level != null && level.Index == levelIndex);
+
+            if (matchedLevel != null)
+            {
+                LogDebug(
+                    $"Level binding restored by signal type: position={position.Number}, signal={position.SignalTypeOpen}, levelIndex={matchedLevel.Index}, levelPrice={matchedLevel.Price:F8}");
+            }
+
+            return matchedLevel;
         }
 
         private bool PassesDirectionalFilters(Side side, Candle last)
@@ -1568,6 +1681,47 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             return GetSelectedOrderType() == OrderType.Market;
         }
 
+        private bool IsMarketNextOpenOrderMode()
+        {
+            return GetSelectedOrderType() == OrderType.MarketNextOpen;
+        }
+
+        private bool SupportsSyntheticBacktestExecution()
+        {
+            return StartProgram == StartProgram.IsTester || StartProgram == StartProgram.IsOsOptimizer;
+        }
+
+        private bool IsEffectiveMarketNextOpenMode()
+        {
+            return IsMarketNextOpenOrderMode() && SupportsSyntheticBacktestExecution();
+        }
+
+        private bool UsesVirtualGridMode()
+        {
+            return IsMarketOrderMode() || IsMarketNextOpenOrderMode();
+        }
+
+        private bool UsesMarketStyleExitMode()
+        {
+            OrderType orderType = GetSelectedOrderType();
+            return orderType == OrderType.Market || orderType == OrderType.MarketNextOpen;
+        }
+
+        private void WarnIfMarketNextOpenFallsBackToMarket()
+        {
+            if (!IsMarketNextOpenOrderMode() ||
+                SupportsSyntheticBacktestExecution() ||
+                _marketNextOpenFallbackLogged)
+            {
+                return;
+            }
+
+            _marketNextOpenFallbackLogged = true;
+            SendNewLogMessage(
+                "MarketNextOpen is only supported in Tester/Optimizer. Current runtime falls back to Market execution.",
+                LogMessageType.System);
+        }
+
         private decimal GetStepPercent()
         {
             decimal step = _fixPercent.ValueDecimal;
@@ -1674,7 +1828,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             return
                 $"gridSide={_gridSide}, gridSignal={FormatDateTime(_gridSignalTime)}, volatileStop={_volatileStopActive}/{_volatileStopDirection}, " +
                 $"levelsTotal={totalLevels}, consumed={consumedLevels}, withPosition={levelsWithPosition}, awaitingFill={levelsAwaitingFill}, " +
-                $"pendingOrders={pendingOpenOrders}, activeFilled={activeFilledPositions}";
+                $"pendingOrders={pendingOpenOrders}, activeFilled={activeFilledPositions}, nextOpenQueued={_gridLevels?.Count(level => level.PendingNextOpenFill) ?? 0}";
         }
 
         private string FormatDateTime(DateTime? time)
@@ -1778,6 +1932,109 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
         }
 
+        private void TryScheduleTriggeredMarketNextOpenLevels(Candle last)
+        {
+            if (!IsEffectiveMarketNextOpenMode() || _gridSide == Side.None || last == null)
+            {
+                return;
+            }
+
+            foreach (GridLevelState level in _gridLevels
+                .Where(level => !level.Consumed &&
+                                level.Position == null &&
+                                !level.PendingNextOpenFill &&
+                                IsLevelTouchedByCandle(_gridSide, level.Price, last))
+                .OrderBy(level => level.DeviationPercent)
+                .ToList())
+            {
+                if (!IsLevelAllowedByEma(_gridSide, level.Price))
+                {
+                    LogDebug(
+                        $"MarketNextOpen level skipped by EMA price filter: index={level.Index}, price={level.Price:F8}, ema={GetCurrentEma():F8}");
+                    continue;
+                }
+
+                level.PendingNextOpenFill = true;
+                level.PendingNextOpenSignalTime = last.TimeStart;
+                LogDebug(
+                    $"MarketNextOpen level scheduled: index={level.Index}, deviation={level.DeviationPercent:F4}%, levelPrice={level.Price:F8}, " +
+                    $"triggerCandle={FormatDateTime(last.TimeStart)}, nextOpenPending=True");
+            }
+        }
+
+        private bool IsLevelTouchedByCandle(Side side, decimal levelPrice, Candle candle)
+        {
+            if (candle == null || levelPrice <= 0)
+            {
+                return false;
+            }
+
+            if (side == Side.Buy)
+            {
+                return candle.Low <= levelPrice;
+            }
+
+            if (side == Side.Sell)
+            {
+                return candle.High >= levelPrice;
+            }
+
+            return false;
+        }
+
+        private void ExecutePendingNextOpenEntries(Candle last)
+        {
+            if (!IsEffectiveMarketNextOpenMode() || last == null || _gridSide == Side.None)
+            {
+                return;
+            }
+
+            List<GridLevelState> levelsToOpen = _gridLevels
+                .Where(level => !level.Consumed && level.Position == null && level.PendingNextOpenFill)
+                .OrderBy(level => level.DeviationPercent)
+                .ToList();
+
+            if (levelsToOpen.Count == 0)
+            {
+                return;
+            }
+
+            decimal fillPrice = RoundPrice(last.Open);
+
+            foreach (GridLevelState level in levelsToOpen)
+            {
+                level.PendingNextOpenFill = false;
+
+                if (fillPrice <= 0)
+                {
+                    LogDebug(
+                        $"MarketNextOpen level activation failed: invalid next open price. index={level.Index}, levelPrice={level.Price:F8}, open={last.Open:F8}");
+                    continue;
+                }
+
+                Position position = OpenLevelPosition(
+                    level,
+                    _gridSide,
+                    level.Volume,
+                    level.Price,
+                    level.PendingNextOpenSignalTime == DateTime.MinValue ? _gridSignalTime : level.PendingNextOpenSignalTime,
+                    false,
+                    fillPrice,
+                    last.TimeStart);
+
+                if (position == null)
+                {
+                    LogDebug(
+                        $"MarketNextOpen level activation failed: index={level.Index}, deviation={level.DeviationPercent:F4}%, levelPrice={level.Price:F8}, fillPrice={fillPrice:F8}");
+                    continue;
+                }
+
+                LogDebug(
+                    $"MarketNextOpen level activated: index={level.Index}, deviation={level.DeviationPercent:F4}%, levelPrice={level.Price:F8}, " +
+                    $"fillPrice={fillPrice:F8}, triggerCandle={FormatDateTime(level.PendingNextOpenSignalTime)}, fillTime={FormatDateTime(last.TimeStart)}");
+            }
+        }
+
         private void DiscardRemainingMarketLevels(string reason)
         {
             List<GridLevelState> levelsToRemove = _gridLevels
@@ -1846,7 +2103,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             decimal volume,
             decimal price,
             DateTime signalTime,
-            bool useMarketOrder)
+            bool useMarketOrder,
+            decimal? syntheticFillPrice = null,
+            DateTime? syntheticFillTime = null)
         {
             if (level == null)
             {
@@ -1856,18 +2115,30 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             Position position = null;
             GridLevelState previousAwaitingBinding = _levelAwaitingImmediateBinding;
             _levelAwaitingImmediateBinding = level;
+            RememberAwaitingOpeningSuccess(level);
+            string levelSignalType = GetLevelSignalType(level);
 
             try
             {
-                position = useMarketOrder
-                    ? OpenPlannedMarket(side, volume, price, signalTime)
-                    : OpenPlannedLimit(side, volume, price, signalTime);
+                if (syntheticFillPrice.HasValue && syntheticFillTime.HasValue)
+                {
+                    position = OpenPlannedFake(side, volume, price, syntheticFillPrice.Value, syntheticFillTime.Value, signalTime, levelSignalType);
+                }
+                else
+                {
+                    position = useMarketOrder
+                        ? OpenPlannedMarket(side, volume, price, signalTime, levelSignalType)
+                        : OpenPlannedLimit(side, volume, price, signalTime, levelSignalType);
+                }
 
                 if (position != null &&
                     !ReferenceEquals(level.Position, position))
                 {
-                    RememberAwaitingOpeningSuccess(level);
                     SetLevelPosition(level, position);
+                }
+                else if (position == null)
+                {
+                    ForgetAwaitingOpeningSuccess(level);
                 }
 
                 return position;
@@ -1982,7 +2253,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 ? stopPrice - priceStep * _slippage.ValueDecimal
                 : stopPrice + priceStep * _slippage.ValueDecimal;
 
-            if (GetSelectedOrderType() == OrderType.Market)
+            if (UsesMarketStyleExitMode())
             {
                 _tab.CloseAtStopMarket(position, stopPrice);
             }
@@ -2013,7 +2284,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 ? targetPrice - priceStep * _slippage.ValueDecimal
                 : targetPrice + priceStep * _slippage.ValueDecimal;
 
-            if (GetSelectedOrderType() == OrderType.Market)
+            if (UsesMarketStyleExitMode())
             {
                 _tab.CloseAtProfitMarket(position, targetPrice);
             }
@@ -2314,10 +2585,81 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 return;
             }
 
+            if (string.Equals(_orderType.ValueString, "MarketOHLC", StringComparison.OrdinalIgnoreCase))
+            {
+                _orderType.ValueString = OrderType.MarketNextOpen.ToString();
+                return;
+            }
+
             if (!Enum.TryParse(_orderType.ValueString, true, out OrderType _))
             {
                 _orderType.ValueString = OrderType.Limit.ToString();
             }
+        }
+
+        private decimal GetPendingSeriesVolumeMultiplier()
+        {
+            if (!IsRecoveryBoostEnabled() || _recoverySeriesRemaining <= 0)
+            {
+                return 1m;
+            }
+
+            return _recoveryAfterLossVolumeMultiplier.ValueDecimal;
+        }
+
+        private bool IsRecoveryBoostEnabled()
+        {
+            return _recoveryAfterLossEnable != null &&
+                   _recoveryAfterLossEnable.ValueBool &&
+                   _recoveryAfterLossSeriesCount != null &&
+                   _recoveryAfterLossSeriesCount.ValueInt > 0 &&
+                   _recoveryAfterLossVolumeMultiplier != null &&
+                   _recoveryAfterLossVolumeMultiplier.ValueDecimal > 1m;
+        }
+
+        private void ConsumeRecoveryBoostOnFirstFill(Position position)
+        {
+            if (!_currentGridRecoveryBoostActive)
+            {
+                return;
+            }
+
+            _recoverySeriesRemaining = Math.Max(0, _recoverySeriesRemaining - 1);
+            _currentGridRecoveryBoostActive = false;
+
+            LogDebug(
+                $"Recovery boost consumed on first fill: position={position?.Number}, remainingSeries={_recoverySeriesRemaining}, " +
+                $"volumeMultiplier={(_recoveryAfterLossVolumeMultiplier?.ValueDecimal ?? 1m):F4}");
+        }
+
+        private void ArmRecoveryBoostAfterCompletedSeries(bool hadConsumedLevels, decimal completedSeriesPnl)
+        {
+            if (!hadConsumedLevels || completedSeriesPnl >= 0)
+            {
+                return;
+            }
+
+            if (!IsRecoveryBoostEnabled())
+            {
+                LogDebug(
+                    $"Recovery boost not armed: feature disabled or multiplier<=1, completedSeriesPnl={completedSeriesPnl:F8}");
+                return;
+            }
+
+            _recoverySeriesRemaining = _recoveryAfterLossSeriesCount.ValueInt;
+            LogDebug(
+                $"Recovery boost armed after losing series: completedSeriesPnl={completedSeriesPnl:F8}, nextSeriesCount={_recoverySeriesRemaining}, " +
+                $"volumeMultiplier={_recoveryAfterLossVolumeMultiplier.ValueDecimal:F4}");
+        }
+
+        private string GetLevelSignalType(GridLevelState level)
+        {
+            if (level == null)
+            {
+                return null;
+            }
+
+            return $"{LevelSignalPrefix}{level.Index}";
         }
 
         private void SetSmaParameters()
@@ -2365,6 +2707,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
 
             _volumeManager.R = _r.ValueDecimal;
+
+            if (!IsRecoveryBoostEnabled())
+            {
+                _recoverySeriesRemaining = 0;
+            }
         }
     }
 }

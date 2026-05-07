@@ -58,13 +58,15 @@ namespace OsEngine.Common
         {
             get
             {
-                if (!HasFilterContext())
+                if (!_enabled.ValueBool)
                 {
                     return true;
                 }
 
-                decimal close = _candles[_candles.Count - 1].Close;
-                decimal ema = Ema.DataSeries[0].Last;
+                if (!TryGetCurrentContext(out decimal close, out decimal ema))
+                {
+                    return false;
+                }
 
                 return _reverse.ValueBool
                     ? close < ema
@@ -76,13 +78,15 @@ namespace OsEngine.Common
         {
             get
             {
-                if (!HasFilterContext())
+                if (!_enabled.ValueBool)
                 {
                     return true;
                 }
 
-                decimal close = _candles[_candles.Count - 1].Close;
-                decimal ema = Ema.DataSeries[0].Last;
+                if (!TryGetCurrentContext(out decimal close, out decimal ema))
+                {
+                    return false;
+                }
 
                 return _reverse.ValueBool
                     ? close > ema
@@ -94,23 +98,26 @@ namespace OsEngine.Common
         {
             get
             {
-                if (!HasFilterContext())
+                if (!TryGetCurrentEma(out decimal ema))
                 {
                     return 0;
                 }
 
-                return Ema.DataSeries[0].Last;
+                return ema;
             }
         }
 
         public bool IsPriceAllowed(Side side, decimal price)
         {
-            if (!HasFilterContext())
+            if (!_enabled.ValueBool)
             {
                 return true;
             }
 
-            decimal ema = Ema.DataSeries[0].Last;
+            if (!TryGetCurrentEma(out decimal ema))
+            {
+                return false;
+            }
 
             if (side == Side.Buy)
             {
@@ -137,17 +144,46 @@ namespace OsEngine.Common
             }
         }
 
-        private bool HasFilterContext()
+        private bool TryGetCurrentContext(out decimal close, out decimal ema)
         {
-            return _enabled.ValueBool &&
-                   _candles != null &&
-                   _candles.Count >= _emaPeriod &&
-                   Ema != null &&
-                   Ema.DataSeries != null &&
-                   Ema.DataSeries.Count > 0 &&
-                   Ema.DataSeries[0] != null &&
-                   Ema.DataSeries[0].Values != null &&
-                   Ema.DataSeries[0].Values.Count >= _candles.Count;
+            close = 0;
+            ema = 0;
+
+            if (_candles == null || _candles.Count == 0)
+            {
+                return false;
+            }
+
+            if (_candles.Count < _emaPeriod)
+            {
+                return false;
+            }
+
+            if (!TryGetCurrentEma(out ema))
+            {
+                return false;
+            }
+
+            close = _candles[_candles.Count - 1].Close;
+            return true;
+        }
+
+        private bool TryGetCurrentEma(out decimal ema)
+        {
+            ema = 0;
+
+            if (Ema == null ||
+                Ema.DataSeries == null ||
+                Ema.DataSeries.Count == 0 ||
+                Ema.DataSeries[0] == null ||
+                Ema.DataSeries[0].Values == null ||
+                Ema.DataSeries[0].Values.Count == 0)
+            {
+                return false;
+            }
+
+            ema = Ema.DataSeries[0].Last;
+            return ema > 0;
         }
     }
 }

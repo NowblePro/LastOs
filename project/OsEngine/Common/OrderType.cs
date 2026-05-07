@@ -6,5 +6,10 @@ using System.Threading.Tasks;
 
 namespace OsEngine.Common
 {
-    public enum OrderType { Market, Limit }
+    public enum OrderType
+    {
+        Market,
+        Limit,
+        MarketNextOpen
+    }
 }

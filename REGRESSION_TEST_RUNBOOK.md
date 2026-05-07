@@ -1,6 +1,6 @@
 # OsNewGen Regression Test Runbook
 
-Updated: 2026-04-23
+Updated: 2026-04-30
 
 ## Purpose
 
@@ -17,6 +17,36 @@ When asked to "run a test", "check stability", or "verify after changes", use th
    - `Bot Station Light`
    - server update
 
+## Test Modes
+
+Use two explicit regression modes.
+
+### 1. Code-only Regression
+
+Default mode after every update.
+
+Use when:
+
+- the user asks for a quick verification after code changes
+- the goal is to understand whether the update should work in principle
+- the changed area can be assessed through source, build, config, logs, and file artifacts
+
+This mode must not invent UI behavior. If the answer depends on a live click path, mark it `RISK` or `NOT RUN`.
+
+### 2. Runtime Regression
+
+Use only when the changed area requires a live application check.
+
+Typical triggers:
+
+- WPF / WinForms UI behavior
+- chart rendering and scrolling
+- `Tester Light` execution behavior
+- bot duplication / clone flow
+- optimizer screen behavior
+
+If a change touches both logic and UI, run code-only regression first, then add only the minimum runtime checks required.
+
 ## Current Working Model
 
 - Development branch: `dev`
@@ -29,6 +59,18 @@ Server layout currently assumed:
 
 - stable folder: `OsNewGenGit2` -> `main`
 - test folder: `OsNewGenTest` -> `dev`
+
+## Agent Usage
+
+Preferred agent / skill:
+
+- `$update-regression-tester`
+
+Recommended prompts:
+
+- `Use $update-regression-tester and run a code-only regression for the latest update`
+- `Use $update-regression-tester and run full runtime regression for Tester Light`
+- `Use $update-regression-tester and assess whether the update is ready for server deployment`
 
 ## Important Current Context
 
@@ -72,6 +114,61 @@ After successful fallback build, note:
 
 - `project\OsEngine\obj_build\` is temporary and should not be committed
 
+## Universal Code-Level Regression
+
+Run this after any update, even if runtime checks are skipped.
+
+1. Inspect changed files:
+   - `git status --short`
+   - if needed, targeted `git diff`
+2. Classify the change area:
+   - UI
+   - charting
+   - tester / optimizer
+   - robot logic
+   - update scripts / branch delivery
+   - logging / diagnostics
+3. Rebuild if the change affects executable behavior.
+4. Verify artifact freshness:
+   - changed source timestamps should not be newer than the rebuilt `OsEngine.exe`
+5. Check that the update is wired correctly in code:
+   - new buttons/columns/parameters exist in source
+   - changed logic is referenced from the actual execution path
+6. Check for obvious regression ripple:
+   - search for affected symbols/usages
+   - ensure no stale code path still points to old behavior
+7. Scan recent logs for same-day exceptions related to the touched area.
+   - old historic log noise is not a failure by itself
+   - only count it as `FAIL` if it reproduces or if the code still clearly contains the same defect path
+8. Check temporary build pollution:
+   - nested `project\OsEngine\project\...` should be removed
+   - temp `obj_build*` folders must not be treated as release artifacts
+
+Pass criteria:
+
+- changed area identified
+- build succeeds or is explicitly `NOT RUN`
+- executable freshness is evidence-backed
+- code path for the update is connected
+- no same-day reproducible error tied to the touched area
+
+## Update Delivery Regression
+
+Use this whenever the user asks whether an update is ready to ship or whether a server folder should be updated.
+
+1. Confirm branch/commit state:
+   - local `dev` / `main`
+   - server `dev` / `main` if relevant
+2. Confirm whether the required source changes are present in the checked-out branch.
+3. Confirm whether the rebuilt `OsEngine.exe` is included in the intended branch if the update depends on binary delivery.
+4. Confirm update scripts are aligned with the intended branch:
+   - `main` updater pulls `main`
+   - `dev` updater pulls `dev`
+5. Explicitly state:
+   - code ready / not ready
+   - binary ready / not ready
+   - server update recommended / not recommended
+
 ## Report Format
 
 Each future test pass should report at least:
@@ -86,6 +183,7 @@ Each future test pass should report at least:
 Recommended output format:
 
 ```text
+Mode: code-only | runtime
 Build: PASS
 Launch: PASS
 Area under test: <feature/fix>
@@ -121,6 +219,11 @@ Pass criteria:
 - app opens
 - app closes
 - no immediate unhandled exception
+
+Important:
+
+- do not run this by default if code-only regression is enough
+- prefer code-only first, runtime second
 
 ## Regression Matrix
 

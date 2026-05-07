@@ -317,6 +317,24 @@ namespace OsEngine.Robots.TrigonumCustom
             return position;
         }
 
+        protected Position OpenPlannedLimit(Side side, decimal volume, decimal price, DateTime signalCandleTime, string signalType)
+        {
+            Position position = null;
+
+            if (side == Side.Buy)
+            {
+                position = _tab.BuyAtLimit(volume, price, signalType);
+            }
+            else if (side == Side.Sell)
+            {
+                position = _tab.SellAtLimit(volume, price, signalType);
+            }
+
+            RememberPlannedEntry(position, price, signalCandleTime);
+
+            return position;
+        }
+
         protected Position OpenPlannedMarket(Side side, decimal volume, decimal plannedPrice, DateTime signalCandleTime)
         {
             Position position = null;
@@ -328,6 +346,73 @@ namespace OsEngine.Robots.TrigonumCustom
             else if (side == Side.Sell)
             {
                 position = _tab.SellAtMarket(volume);
+            }
+
+            RememberPlannedEntry(position, plannedPrice, signalCandleTime);
+
+            return position;
+        }
+
+        protected Position OpenPlannedMarket(Side side, decimal volume, decimal plannedPrice, DateTime signalCandleTime, string signalType)
+        {
+            Position position = null;
+
+            if (side == Side.Buy)
+            {
+                position = _tab.BuyAtMarket(volume, signalType);
+            }
+            else if (side == Side.Sell)
+            {
+                position = _tab.SellAtMarket(volume, signalType);
+            }
+
+            RememberPlannedEntry(position, plannedPrice, signalCandleTime);
+
+            return position;
+        }
+
+        protected Position OpenPlannedFake(
+            Side side,
+            decimal volume,
+            decimal plannedPrice,
+            decimal fillPrice,
+            DateTime fillTime,
+            DateTime signalCandleTime)
+        {
+            Position position = null;
+
+            if (side == Side.Buy)
+            {
+                position = _tab.BuyAtFake(volume, fillPrice, fillTime);
+            }
+            else if (side == Side.Sell)
+            {
+                position = _tab.SellAtFake(volume, fillPrice, fillTime);
+            }
+
+            RememberPlannedEntry(position, plannedPrice, signalCandleTime);
+
+            return position;
+        }
+
+        protected Position OpenPlannedFake(
+            Side side,
+            decimal volume,
+            decimal plannedPrice,
+            decimal fillPrice,
+            DateTime fillTime,
+            DateTime signalCandleTime,
+            string signalType)
+        {
+            Position position = null;
+
+            if (side == Side.Buy)
+            {
+                position = _tab.BuyAtFake(volume, fillPrice, fillTime, signalType);
+            }
+            else if (side == Side.Sell)
+            {
+                position = _tab.SellAtFake(volume, fillPrice, fillTime, signalType);
             }
 
             RememberPlannedEntry(position, plannedPrice, signalCandleTime);
@@ -464,7 +549,7 @@ namespace OsEngine.Robots.TrigonumCustom
                     decimal volume = GetVolume();
                     DateTime signalCandleTime = last.TimeStart;
 
-                    if (orderType == OrderType.Market)
+                    if (orderType == OrderType.Market || orderType == OrderType.MarketNextOpen)
                     {
                         decimal plannedPrice = last.Close;
                         OnBeforeBaseEntryOrder(candles, Side.Buy, orderType, plannedPrice, volume);
@@ -497,7 +582,7 @@ namespace OsEngine.Robots.TrigonumCustom
                     decimal volume = GetVolume();
                     DateTime signalCandleTime = last.TimeStart;
 
-                    if (orderType == OrderType.Market)
+                    if (orderType == OrderType.Market || orderType == OrderType.MarketNextOpen)
                     {
                         decimal plannedPrice = last.Close;
                         OnBeforeBaseEntryOrder(candles, Side.Sell, orderType, plannedPrice, volume);
