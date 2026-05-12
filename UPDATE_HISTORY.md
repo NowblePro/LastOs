@@ -21,6 +21,10 @@
 ## 2026-05-07 | local
 - Added recovery-volume mode to `MRZScoreNatrGrid`: after a losing completed series, the next `N` series can start with first-level volume multiplied by `X`.
 - Recovery series count is consumed only after the first actual fill of the boosted series; a grid that was built but never filled does not burn the counter.
+- Replaced the experimental `MarketOHLC` path with `MarketNextOpen` as the candle-based backtest mode for market-style parity research.
+- Fixed `MRZScoreNatrGrid` level binding on open so new positions are restored by `SignalTypeOpen` and no longer fall into `opening position is not bound to any grid level`.
+- Optimized `Journal -> Closed positions` by removing the heavy manual `O(n^2)` sort.
+- Fixed `CanEnterByEmaDecoration` fail-open behavior: with EMA filter enabled, missing EMA context no longer allows entries above EMA.
 
 ## 2026-05-06 | local
 - `MarketOHLC` убран как основной режим для parity-тестов и заменён на `MarketNextOpen`.

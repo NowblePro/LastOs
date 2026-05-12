@@ -52,33 +52,13 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-05-07 14:31:58
+- Updated: 2026-05-12 20:07:05
 - Branch: `dev`
-- HEAD before push: `1293900`
+- HEAD before push: `4139281`
 - Pending changes before auto-log:
 
 `	ext
- M REGRESSION_TEST_RUNBOOK.md
- M WORKSPACE_STATUS.md
- M project/OsEngine/Common/CanEnterByEmaDecoration.cs
- M project/OsEngine/Common/FairPriceDecoration.cs
- M project/OsEngine/Common/MeanReverseVolumeManager.cs
- M project/OsEngine/Common/OrderType.cs
- M project/OsEngine/Common/StopLossDecoration.cs
- M project/OsEngine/Common/TakeProfitDecoration.cs
- M project/OsEngine/Common/TakeSmaDecoration.cs
- M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
- M project/OsEngine/Journal/JournalUi2.xaml.cs
- M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
- M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
- M project/OsEngine/bin/Debug/OsEngine.exe
-?? .claude/
-?? 1.md
-?? UPDATE_HISTORY.md
-?? project/OsEngine/bin_marketnextopen_test/
-?? project/OsEngine/bin_marketohlc_test/
-?? project/OsEngine/obj_marketnextopen_test/
-?? project/OsEngine/obj_marketohlc_test/
+ M UPDATE_HISTORY.md
 `"
     "
     
@@ -166,6 +146,9 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-05-12 20:07:05 | branch `dev` | message: `Обновление до свежей версии`
+  Files before commit:
+  -  M UPDATE_HISTORY.md
 - 2026-05-07 14:31:58 | branch `dev` | message: `Добавлена история обновлений в файлах. Добавлен новый параметр увеличение объема после убыточной сделки, параметр - флаг. Исправлен баг: логи в закрытых позициях, пропуск фильтра Ema в роботе NATR.`
   Files before commit:
   -  M REGRESSION_TEST_RUNBOOK.md
@@ -323,6 +306,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 
