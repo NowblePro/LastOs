@@ -18,6 +18,24 @@
 
 ## Recent Updates
 
+## 2026-05-18 | local
+- Restored live `Natr` bot configs from the last valid tester-clone snapshots for `AAVE`, `BNB`, `ICP`, and `XMR L2` after parameter drift in `Grid Size`, `Recovery Volume Multiplier`, `Debug Logging`, and `Ema Filter Reverse`.
+- Verified that `Natr Dot L` already matched its tester-clone config; left `Natr DOT L2` unchanged because the latest tester-clone artifacts do not contain a reliable base `Parametrs.txt` snapshot for that bot.
+
+## 2026-05-19 | local
+- Added the first `OsEngine.Tests` automation project for `net48` with NUnit-based unit coverage for `MeanReverseVolumeManager`, `PositionStatisticGenerator.GetStabilityScore`, and `BotPanel` parameter loading by saved parameter name.
+- Added `scripts/test-code-only.ps1` and `scripts/test-scenarios.ps1` using full Visual Studio MSBuild plus `vstest.console`, because `dotnet test` cannot build the legacy `OsEngine` project due to `ResolveComReference`.
+- Added first `ConfigRegression` coverage for `OsTraderMaster` tester-clone connector normalization and included it in `test-code-only.ps1`.
+- Added first `Scenario` coverage for `MRZScoreNatrGrid` recovery-threshold logic and consumed-series depth via deterministic reflection-based tests.
+- Hardened `test-code-only.ps1` and `test-scenarios.ps1` to stop on failed MSBuild / vstest instead of accidentally running stale test binaries.
+- Extracted `MRZScoreNatrGrid` test setup into a reusable helper and expanded scenario coverage with buy/sell grid build, EMA-blocked build, and threshold-unavailable build cases.
+- Added lifecycle scenario coverage for `MRZScoreNatrGrid` pending-next-open scheduling and `ClearGrid("Series completed")` state reset plus recovery arming.
+- Added core opening-path scenario coverage for `MRZScoreNatrGrid`: immediate level binding, opening-success binding by `SignalTypeOpen`, and fallback binding by awaiting-queue price with recovery consumption on first fill.
+
+## 2026-05-18 | local
+- Added `Recovery Loss Level Threshold` to `MRZScoreNatrGrid`: recovery volume boost now arms only after a losing completed series that reached the configured consumed grid depth; `0` keeps the old behavior and reacts to any losing series.
+- Fixed tester-clone connector sync to preserve prior valid tester connector state when the source connector file is malformed, and restored the broken `Natr Dot L` source config from its working tester clone.
+
 ## 2026-05-07 | local
 - Added recovery-volume mode to `MRZScoreNatrGrid`: after a losing completed series, the next `N` series can start with first-level volume multiplied by `X`.
 - Recovery series count is consumed only after the first actual fill of the boosted series; a grid that was built but never filled does not burn the counter.

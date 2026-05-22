@@ -58,6 +58,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private StrategyParameterDecimal _r;
         private StrategyParameterBool _recoveryAfterLossEnable;
+        private StrategyParameterInt _recoveryAfterLossLevelThreshold;
         private StrategyParameterInt _recoveryAfterLossSeriesCount;
         private StrategyParameterDecimal _recoveryAfterLossVolumeMultiplier;
         private MeanReverseVolumeManager _volumeManager;
@@ -157,6 +158,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             _r = CreateParameter("R, %", 1m, 0m, 15m, 0.1m, "Volume Manager");
             _recoveryAfterLossEnable = CreateParameter("Recovery After Loss Enable", false, "Volume Manager");
+            _recoveryAfterLossLevelThreshold = CreateParameter("Recovery Loss Level Threshold", 0, 0, 20, 1, "Volume Manager");
             _recoveryAfterLossSeriesCount = CreateParameter("Recovery Series Count", 1, 1, 20, 1, "Volume Manager");
             _recoveryAfterLossVolumeMultiplier = CreateParameter("Recovery Volume Multiplier", 2m, 1m, 10m, 0.1m, "Volume Manager");
             _volumeManager = new MeanReverseVolumeManager();
@@ -857,10 +859,11 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             bool hadConsumedLevels = HasConsumedLevels();
             decimal completedSeriesPnl = _activeSeriesRealizedPnl;
+            int completedSeriesDepth = GetConsumedSeriesDepth();
 
             if (string.Equals(reason, "Series completed", StringComparison.Ordinal))
             {
-                ArmRecoveryBoostAfterCompletedSeries(hadConsumedLevels, completedSeriesPnl);
+                ArmRecoveryBoostAfterCompletedSeries(hadConsumedLevels, completedSeriesPnl, completedSeriesDepth);
             }
 
             _gridLevels.Clear();
@@ -2611,10 +2614,25 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             return _recoveryAfterLossEnable != null &&
                    _recoveryAfterLossEnable.ValueBool &&
+                   _recoveryAfterLossLevelThreshold != null &&
                    _recoveryAfterLossSeriesCount != null &&
                    _recoveryAfterLossSeriesCount.ValueInt > 0 &&
                    _recoveryAfterLossVolumeMultiplier != null &&
                    _recoveryAfterLossVolumeMultiplier.ValueDecimal > 1m;
+        }
+
+        private int GetConsumedSeriesDepth()
+        {
+            if (_gridLevels == null || _gridLevels.Count == 0)
+            {
+                return 0;
+            }
+
+            return _gridLevels
+                .Where(level => level.Consumed)
+                .Select(level => level.Index)
+                .DefaultIfEmpty(0)
+                .Max();
         }
 
         private void ConsumeRecoveryBoostOnFirstFill(Position position)
@@ -2632,7 +2650,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 $"volumeMultiplier={(_recoveryAfterLossVolumeMultiplier?.ValueDecimal ?? 1m):F4}");
         }
 
-        private void ArmRecoveryBoostAfterCompletedSeries(bool hadConsumedLevels, decimal completedSeriesPnl)
+        private void ArmRecoveryBoostAfterCompletedSeries(bool hadConsumedLevels, decimal completedSeriesPnl, int completedSeriesDepth)
         {
             if (!hadConsumedLevels || completedSeriesPnl >= 0)
             {
@@ -2646,9 +2664,20 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 return;
             }
 
+            int recoveryThreshold = _recoveryAfterLossLevelThreshold?.ValueInt ?? 0;
+
+            if (recoveryThreshold > 0 && completedSeriesDepth < recoveryThreshold)
+            {
+                LogDebug(
+                    $"Recovery boost not armed: losing series depth below threshold, completedSeriesPnl={completedSeriesPnl:F8}, " +
+                    $"seriesDepth={completedSeriesDepth}, threshold={recoveryThreshold}");
+                return;
+            }
+
             _recoverySeriesRemaining = _recoveryAfterLossSeriesCount.ValueInt;
             LogDebug(
-                $"Recovery boost armed after losing series: completedSeriesPnl={completedSeriesPnl:F8}, nextSeriesCount={_recoverySeriesRemaining}, " +
+                $"Recovery boost armed after losing series: completedSeriesPnl={completedSeriesPnl:F8}, seriesDepth={completedSeriesDepth}, " +
+                $"threshold={recoveryThreshold}, nextSeriesCount={_recoverySeriesRemaining}, " +
                 $"volumeMultiplier={_recoveryAfterLossVolumeMultiplier.ValueDecimal:F4}");
         }
 

@@ -486,10 +486,11 @@ namespace OsEngine.OsTrader
                 SaveCurrentBotsStateForSync();
                 Save();
                 string enginePath = GetEnginePathForSync();
+                Dictionary<string, string[]> previousTesterCloneConnectorSettings = CaptureTesterCloneConnectorSettings(enginePath);
 
                 DeleteOldTesterCloneFiles(enginePath);
                 CopyCurrentBotFilesToTesterClones(enginePath);
-                NormalizeTesterCloneConnectorSettings(enginePath);
+                NormalizeTesterCloneConnectorSettings(enginePath, previousTesterCloneConnectorSettings);
                 SaveKeeperFile(@"Engine\SettingsTesterKeeper.txt", true);
 
                 int botsCount = PanelsArray?.Count ?? 0;
@@ -503,6 +504,33 @@ namespace OsEngine.OsTrader
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
                 return 0;
             }
+        }
+
+        private Dictionary<string, string[]> CaptureTesterCloneConnectorSettings(string enginePath)
+        {
+            Dictionary<string, string[]> result = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+
+            if (Directory.Exists(enginePath) == false)
+            {
+                return result;
+            }
+
+            try
+            {
+                string[] files = Directory.GetFiles(enginePath, TesterClonePrefix + "*ConnectorPrime.txt");
+
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string fileName = System.IO.Path.GetFileName(files[i]);
+                    result[fileName] = File.ReadAllLines(files[i]);
+                }
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+
+            return result;
         }
 
         private void SaveKeeperFile(string path, bool useTesterCloneNames)
@@ -655,7 +683,7 @@ namespace OsEngine.OsTrader
             }
         }
 
-        private void NormalizeTesterCloneConnectorSettings(string enginePath)
+        private void NormalizeTesterCloneConnectorSettings(string enginePath, Dictionary<string, string[]> previousTesterCloneConnectorSettings)
         {
             if (Directory.Exists(enginePath) == false)
             {
@@ -670,10 +698,19 @@ namespace OsEngine.OsTrader
                 try
                 {
                     string[] lines = File.ReadAllLines(files[i]);
+                    string fileName = System.IO.Path.GetFileName(files[i]);
+                    string[] previousLines = null;
+                    previousTesterCloneConnectorSettings?.TryGetValue(fileName, out previousLines);
+
+                    if ((lines == null || lines.Length < 5) &&
+                        (previousLines == null || previousLines.Length < 5))
+                    {
+                        continue;
+                    }
 
                     if (lines == null || lines.Length < 5)
                     {
-                        continue;
+                        lines = (string[])previousLines.Clone();
                     }
 
                     if (lines.Length < 6)
@@ -681,12 +718,34 @@ namespace OsEngine.OsTrader
                         Array.Resize(ref lines, 6);
                     }
 
+                    string testerSecurity = GetTesterSecurityFileName(lines[2], testerDataFolder);
+
+                    if (string.IsNullOrWhiteSpace(testerSecurity) &&
+                        previousLines != null &&
+                        previousLines.Length > 2)
+                    {
+                        testerSecurity = GetTesterSecurityFileName(previousLines[2], testerDataFolder);
+                    }
+
+                    bool eventsIsOn = false;
+
+                    if (previousLines != null &&
+                        previousLines.Length > 5 &&
+                        bool.TryParse(previousLines[5], out bool previousEventsIsOn))
+                    {
+                        eventsIsOn = previousEventsIsOn;
+                    }
+                    else if (bool.TryParse(lines[5], out bool currentEventsIsOn))
+                    {
+                        eventsIsOn = currentEventsIsOn;
+                    }
+
                     lines[0] = "GodMode";
                     lines[1] = "False";
-                    lines[2] = GetTesterSecurityFileName(lines[2], testerDataFolder);
+                    lines[2] = testerSecurity;
                     lines[3] = ServerType.Tester.ToString();
                     lines[4] = "TestClass";
-                    lines[5] = "False";
+                    lines[5] = eventsIsOn.ToString();
 
                     File.WriteAllLines(files[i], lines);
                 }

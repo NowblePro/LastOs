@@ -52,13 +52,18 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-05-12 20:07:05
+- Updated: 2026-05-22 14:15:01
 - Branch: `dev`
-- HEAD before push: `4139281`
+- HEAD before push: `99b39e6`
 - Pending changes before auto-log:
 
 `	ext
  M UPDATE_HISTORY.md
+ M project/OsEngine/OsTrader/OsTraderMaster.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+ M project/OsEngine/bin/Debug/OsEngine.exe
+?? project/OsEngine.Tests/
+?? scripts/
 `"
     "
     
@@ -68,6 +73,7 @@
 - [D] Engine
 - [D] project
 - [D] related projects
+- [D] scripts
 - [F] .gitignore
 - [F] 1.md
 - [F] LICENSE
@@ -90,6 +96,7 @@
 
 ### project Snapshot
 - [D] project/OsEngine
+- [D] project/OsEngine.Tests
 - [D] project/packages
 - [F] project/OsEngine.sln
 
@@ -146,6 +153,14 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-05-22 14:15:01 | branch `dev` | message: `Добавление recovery filter`
+  Files before commit:
+  -  M UPDATE_HISTORY.md
+  -  M project/OsEngine/OsTrader/OsTraderMaster.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+  -  M project/OsEngine/bin/Debug/OsEngine.exe
+  - ?? project/OsEngine.Tests/
+  - ?? scripts/
 - 2026-05-12 20:07:05 | branch `dev` | message: `Обновление до свежей версии`
   Files before commit:
   -  M UPDATE_HISTORY.md
@@ -306,6 +321,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 
