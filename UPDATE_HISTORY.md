@@ -18,6 +18,14 @@
 
 ## Recent Updates
 
+## 2026-05-26 | local
+- Tightened `MeanReversionSma2` EMA entry validation for grid fills: pending grid orders are canceled when their price no longer matches the EMA side filter, and newly filled positions that violate the EMA entry side are removed from the grid and closed instead of continuing the series.
+
+## 2026-05-25 | local
+- Added `scripts/analyze_robot_portfolio.py`, a standalone Python portfolio-risk analyzer for averaging robots with CSV and OsEngine tester-log input modes.
+- Added `scripts/README_portfolio_risk_analyzer.md` with launch commands for CSV files and the latest OsEngine Tester Light run.
+- Generated the latest 10-robot tester risk report in `reports/portfolio_latest_10`, including robot stats, overlap matrices, risk similarity, portfolio split recommendations, stress tests, and charts.
+
 ## 2026-05-18 | local
 - Restored live `Natr` bot configs from the last valid tester-clone snapshots for `AAVE`, `BNB`, `ICP`, and `XMR L2` after parameter drift in `Grid Size`, `Recovery Volume Multiplier`, `Debug Logging`, and `Ema Filter Reverse`.
 - Verified that `Natr Dot L` already matched its tester-clone config; left `Natr DOT L2` unchanged because the latest tester-clone artifacts do not contain a reliable base `Parametrs.txt` snapshot for that bot.
@@ -31,6 +39,10 @@
 - Extracted `MRZScoreNatrGrid` test setup into a reusable helper and expanded scenario coverage with buy/sell grid build, EMA-blocked build, and threshold-unavailable build cases.
 - Added lifecycle scenario coverage for `MRZScoreNatrGrid` pending-next-open scheduling and `ClearGrid("Series completed")` state reset plus recovery arming.
 - Added core opening-path scenario coverage for `MRZScoreNatrGrid`: immediate level binding, opening-success binding by `SignalTypeOpen`, and fallback binding by awaiting-queue price with recovery consumption on first fill.
+- Added return-to-channel entry mode for `MRZScoreNatrGrid`: when enabled, the robot first arms on a channel break and then allows grid build only after a confirmed reversal candle returns back into the channel with configurable return depth and minimum body strength relative to NATR.
+- Added `DDR As Entry Filter Enable` for `MRZScoreNatrGrid`: in this mode DDR no longer widens or reprices grid levels and instead blocks new entries while DDR remains activated.
+- Hid unused `Start trade time` / `End trade time` parameters from `BotPanelSimple` strategy UI via a dedicated hidden parameters section.
+- Expanded `MRZScoreNatrGrid` scenario coverage with deterministic tests for return-to-channel confirmation, weak-return rejection, and DDR entry-filter blocking.
 
 ## 2026-05-18 | local
 - Added `Recovery Loss Level Threshold` to `MRZScoreNatrGrid`: recovery volume boost now arms only after a losing completed series that reached the configured consumed grid depth; `0` keeps the old behavior and reacts to any losing series.
@@ -66,3 +78,8 @@
 
 ## 2026-04-28 | committed
 - Выполнен workspace update и зафиксировано состояние рабочей ветки `dev`.
+
+## 2026-05-22 | local
+- Tightened MRZScoreNatrGrid return-to-channel mode for active market grids: new levels in Market/MarketNextOpen now require a fresh confirmed return before activation or scheduling.
+- Added scenario coverage for fresh-return scheduling behavior and rebuilt OsEngine.exe.
+

@@ -56,7 +56,13 @@ namespace OsEngine.Tests.Helpers
             decimal highChannel = 102m,
             decimal? ema = null,
             bool emaEnabled = false,
-            bool emaReverse = false)
+            bool emaReverse = false,
+            bool returnToChannelEnabled = false,
+            decimal returnIntoChannelPercent = 20m,
+            decimal minReversalBodyToNatr = 0.3m,
+            bool ddrAsEntryFilterEnabled = false,
+            bool ddrActivated = false,
+            string orderType = "MarketNextOpen")
         {
             MRZScoreNatrGrid robot = CreateUninitializedRobot();
 
@@ -77,12 +83,16 @@ namespace OsEngine.Tests.Helpers
             SetField(robot, "_gridSize", new StrategyParameterInt("Grid Size", 3, 1, 20, 1));
             SetField(robot, "_fixPercent", new StrategyParameterDecimal("Fix Percent", 2m, 0.1m, 10m, 0.1m));
             SetField(robot, "_natrMult", new StrategyParameterDecimal("NATR Multiplier", 1.25m, 0m, 10m, 0.1m));
-            SetField(robot, "_orderType", new StrategyParameterString("OrderType", OrderType.MarketNextOpen.ToString()));
+            SetField(robot, "_enterOnReturnToChannelEnable", new StrategyParameterBool("Enter On Return To Channel Enable", returnToChannelEnabled));
+            SetField(robot, "_returnIntoChannelPercent", new StrategyParameterDecimal("Return Into Channel Percent", returnIntoChannelPercent, 0m, 100m, 1m));
+            SetField(robot, "_minReversalBodyToNatr", new StrategyParameterDecimal("Min Reversal Body To Natr", minReversalBodyToNatr, 0m, 5m, 0.1m));
+            SetField(robot, "_orderType", new StrategyParameterString("OrderType", orderType));
             SetField(robot, "_recoveryAfterLossEnable", new StrategyParameterBool("Recovery After Loss Enable", seriesVolumeMultiplier > 1m));
             SetField(robot, "_recoveryAfterLossLevelThreshold", new StrategyParameterInt("Recovery Loss Level Threshold", 0, 0, 20, 1));
             SetField(robot, "_recoveryAfterLossSeriesCount", new StrategyParameterInt("Recovery Series Count", 1, 1, 20, 1));
             SetField(robot, "_recoveryAfterLossVolumeMultiplier", new StrategyParameterDecimal("Recovery Volume Multiplier", seriesVolumeMultiplier, 1m, 10m, 0.1m));
             SetField(robot, "_recoverySeriesRemaining", seriesVolumeMultiplier > 1m ? 1 : 0);
+            SetField(robot, "_ddrAsEntryFilterEnable", new StrategyParameterBool("DDR As Entry Filter Enable", ddrAsEntryFilterEnabled));
             SetField(robot, "_volumeManager", new MeanReverseVolumeManager
             {
                 R = 50m,
@@ -108,9 +118,17 @@ namespace OsEngine.Tests.Helpers
             }
 
             SetField(robot, "_change24", null);
+            SetField(robot, "_ddrDecoration", CreateDdrDecoration(ddrActivated));
             SetProtectedField(robot, typeof(OsEngine.Robots.TrigonumCustom.BotPanelSimple), "_regime", ParseNestedEnum(typeof(OsEngine.Robots.TrigonumCustom.BotPanelSimple), "BotRegime", "On"));
 
             return robot;
+        }
+
+        public static DDRDecoration CreateDdrDecoration(bool activated)
+        {
+            DDRDecoration decoration = (DDRDecoration)FormatterServices.GetUninitializedObject(typeof(DDRDecoration));
+            SetField(decoration, "_activated", activated);
+            return decoration;
         }
 
         public static CanEnterByEmaDecoration CreateEmaFilter(Aindicator emaIndicator, bool enabled, bool reverse)

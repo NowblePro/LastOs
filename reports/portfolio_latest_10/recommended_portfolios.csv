@@ -1,0 +1,11 @@
+robot_name,recommended_portfolio,reason
+TLClone Natr DOT L2,1,"separated from high-similarity peers: inj=0.79, 321321321312=0.71, TLClone Natr ICP L=0.39"
+aave,1,"separated from high-similarity peers: Sol=0.36, 321321321312=0.35, TLClone Natr DOT L2=0.35"
+bnb,1,"separated from high-similarity peers: Sol=0.31, 321321321312=0.30, Testt=0.29"
+Sol,2,"separated from high-similarity peers: Testt=0.38, aave=0.36, TLClone Natr DOT L2=0.34"
+inj,2,"separated from high-similarity peers: TLClone Natr DOT L2=0.79, 321321321312=0.70, TLClone Natr ICP L=0.39"
+321321321312,3,"separated from high-similarity peers: TLClone Natr DOT L2=0.71, inj=0.70, TLClone Natr ICP L=0.38"
+TLClone Natr XMR L2,3,"separated from high-similarity peers: Sol=0.34, TLClone Natr DOT L2=0.30, Testt=0.30"
+TLClone Natr ICP L,4,"separated from high-similarity peers: TLClone Natr DOT L2=0.39, inj=0.39, 321321321312=0.38"
+Testt,4,"separated from high-similarity peers: Sol=0.38, inj=0.37, TLClone Natr DOT L2=0.36"
+avax,4,"separated from high-similarity peers: TLClone Natr DOT L2=0.31, 321321321312=0.28, TLClone Natr ICP L=0.27"

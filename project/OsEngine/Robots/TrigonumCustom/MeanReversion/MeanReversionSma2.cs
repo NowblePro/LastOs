@@ -112,8 +112,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                         $"LongSignal: {(z < _zEnterBaseLong.ValueDecimal && price > ema)} | " +
                         $"ShortSignal: {(z > _zEnterBaseShort.ValueDecimal && price < ema)} |");
             }
-            
+
             CandleProfitFilter(candles);
+            CancelInvalidOpeningGridPositionsByEma();
             base.CandleFinishedEvent(candles);
             if (_tab.PositionsOpenAll.Count == 0)
             {
@@ -128,27 +129,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
             else
             {
-                if (_currentGrid != null)
-                {
-                    List<int> keysToDelete = new List<int>();
-                    foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
-                    {
-                        Position pos = pair.Value;
-                        if (!CanEnterPositionByEma(pos.EntryPrice, pos.Direction))
-                        {
-                            if (pos.State == PositionStateType.Opening)
-                            {
-                                keysToDelete.Add(pair.Key);
-                                ClosePosition(pos);
-                            }
-                        }
-                    }
-
-                    foreach (int key in keysToDelete)
-                    {
-                        _currentGrid.DeleteByKey(key);
-                    }
-                }
+                CancelInvalidOpeningGridPositionsByEma();
             }
         }
 
@@ -238,8 +219,90 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             }
         }
 
+        private void CancelInvalidOpeningGridPositionsByEma()
+        {
+            if (_currentGrid == null)
+            {
+                return;
+            }
+
+            List<int> keysToDelete = new List<int>();
+
+            foreach (KeyValuePair<int, Position> pair in _currentGrid.GetPositions())
+            {
+                Position pos = pair.Value;
+
+                if (pos == null ||
+                    pos.State != PositionStateType.Opening ||
+                    CanEnterPositionByEma(pos.EntryPrice, pos.Direction))
+                {
+                    continue;
+                }
+
+                keysToDelete.Add(pair.Key);
+                ClosePosition(pos);
+                LogEmaRejectedPosition(pos, "pending order canceled");
+            }
+
+            foreach (int key in keysToDelete)
+            {
+                _currentGrid.DeleteByKey(key);
+            }
+        }
+
+        private bool RejectJustOpenedPositionByEma(Position position)
+        {
+            if (position == null ||
+                CanEnterPositionByEma(position.EntryPrice, position.Direction))
+            {
+                return false;
+            }
+
+            DeletePositionFromGrid(position);
+            ClosePosition(position);
+            LogEmaRejectedPosition(position, "filled position rejected");
+            return true;
+        }
+
+        private void DeletePositionFromGrid(Position position)
+        {
+            if (_currentGrid == null || position == null)
+            {
+                return;
+            }
+
+            List<int> keysToDelete = _currentGrid.GetPositions()
+                .Where(pair => pair.Value != null && pair.Value.Number == position.Number)
+                .Select(pair => pair.Key)
+                .ToList();
+
+            foreach (int key in keysToDelete)
+            {
+                _currentGrid.DeleteByKey(key);
+            }
+        }
+
+        private void LogEmaRejectedPosition(Position position, string reason)
+        {
+            decimal ema = _ema?.DataSeries != null &&
+                          _ema.DataSeries.Count > 0 &&
+                          _ema.DataSeries[0] != null
+                ? _ema.DataSeries[0].Last
+                : 0;
+
+            _logDecoration.LogDebug(
+                $"EMA entry filter rejected {reason}: position={position?.Number}, side={position?.Direction}, " +
+                $"entry={position?.EntryPrice:F8}, ema={ema:F8}, state={position?.State}");
+        }
+
         private void _tab_PositionOpeningSuccesEvent(Position obj)
         {
+            if (RejectJustOpenedPositionByEma(obj))
+            {
+                _pendingGridSigma = null;
+                return;
+            }
+
             if (_currentGrid == null)
             {
                 int gridSize = _gridSize.ValueInt - 1;

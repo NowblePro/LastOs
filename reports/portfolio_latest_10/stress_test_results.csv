@@ -1,0 +1,5 @@
+scenario,robots_active,estimated_exposure,estimated_exposure_pct_balance,warning,max_averaging_level_sum,timestamp,robots_averaging
+all_robots_enter_same_time,10.0,1825218.0,18.25218,all active at once; compare exposure to available margin,,,
+all_robots_reach_max_averaging,10.0,1825218.0,18.25218,maximum historical levels happen simultaneously,179.0,,
+worst_historical_overlap_period,8.0,43520.0,0.4352,historical peak overlap,,2024-11-24 12:00:00,8.0
+worst_historical_exposure_period,5.0,1061447.0,10.61447,historical peak exposure,,2026-05-12 14:00:00,4.0

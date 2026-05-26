@@ -116,6 +116,11 @@ namespace OsEngine.Entity
 
             for(int i = 0;i < _parameters.Count;i++)
             {
+                if (IsHiddenParameter(_parameters[i]))
+                {
+                    continue;
+                }
+
                 List<IIStrategyParameter> myList = sorted.Find(s => s[0].TabName == _parameters[i].TabName);
 
                 if(myList != null)
@@ -167,9 +172,30 @@ namespace OsEngine.Entity
         private void BuildAllParametersTab()
         {
             ClearTabs();
-            CreateTab(_parameters, OsLocalization.Entity.ParametersAllTab);
+            CreateTab(GetVisibleParameters(), OsLocalization.Entity.ParametersAllTab);
             _isAllParametersMode = true;
             UpdateOpenAllParametersButton();
+        }
+
+        private List<IIStrategyParameter> GetVisibleParameters()
+        {
+            List<IIStrategyParameter> visibleParameters = new List<IIStrategyParameter>();
+
+            for (int i = 0; i < _parameters.Count; i++)
+            {
+                if (!IsHiddenParameter(_parameters[i]))
+                {
+                    visibleParameters.Add(_parameters[i]);
+                }
+            }
+
+            return visibleParameters;
+        }
+
+        private bool IsHiddenParameter(IIStrategyParameter parameter)
+        {
+            return parameter != null &&
+                   string.Equals(parameter.TabName, "__Hidden", StringComparison.OrdinalIgnoreCase);
         }
 
         private List<ParameterUiCategoryGroup> GetParamSortedByCategory()

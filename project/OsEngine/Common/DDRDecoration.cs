@@ -70,6 +70,11 @@ namespace OsEngine.Common
             }
         }
 
+        public bool BlocksEntry()
+        {
+            return Activated;
+        }
+
         private void Bot_ParametrsChangeByUser()
         {
             if (_ddr == null || _ddrN == null) return;

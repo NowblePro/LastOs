@@ -80,6 +80,98 @@ namespace OsEngine.Tests.Scenarios
         }
 
         [Test]
+        public void TryBuildPendingGrid_BuildsOnlyAfterConfirmedReturnToChannel_ForBuy()
+        {
+            MRZScoreNatrGrid robot = MRZScoreNatrGridTestFactory.CreateConfiguredGridRobot(
+                seriesVolumeMultiplier: 1m,
+                returnToChannelEnabled: true,
+                returnIntoChannelPercent: 20m,
+                minReversalBodyToNatr: 0.3m);
+
+            List<Candle> candles = new List<Candle>
+            {
+                CreateFinishedCandle(new DateTime(2026, 5, 19, 12, 0, 0), 95m, 98.8m, 97m, 98.5m)
+            };
+
+            MRZScoreNatrGridTestFactory.InvokePrivate(robot, "TryBuildPendingGrid", candles);
+
+            IList gridLevels = (IList)MRZScoreNatrGridTestFactory.GetField(robot, "_gridLevels");
+            Assert.That(gridLevels.Count, Is.EqualTo(3));
+            Assert.That(MRZScoreNatrGridTestFactory.GetField(robot, "_gridSide").ToString(), Is.EqualTo("Buy"));
+            Assert.That(MRZScoreNatrGridTestFactory.GetField(robot, "_returnEntryArmedSide").ToString(), Is.EqualTo("None"));
+        }
+
+        [Test]
+        public void TryBuildPendingGrid_SkipsWeakReturnToChannelCandle_ForBuy()
+        {
+            MRZScoreNatrGrid robot = MRZScoreNatrGridTestFactory.CreateConfiguredGridRobot(
+                seriesVolumeMultiplier: 1m,
+                returnToChannelEnabled: true,
+                returnIntoChannelPercent: 20m,
+                minReversalBodyToNatr: 0.3m);
+
+            List<Candle> candles = new List<Candle>
+            {
+                CreateFinishedCandle(new DateTime(2026, 5, 19, 12, 5, 0), 98.05m, 98.22m, 97m, 98.10m)
+            };
+
+            MRZScoreNatrGridTestFactory.InvokePrivate(robot, "TryBuildPendingGrid", candles);
+
+            IList gridLevels = (IList)MRZScoreNatrGridTestFactory.GetField(robot, "_gridLevels");
+            Assert.That(gridLevels.Count, Is.EqualTo(0));
+            Assert.That(MRZScoreNatrGridTestFactory.GetField(robot, "_gridSide").ToString(), Is.EqualTo("None"));
+            Assert.That(MRZScoreNatrGridTestFactory.GetField(robot, "_returnEntryArmedSide").ToString(), Is.EqualTo("Buy"));
+        }
+
+        [Test]
+        public void TryBuildPendingGrid_SkipsBuild_WhenDdrEntryFilterIsActivated()
+        {
+            MRZScoreNatrGrid robot = MRZScoreNatrGridTestFactory.CreateConfiguredGridRobot(
+                seriesVolumeMultiplier: 1m,
+                ddrAsEntryFilterEnabled: true,
+                ddrActivated: true);
+
+            List<Candle> candles = new List<Candle>
+            {
+                CreateFinishedCandle(new DateTime(2026, 5, 19, 12, 10, 0), 95m, 96m, 94m, 95m)
+            };
+
+            MRZScoreNatrGridTestFactory.InvokePrivate(robot, "TryBuildPendingGrid", candles);
+
+            IList gridLevels = (IList)MRZScoreNatrGridTestFactory.GetField(robot, "_gridLevels");
+            Assert.That(gridLevels.Count, Is.EqualTo(0));
+            Assert.That(MRZScoreNatrGridTestFactory.GetField(robot, "_gridSide").ToString(), Is.EqualTo("None"));
+        }
+
+        [Test]
+        public void DdrEvent_DiscardsPendingVirtualLevels_WhenEntryFilterModeIsEnabled()
+        {
+            MRZScoreNatrGrid robot = MRZScoreNatrGridTestFactory.CreateConfiguredGridRobot(
+                seriesVolumeMultiplier: 1m,
+                ddrAsEntryFilterEnabled: true,
+                ddrActivated: true);
+            Type levelType = MRZScoreNatrGridTestFactory.GetGridLevelStateType();
+            IList gridLevels = MRZScoreNatrGridTestFactory.CreateGridLevelsList(levelType);
+
+            object level1 = MRZScoreNatrGridTestFactory.CreateGridLevel(levelType, 2, false);
+            MRZScoreNatrGridTestFactory.SetField(level1, "Price", 94.5m);
+
+            object level2 = MRZScoreNatrGridTestFactory.CreateGridLevel(levelType, 3, false);
+            MRZScoreNatrGridTestFactory.SetField(level2, "Price", 92m);
+
+            gridLevels.Add(level1);
+            gridLevels.Add(level2);
+
+            MRZScoreNatrGridTestFactory.SetField(robot, "_gridLevels", gridLevels);
+            MRZScoreNatrGridTestFactory.SetField(robot, "_gridSide", Side.Buy);
+
+            MRZScoreNatrGridTestFactory.InvokePrivate(robot, "_ddrDecoration_DDREvent", null, EventArgs.Empty);
+
+            Assert.That(((IList)MRZScoreNatrGridTestFactory.GetField(robot, "_gridLevels")).Count, Is.EqualTo(0));
+            Assert.That(MRZScoreNatrGridTestFactory.GetField(robot, "_gridSide").ToString(), Is.EqualTo("None"));
+        }
+
+        [Test]
         public void TryScheduleTriggeredMarketNextOpenLevels_SchedulesOnlyTouchedLevels()
         {
             MRZScoreNatrGrid robot = MRZScoreNatrGridTestFactory.CreateConfiguredGridRobot(seriesVolumeMultiplier: 1m);
@@ -107,6 +199,38 @@ namespace OsEngine.Tests.Scenarios
             Assert.That((bool)MRZScoreNatrGridTestFactory.GetField(level1, "PendingNextOpenFill"), Is.True);
             Assert.That((DateTime)MRZScoreNatrGridTestFactory.GetField(level1, "PendingNextOpenSignalTime"), Is.EqualTo(triggerCandle.TimeStart));
             Assert.That((bool)MRZScoreNatrGridTestFactory.GetField(level2, "PendingNextOpenFill"), Is.False);
+        }
+
+        [Test]
+        public void TryScheduleTriggeredMarketNextOpenLevels_SchedulesNewLevelOnlyAfterFreshReturnToChannel()
+        {
+            MRZScoreNatrGrid robot = MRZScoreNatrGridTestFactory.CreateConfiguredGridRobot(
+                seriesVolumeMultiplier: 1m,
+                returnToChannelEnabled: true,
+                returnIntoChannelPercent: 30m,
+                minReversalBodyToNatr: 1m);
+            Type levelType = MRZScoreNatrGridTestFactory.GetGridLevelStateType();
+            IList gridLevels = MRZScoreNatrGridTestFactory.CreateGridLevelsList(levelType);
+
+            object level = MRZScoreNatrGridTestFactory.CreateGridLevel(levelType, 8, false);
+            MRZScoreNatrGridTestFactory.SetField(level, "Price", 99.15m);
+            MRZScoreNatrGridTestFactory.SetField(level, "DeviationPercent", 8m);
+            gridLevels.Add(level);
+
+            MRZScoreNatrGridTestFactory.SetField(robot, "_gridLevels", gridLevels);
+            MRZScoreNatrGridTestFactory.SetField(robot, "_gridSide", Side.Buy);
+            MRZScoreNatrGridTestFactory.SetField(robot, "_gridSma", 100m);
+            MRZScoreNatrGridTestFactory.SetField(robot, "_gridNatrPercent", 0.5m);
+
+            Candle breakCandle = CreateFinishedCandle(new DateTime(2026, 5, 22, 8, 0, 0), 99.58m, 99.61m, 99.02m, 99.15m);
+            MRZScoreNatrGridTestFactory.InvokePrivate(robot, "UpdateReturnToChannelArm", breakCandle, 100m);
+
+            Candle returnCandle = CreateFinishedCandle(new DateTime(2026, 5, 22, 8, 30, 0), 98.00m, 99.30m, 97.90m, 99.22m);
+
+            MRZScoreNatrGridTestFactory.InvokePrivate(robot, "TryScheduleTriggeredMarketNextOpenLevels", returnCandle);
+
+            Assert.That((bool)MRZScoreNatrGridTestFactory.GetField(level, "PendingNextOpenFill"), Is.True);
+            Assert.That(MRZScoreNatrGridTestFactory.GetField(robot, "_returnEntryArmedSide").ToString(), Is.EqualTo("None"));
         }
 
         [Test]

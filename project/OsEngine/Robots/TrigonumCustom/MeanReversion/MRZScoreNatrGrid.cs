@@ -48,6 +48,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterBool _debugLogging;
         private StrategyParameterBool _emaStopEnable;
         private StrategyParameterBool _zScoreChannelTpEnable;
+        private StrategyParameterBool _enterOnReturnToChannelEnable;
+        private StrategyParameterDecimal _returnIntoChannelPercent;
+        private StrategyParameterDecimal _minReversalBodyToNatr;
 
         private TakeProfitDecoration _takeProfit;
         private StopLossDecoration _stopLoss;
@@ -63,10 +66,17 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private StrategyParameterDecimal _recoveryAfterLossVolumeMultiplier;
         private MeanReverseVolumeManager _volumeManager;
         private DDRDecoration _ddrDecoration;
+        private StrategyParameterBool _ddrAsEntryFilterEnable;
         private Change24Decoration _change24;
         private CanEnterByEmaDecoration _canEnterByEma;
         private bool _volatileStopActive;
         private Side _volatileStopDirection = Side.None;
+        private Side _returnEntryArmedSide = Side.None;
+        private decimal _returnEntryArmSma;
+        private decimal _returnEntryArmLowChannel;
+        private decimal _returnEntryArmHighChannel;
+        private decimal _returnEntryExtremePrice;
+        private DateTime _returnEntryArmTime = DateTime.MinValue;
 
         private readonly List<GridLevelState> _gridLevels = new List<GridLevelState>();
         private readonly Dictionary<Position, GridLevelState> _levelBindingsByReference = new Dictionary<Position, GridLevelState>();
@@ -101,6 +111,9 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _gridSize = CreateParameter("Grid Size", 7, 1, 20, 1, "Robot");
             _natrLength = CreateParameter("NATR Length", 14, 5, 200, 1, "Robot");
             _natrMult = CreateParameter("NATR Multiplier", 2m, 0m, 10m, 0.1m, "Robot");
+            _enterOnReturnToChannelEnable = CreateParameter("Enter On Return To Channel Enable", false, "Robot");
+            _returnIntoChannelPercent = CreateParameter("Return Into Channel Percent", 20m, 0m, 100m, 1m, "Robot");
+            _minReversalBodyToNatr = CreateParameter("Min Reversal Body To Natr", 0.3m, 0m, 5m, 0.1m, "Robot");
             _debugLogging = GetOrCreateDebugLoggingParameter();
             _emaStopEnable = CreateParameter("EMA Stop Enable", false, "Ema Filter");
             _zScoreChannelTpEnable = CreateParameter("ZScore Channel TP Enable", false, "ATR");
@@ -137,6 +150,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _ddr = (DDR)IndicatorsFactory.CreateIndicatorByName("DDR", name + "DDR", false);
             _ddr = (DDR)_tab.CreateCandleIndicator(_ddr, "DDR");
             _ddrDecoration = new DDRDecoration(this, _ddr);
+            _ddrAsEntryFilterEnable = CreateParameter("DDR As Entry Filter Enable", false, "DDR");
             _ddrDecoration.DDREvent += _ddrDecoration_DDREvent;
 
             _natrAtr = IndicatorsFactory.CreateIndicatorByName("ATR", name + "NatrAtr", false);
@@ -276,6 +290,29 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
         private void _ddrDecoration_DDREvent(object sender, EventArgs e)
         {
+            if (IsDdrEntryFilterEnabled())
+            {
+                if (_gridSide != Side.None)
+                {
+                    if (UsesVirtualGridMode())
+                    {
+                        DiscardRemainingMarketLevels("DDR entry filter activated");
+
+                        if (!HasConsumedLevels() && !HasPendingOpeningOrders())
+                        {
+                            ClearGrid("Pending market grid cleared by DDR entry filter");
+                        }
+                    }
+                    else
+                    {
+                        CancelPendingOrders("DDR entry filter activated");
+                    }
+                }
+
+                LogDebug("DDR activated in entry-filter mode: new entries are blocked and pending grid repricing is skipped");
+                return;
+            }
+
             if (_gridSide == Side.None || !HasConsumedLevels())
             {
                 return;
@@ -460,6 +497,13 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         {
             WarnIfMarketNextOpenFallsBackToMarket();
 
+            decimal currentSma = GetCurrentSma();
+
+            if (currentSma > 0)
+            {
+                UpdateReturnToChannelArm(last, currentSma);
+            }
+
             if (IsEffectiveMarketNextOpenMode())
             {
                 ExecutePendingNextOpenEntries(last);
@@ -519,6 +563,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             Candle last = candles[lastIndex];
             TryReleaseVolatileStop(last, sma);
+            UpdateReturnToChannelArm(last, sma);
             Side side = last.Close < sma ? Side.Buy : last.Close > sma ? Side.Sell : Side.None;
 
             if (side == Side.None)
@@ -556,6 +601,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 return;
             }
 
+            if (!PassesReturnToChannelGate(side, last, sma, natrPercent))
+            {
+                LogDebug($"Skip grid build: return-to-channel gate blocked, {GetDecisionSnapshot(last, side, sma, natrPercent, thresholdPercent)}");
+                return;
+            }
+
             decimal currentDeviationPercent = GetDeviationPercent(side, sma, last.Close);
             decimal triggeredDeviationPercent = GetTriggeredDeviationPercent(side, sma, last);
 
@@ -590,6 +641,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _gridNatrPercent = natrPercent;
             _gridSignalTime = last.TimeStart;
             _currentGridRecoveryBoostActive = seriesVolumeMultiplier > 1m;
+            ClearReturnToChannelArm($"Grid built for {side}");
 
             string levelsLog = string.Join("; ", _gridLevels.Select(l => $"[{l.Index}] {l.DeviationPercent:F4}% => {l.Price:F8}"));
             LogDebug(
@@ -877,6 +929,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _levelAwaitingImmediateBinding = null;
             _activeSeriesRealizedPnl = 0;
             _currentGridRecoveryBoostActive = false;
+            ClearReturnToChannelArm($"Grid cleared: {reason}");
             LogDebug($"Grid cleared: reason={reason}");
         }
 
@@ -929,6 +982,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             _recoverySeriesRemaining = 0;
             _activeSeriesRealizedPnl = 0;
             _currentGridRecoveryBoostActive = false;
+            _returnEntryArmedSide = Side.None;
+            _returnEntryArmSma = 0;
+            _returnEntryArmLowChannel = 0;
+            _returnEntryArmHighChannel = 0;
+            _returnEntryExtremePrice = 0;
+            _returnEntryArmTime = DateTime.MinValue;
             _levelBindingsByReference.Clear();
             _levelBindingsByNumber.Clear();
             _levelBindingsByOrderUserNumber.Clear();
@@ -1526,6 +1585,16 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 return false;
             }
 
+            if (IsDdrEntryFilterEnabled() &&
+                _ddrDecoration != null &&
+                _ddrDecoration.BlocksEntry())
+            {
+                LogDebug(
+                    $"Filter blocked by DDR entry-filter mode: side={side}, ddrActivated={_ddrDecoration.Activated}, " +
+                    $"{GetDecisionSnapshot(last, side, sma)}");
+                return false;
+            }
+
             if (_volatileStopActive && _volatileStopDirection == side)
             {
                 if (HasPendingCancelRequests())
@@ -1643,6 +1712,44 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             return _ema.DataSeries[0].Last;
         }
 
+        private decimal GetCurrentSma()
+        {
+            if (_sma == null ||
+                _sma.DataSeries == null ||
+                _sma.DataSeries.Count == 0 ||
+                _sma.DataSeries[0] == null ||
+                _sma.DataSeries[0].Values == null ||
+                _sma.DataSeries[0].Values.Count == 0)
+            {
+                return 0;
+            }
+
+            return _sma.DataSeries[0].Last;
+        }
+
+        private decimal GetCurrentNatrPercent(decimal referencePrice)
+        {
+            if (referencePrice <= 0 ||
+                _natrAtr == null ||
+                _natrAtr.DataSeries == null ||
+                _natrAtr.DataSeries.Count == 0 ||
+                _natrAtr.DataSeries[0] == null ||
+                _natrAtr.DataSeries[0].Values == null ||
+                _natrAtr.DataSeries[0].Values.Count == 0)
+            {
+                return -1;
+            }
+
+            decimal atr = _natrAtr.DataSeries[0].Last;
+
+            if (atr <= 0)
+            {
+                return -1;
+            }
+
+            return atr / referencePrice * 100m;
+        }
+
         private decimal GetTriggeredDeviationPercent(Side side, decimal sma, Candle candle)
         {
             if (candle == null)
@@ -1728,7 +1835,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
         private decimal GetStepPercent()
         {
             decimal step = _fixPercent.ValueDecimal;
-            _ddrDecoration?.ChangeStep(ref step);
+
+            if (!IsDdrEntryFilterEnabled())
+            {
+                _ddrDecoration?.ChangeStep(ref step);
+            }
+
             return step;
         }
 
@@ -1796,6 +1908,7 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 $"{GetCandleSnapshot(last)}, sideCandidate={side}, sma={sma:F8}, ema={GetCurrentEma():F8}, " +
                 $"change24={_change24?.Change:F4}, canBuy={_change24?.CanBuy}, canSell={_change24?.CanSell}, " +
                 $"emaCanBuy={_canEnterByEma?.CanBuy}, emaCanSell={_canEnterByEma?.CanSell}, " +
+                $"returnGate={_enterOnReturnToChannelEnable?.ValueBool}, returnArmed={_returnEntryArmedSide}@{FormatDateTime(_returnEntryArmTime)}, " +
                 $"natr={natr}, threshold={threshold}, currentDeviation={currentDeviation}, triggeredDeviation={triggeredDeviation}, " +
                 $"{GetGridStateSnapshot()}";
         }
@@ -1830,8 +1943,141 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
             return
                 $"gridSide={_gridSide}, gridSignal={FormatDateTime(_gridSignalTime)}, volatileStop={_volatileStopActive}/{_volatileStopDirection}, " +
+                $"returnArm={_returnEntryArmedSide}/{FormatDateTime(_returnEntryArmTime)}, " +
                 $"levelsTotal={totalLevels}, consumed={consumedLevels}, withPosition={levelsWithPosition}, awaitingFill={levelsAwaitingFill}, " +
                 $"pendingOrders={pendingOpenOrders}, activeFilled={activeFilledPositions}, nextOpenQueued={_gridLevels?.Count(level => level.PendingNextOpenFill) ?? 0}";
+        }
+
+        private bool IsReturnToChannelEnabled()
+        {
+            return _enterOnReturnToChannelEnable != null &&
+                   _enterOnReturnToChannelEnable.ValueBool;
+        }
+
+        private bool IsDdrEntryFilterEnabled()
+        {
+            return _ddrAsEntryFilterEnable != null &&
+                   _ddrAsEntryFilterEnable.ValueBool;
+        }
+
+        private void UpdateReturnToChannelArm(Candle last, decimal sma)
+        {
+            if (!IsReturnToChannelEnabled() || last == null || sma <= 0 || _channel == null)
+            {
+                return;
+            }
+
+            decimal lowChannel = _channel.ChannelDataLowLast;
+            decimal highChannel = _channel.ChannelDataHighLast;
+
+            if (lowChannel > 0 && last.Low < lowChannel)
+            {
+                bool shouldRefresh = _returnEntryArmedSide != Side.Buy ||
+                                     _returnEntryExtremePrice <= 0 ||
+                                     last.Low <= _returnEntryExtremePrice ||
+                                     _returnEntryArmLowChannel != lowChannel ||
+                                     _returnEntryArmSma != sma;
+
+                if (shouldRefresh)
+                {
+                    _returnEntryArmedSide = Side.Buy;
+                    _returnEntryArmSma = sma;
+                    _returnEntryArmLowChannel = lowChannel;
+                    _returnEntryArmHighChannel = highChannel;
+                    _returnEntryExtremePrice = last.Low;
+                    _returnEntryArmTime = last.TimeStart;
+                    LogDebug(
+                        $"Return-to-channel arm refreshed for Buy: armTime={FormatDateTime(_returnEntryArmTime)}, " +
+                        $"extreme={_returnEntryExtremePrice:F8}, lowChannel={lowChannel:F8}, sma={sma:F8}");
+                }
+            }
+
+            if (highChannel > 0 && last.High > highChannel)
+            {
+                bool shouldRefresh = _returnEntryArmedSide != Side.Sell ||
+                                     _returnEntryExtremePrice <= 0 ||
+                                     last.High >= _returnEntryExtremePrice ||
+                                     _returnEntryArmHighChannel != highChannel ||
+                                     _returnEntryArmSma != sma;
+
+                if (shouldRefresh)
+                {
+                    _returnEntryArmedSide = Side.Sell;
+                    _returnEntryArmSma = sma;
+                    _returnEntryArmLowChannel = lowChannel;
+                    _returnEntryArmHighChannel = highChannel;
+                    _returnEntryExtremePrice = last.High;
+                    _returnEntryArmTime = last.TimeStart;
+                    LogDebug(
+                        $"Return-to-channel arm refreshed for Sell: armTime={FormatDateTime(_returnEntryArmTime)}, " +
+                        $"extreme={_returnEntryExtremePrice:F8}, highChannel={highChannel:F8}, sma={sma:F8}");
+                }
+            }
+        }
+
+        private bool PassesReturnToChannelGate(Side side, Candle last, decimal sma, decimal natrPercent)
+        {
+            if (!IsReturnToChannelEnabled())
+            {
+                return true;
+            }
+
+            if (last == null || side == Side.None)
+            {
+                return false;
+            }
+
+            if (_returnEntryArmedSide != side)
+            {
+                return false;
+            }
+
+            decimal body = Math.Abs(last.Close - last.Open);
+            decimal atrBodyThreshold = last.Close * natrPercent / 100m * (_minReversalBodyToNatr?.ValueDecimal ?? 0m);
+            decimal returnPercent = (_returnIntoChannelPercent?.ValueDecimal ?? 0m) / 100m;
+
+            if (side == Side.Buy)
+            {
+                if (_returnEntryArmLowChannel <= 0 || _returnEntryArmSma <= 0)
+                {
+                    return false;
+                }
+
+                decimal triggerPrice = _returnEntryArmLowChannel + (_returnEntryArmSma - _returnEntryArmLowChannel) * returnPercent;
+
+                return last.Close > last.Open &&
+                       last.Close >= triggerPrice &&
+                       body >= atrBodyThreshold;
+            }
+
+            if (_returnEntryArmHighChannel <= 0 || _returnEntryArmSma <= 0)
+            {
+                return false;
+            }
+
+            decimal sellTriggerPrice = _returnEntryArmHighChannel - (_returnEntryArmHighChannel - _returnEntryArmSma) * returnPercent;
+
+            return last.Close < last.Open &&
+                   last.Close <= sellTriggerPrice &&
+                   body >= atrBodyThreshold;
+        }
+
+        private void ClearReturnToChannelArm(string reason)
+        {
+            if (_returnEntryArmedSide == Side.None)
+            {
+                return;
+            }
+
+            LogDebug(
+                $"Return-to-channel arm cleared: reason={reason}, side={_returnEntryArmedSide}, armTime={FormatDateTime(_returnEntryArmTime)}, extreme={_returnEntryExtremePrice:F8}");
+
+            _returnEntryArmedSide = Side.None;
+            _returnEntryArmSma = 0;
+            _returnEntryArmLowChannel = 0;
+            _returnEntryArmHighChannel = 0;
+            _returnEntryExtremePrice = 0;
+            _returnEntryArmTime = DateTime.MinValue;
         }
 
         private string FormatDateTime(DateTime? time)
@@ -1907,7 +2153,30 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 return;
             }
 
+            decimal sma = GetCurrentSma();
+            decimal natrPercent = GetCurrentNatrPercent(last?.Close ?? 0);
+
+            if (IsReturnToChannelEnabled())
+            {
+                if (sma <= 0 || natrPercent < 0)
+                {
+                    LogDebug(
+                        $"Market level activation skipped: return-to-channel context unavailable, " +
+                        $"{GetDecisionSnapshot(last, _gridSide, sma, natrPercent >= 0 ? (decimal?)natrPercent : null)}");
+                    return;
+                }
+
+                if (!PassesReturnToChannelGate(_gridSide, last, sma, natrPercent))
+                {
+                    LogDebug(
+                        $"Market level activation skipped: return-to-channel gate blocked, " +
+                        $"{GetDecisionSnapshot(last, _gridSide, sma, natrPercent)}");
+                    return;
+                }
+            }
+
             decimal triggeredDeviationPercent = GetTriggeredDeviationPercent(_gridSide, _gridSma, last);
+            bool activatedAny = false;
 
             foreach (GridLevelState level in _gridLevels
                 .Where(level => !level.Consumed && level.Position == null && level.DeviationPercent <= triggeredDeviationPercent)
@@ -1932,6 +2201,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
 
                 LogDebug(
                     $"Market level activated: index={level.Index}, deviation={level.DeviationPercent:F4}%, price={level.Price:F8}, triggerDeviation={triggeredDeviationPercent:F4}%");
+                activatedAny = true;
+            }
+
+            if (activatedAny)
+            {
+                ClearReturnToChannelArm($"Market level activated for {_gridSide}");
             }
         }
 
@@ -1941,6 +2216,30 @@ namespace OsEngine.Robots.TrigonumCustom.Base
             {
                 return;
             }
+
+            decimal sma = GetCurrentSma();
+            decimal natrPercent = GetCurrentNatrPercent(last.Close);
+
+            if (IsReturnToChannelEnabled())
+            {
+                if (sma <= 0 || natrPercent < 0)
+                {
+                    LogDebug(
+                        $"MarketNextOpen scheduling skipped: return-to-channel context unavailable, " +
+                        $"{GetDecisionSnapshot(last, _gridSide, sma, natrPercent >= 0 ? (decimal?)natrPercent : null)}");
+                    return;
+                }
+
+                if (!PassesReturnToChannelGate(_gridSide, last, sma, natrPercent))
+                {
+                    LogDebug(
+                        $"MarketNextOpen scheduling skipped: return-to-channel gate blocked, " +
+                        $"{GetDecisionSnapshot(last, _gridSide, sma, natrPercent)}");
+                    return;
+                }
+            }
+
+            bool scheduledAny = false;
 
             foreach (GridLevelState level in _gridLevels
                 .Where(level => !level.Consumed &&
@@ -1962,6 +2261,12 @@ namespace OsEngine.Robots.TrigonumCustom.Base
                 LogDebug(
                     $"MarketNextOpen level scheduled: index={level.Index}, deviation={level.DeviationPercent:F4}%, levelPrice={level.Price:F8}, " +
                     $"triggerCandle={FormatDateTime(last.TimeStart)}, nextOpenPending=True");
+                scheduledAny = true;
+            }
+
+            if (scheduledAny)
+            {
+                ClearReturnToChannelArm($"MarketNextOpen levels scheduled for {_gridSide}");
             }
         }
 

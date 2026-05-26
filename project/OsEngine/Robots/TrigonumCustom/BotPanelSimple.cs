@@ -16,6 +16,8 @@ namespace OsEngine.Robots.TrigonumCustom
 {
     public abstract class BotPanelSimple : BotPanel
     {
+        protected const string HiddenParametersTabName = "__Hidden";
+
         private class DeferredParityEntry
         {
             public Side Side;
@@ -57,8 +59,8 @@ namespace OsEngine.Robots.TrigonumCustom
             _regimeString = CreateParameter("Regime", BotRegime.Off.ToString(), Enum.GetNames(typeof(BotRegime)), "Base");
             _volumeType = CreateParameter("Volume Type", NUMBER_OF_CONTRACTS, new string[] { NUMBER_OF_CONTRACTS, CONTRACT_CURRENCY, PERCENT }, "Base");
             _slippage = CreateParameter("Slippage", 0.1m, 0.1m, 5, 0.1m, "Base");
-            _startTradeTime = CreateParameterTimeOfDay("Start trade time", 0, 0, 0, 0, "Base");
-            _endTradeTime = CreateParameterTimeOfDay("End trade time", 24, 0, 0, 0, "Base");
+            _startTradeTime = CreateParameterTimeOfDay("Start trade time", 0, 0, 0, 0, HiddenParametersTabName);
+            _endTradeTime = CreateParameterTimeOfDay("End trade time", 24, 0, 0, 0, HiddenParametersTabName);
             _volumeOnPosition = CreateParameter("Volume", 10, 1.0m, 50, 4, "Base");
             _saveJson = CreateParameter("Save Json Data", false, "Base");
             _orderType = CreateParameter("OrderType", OrderType.Limit.ToString(), Enum.GetNames(typeof(OrderType)), "Base");

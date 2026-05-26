@@ -52,18 +52,26 @@
 
 ## Auto Snapshot
 <!-- AUTO_SNAPSHOT_START -->
-- Updated: 2026-05-22 14:15:01
+- Updated: 2026-05-26 14:09:55
 - Branch: `dev`
-- HEAD before push: `99b39e6`
+- HEAD before push: `fce51de`
 - Pending changes before auto-log:
 
 `	ext
  M UPDATE_HISTORY.md
- M project/OsEngine/OsTrader/OsTraderMaster.cs
+ M project/OsEngine.Tests/Helpers/MRZScoreNatrGridTestFactory.cs
+ M project/OsEngine.Tests/Scenarios/MRZScoreNatrGridRecoveryScenarioTests.cs
+ M project/OsEngine.Tests/bin/Debug/net48/OsEngine.Tests.dll
+ M project/OsEngine.Tests/bin/Debug/net48/OsEngine.exe
+ M project/OsEngine/Common/DDRDecoration.cs
+ M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
+ M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+ M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MeanReversionSma2.cs
  M project/OsEngine/bin/Debug/OsEngine.exe
-?? project/OsEngine.Tests/
-?? scripts/
+?? reports/
+?? scripts/README_portfolio_risk_analyzer.md
+?? scripts/analyze_robot_portfolio.py
 `"
     "
     
@@ -73,6 +81,7 @@
 - [D] Engine
 - [D] project
 - [D] related projects
+- [D] reports
 - [D] scripts
 - [F] .gitignore
 - [F] 1.md
@@ -153,6 +162,20 @@
 
 ## Push History
 <!-- PUSH_LOG_START -->
+- 2026-05-26 14:09:55 | branch `dev` | message: `Добавлен Recovery Loss фильтр, скрыты лишние параметры, добавлен флаг по ддр как фильтр, добавлен режим входа на возврате в канал, покрыли тестами бота, python анализ портфеля, исправился баг для шорта на вход под Ema`
+  Files before commit:
+  -  M UPDATE_HISTORY.md
+  -  M project/OsEngine.Tests/Helpers/MRZScoreNatrGridTestFactory.cs
+  -  M project/OsEngine.Tests/Scenarios/MRZScoreNatrGridRecoveryScenarioTests.cs
+  -  M project/OsEngine.Tests/bin/Debug/net48/OsEngine.Tests.dll
+  -  M project/OsEngine.Tests/bin/Debug/net48/OsEngine.exe
+  -  M project/OsEngine/Common/DDRDecoration.cs
+  -  M project/OsEngine/Entity/StrategyParemetrsUi.xaml.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MRZScoreNatrGrid.cs
+  -  M project/OsEngine/Robots/TrigonumCustom/MeanReversion/MeanReversionSma2.cs
+  -  M project/OsEngine/bin/Debug/OsEngine.exe
+  - ?? reports/
 - 2026-05-22 14:15:01 | branch `dev` | message: `Добавление recovery filter`
   Files before commit:
   -  M UPDATE_HISTORY.md
@@ -321,6 +344,7 @@
   -  M project/OsEngine/Robots/TrigonumCustom/BotPanelSimple.cs
 Журнал push-обновлений пока пуст. Первый запуск `push_git_with_log.bat` добавит сюда запись.
 <!-- PUSH_LOG_END -->
+
 
 
 
